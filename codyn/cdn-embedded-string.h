@@ -53,6 +53,7 @@ typedef enum
 
 struct _CdnEmbeddedString
 {
+	/*< private >*/
 	GObject parent;
 
 	CdnEmbeddedStringPrivate *priv;
@@ -60,6 +61,7 @@ struct _CdnEmbeddedString
 
 struct _CdnEmbeddedStringClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 
@@ -119,6 +121,10 @@ gchar             *cdn_embedded_string_expand_escape    (CdnEmbeddedString      
 void               cdn_embedded_string_clear_cache      (CdnEmbeddedString         *s);
 
 gchar             *cdn_embedded_string_collapse         (gchar const * const       *s);
+
+CdnExpansion      *cdn_embedded_string_as_expansion     (CdnEmbeddedString         *s,
+                                                         CdnExpansionContext       *context,
+                                                         GError                   **error);
 
 G_END_DECLS
 

@@ -1,7 +1,3 @@
-SUBDIRS =
-
-if ENABLE_GEDIT
-SUBDIRS += gedit
-endif
+SUBDIRS = gedit
 
 -include $(top_srcdir)/git.mk

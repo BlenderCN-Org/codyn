@@ -45,17 +45,6 @@
 #include <unistd.h>
 #include <glib/gprintf.h>
 
-/**
- * SECTION:cdn-expression
- * @short_description: Mathematical expression evaluation
- *
- * A #CdnExpression contains a mathematical expression. The expression in
- * string format can be compiled and evaluated. At the compilation phase,
- * a list of #CdnObject is provided as a context in which variables are mapped
- * to #CdnVariable in this context.
- *
- */
-
 #define CDN_EXPRESSION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EXPRESSION, CdnExpressionPrivate))
 
 struct _CdnExpressionPrivate
@@ -72,13 +61,7 @@ struct _CdnExpressionPrivate
 	GSList *depends_on;
 	GSList *depends_on_me;
 
-	union
-	{
-		gdouble cached_output;
-		gdouble *cached_output_multi;
-	};
-
-	CdnDimension cached_dim;
+	CdnMatrix cached_output;
 
 	gint error_at;
 	GSList *error_start;
@@ -97,6 +80,7 @@ struct _CdnExpressionPrivate
 	guint once : 1;
 	guint has_cache : 1;
 	guint pinned_sparsity : 1;
+	guint compiling : 1;
 };
 
 typedef struct
@@ -106,6 +90,8 @@ typedef struct
 
 	CdnCompileError *error;
 	GSList *stack;
+
+	guint indexing : 1;
 } ParserContext;
 
 static gboolean validate_stack (CdnExpression *expression,
@@ -135,6 +121,47 @@ enum
 	PROP_HAS_CACHE,
 	PROP_MODIFIED
 };
+
+#define dump_context(s, expression, context) \
+do { \
+	GSList *__stack = context->stack; \
+	gint __i = g_slist_length (__stack); \
+\
+	g_printf("\n[%s:%d] %s:\n", __PRETTY_FUNCTION__, __LINE__, s); \
+\
+	while (__stack) \
+	{ \
+		CdnExpressionTreeIter *__iter; \
+\
+		__iter = cdn_expression_tree_iter_new_from_instructions (__stack->data); \
+		g_printf ("  %2d) %s\n", __i, cdn_expression_tree_iter_to_string_dbg (__iter)); \
+\
+		cdn_expression_tree_iter_free (__iter); \
+\
+		--__i; \
+		__stack = g_slist_next (__stack); \
+	} \
+} while (0)
+
+#define dump_instructions(s, instructions) \
+do { \
+	GSList *__i; \
+\
+	g_printf("\n[%s:%d] %s:\n", __PRETTY_FUNCTION__, __LINE__, s); \
+	for (__i = (instructions); __i; __i = __i->next) { \
+		CdnStackManipulation const *__smanip = cdn_instruction_get_stack_manipulation (__i->data, NULL); \
+		gint __j; \
+		g_printf("  %s [%d-by-%d]", \
+		         cdn_instruction_to_string (__i->data), \
+		         __smanip->push.dimension.rows, __smanip->push.dimension.columns); \
+		for (__j = 0; __j < __smanip->pop.num; ++__j) { \
+			g_printf (", (%d-by-%d)", \
+			          __smanip->pop.args[__j].dimension.rows, \
+			          __smanip->pop.args[__j].dimension.columns); \
+		} \
+		g_printf("\n"); \
+	} \
+} while (0)
 
 static int parse_expression (CdnExpression *expression,
                              ParserContext *context,
@@ -307,62 +334,20 @@ set_values (CdnExpression       *expression,
             gdouble       const *values,
             CdnDimension  const *dimension)
 {
-	gint cursize;
-	gint newsize;
-	CdnDimension olddim;
 	gboolean dimschanged;
 
-	cdn_expression_get_dimension (expression, &olddim);
+	dimschanged = (expression->priv->cached &&
+	               !cdn_dimension_equal (&expression->priv->cached_output.dimension,
+	                                     dimension)) ||
+	              (!expression->priv->cached &&
+	               !cdn_dimension_equal (&expression->priv->retdim.dimension,
+	                                     dimension));
 
 	expression->priv->cached = TRUE;
 
-	cursize = cdn_dimension_size (&expression->priv->cached_dim);
-	newsize = cdn_dimension_size (dimension);
-
-	if (newsize == 1)
-	{
-		if (cursize != 1)
-		{
-			g_free (expression->priv->cached_output_multi);
-		}
-
-		expression->priv->cached_output = values ? *values : 0;
-	}
-	else
-	{
-		if (cursize != newsize)
-		{
-			if (cursize != 1)
-			{
-				expression->priv->cached_output_multi =
-					g_realloc (expression->priv->cached_output_multi,
-					           sizeof (gdouble) * newsize);
-			}
-			else
-			{
-				expression->priv->cached_output_multi =
-					g_new (gdouble, newsize);
-			}
-		}
-
-		if (expression->priv->cached_output_multi != values)
-		{
-			if (values)
-			{
-				memcpy (expression->priv->cached_output_multi,
-				        values,
-				        sizeof (gdouble) * newsize);
-			}
-			else
-			{
-				memset (expression->priv->cached_output_multi, 0, sizeof (gdouble) * newsize);
-			}
-		}
-	}
-
-	expression->priv->cached_dim = *dimension;
-
-	dimschanged = !cdn_dimension_equal (&olddim, dimension);
+	cdn_matrix_set (&expression->priv->cached_output,
+	                values,
+	                dimension);
 
 	if (expression->priv->has_cache || dimschanged)
 	{
@@ -393,6 +378,10 @@ cdn_expression_finalize (GObject *object)
 	                                    NULL,
 	                                    NULL);
 
+	cdn_matrix_destroy (&expression->priv->cached_output);
+
+	cdn_stack_arg_destroy (&expression->priv->retdim);
+
 	G_OBJECT_CLASS (cdn_expression_parent_class)->finalize (object);
 }
 
@@ -412,7 +401,7 @@ set_has_cache (CdnExpression *expression,
 		gboolean dimschanged;
 
 		dimschanged = expression->priv->cached &&
-		              !cdn_dimension_equal (&expression->priv->cached_dim,
+		              !cdn_dimension_equal (&expression->priv->cached_output.dimension,
 		                                    &expression->priv->retdim.dimension);
 
 		expression->priv->cached = FALSE;
@@ -534,6 +523,8 @@ cdn_expression_init (CdnExpression *self)
 	self->priv = CDN_EXPRESSION_GET_PRIVATE (self);
 
 	self->priv->has_cache = TRUE;
+	self->priv->cached_output.dimension.rows = 1;
+	self->priv->cached_output.dimension.columns = 1;
 
 	cdn_stack_init (&(self->priv->output), 0);
 }
@@ -692,6 +683,35 @@ parser_failed (CdnExpression *expression,
 	return FALSE;
 }
 
+static GSList *
+stack_push (GSList                     *stack,
+            CdnInstruction             *instruction,
+            CdnStackManipulation const *smanip)
+{
+	GSList *ret;
+	gint consume;
+
+	ret = g_slist_prepend (NULL, instruction);
+
+	if (!smanip)
+	{
+		smanip = cdn_instruction_get_stack_manipulation (instruction, NULL);
+	}
+
+	consume = smanip->pop.num;
+
+	while (consume)
+	{
+		ret = g_slist_concat (stack->data, ret);
+
+		stack = g_slist_delete_link (stack, stack);
+		--consume;
+	}
+
+	stack = g_slist_prepend (stack, ret);
+	return stack;
+}
+
 static gboolean
 instructions_push (CdnExpression  *expression,
                    CdnInstruction *next,
@@ -708,8 +728,6 @@ instructions_push (CdnExpression  *expression,
 	if (context)
 	{
 		CdnStackManipulation const *smanip;
-		GSList *ret = NULL;
-		gint consume;
 		GError *error = NULL;
 
 		cdn_instruction_set_location (next,
@@ -746,22 +764,7 @@ instructions_push (CdnExpression  *expression,
 			return FALSE;
 		}
 
-		consume = smanip->pop.num;
-
-		ret = g_slist_prepend (NULL, next);
-
-		while (consume)
-		{
-			ret = g_slist_concat (context->stack->data, ret);
-
-			context->stack = g_slist_delete_link (context->stack,
-			                                      context->stack);
-
-			--consume;
-		}
-
-		context->stack = g_slist_prepend (context->stack,
-		                                  ret);
+		context->stack = stack_push (context->stack, next, smanip);
 	}
 
 	return TRUE;
@@ -925,10 +928,10 @@ parse_context_property (CdnExpression *expression,
 }
 
 static CdnFunction *
-parse_context_function (CdnExpression *expression,
-                        gchar const   *id,
-                        gchar const   *propid,
-                        ParserContext *context)
+find_context_function (CdnExpression *expression,
+                       gchar const   *id,
+                       gchar const   *propid,
+                       ParserContext *context)
 {
 	GSList const *objs;
 
@@ -1006,7 +1009,7 @@ parse_dot_variable (CdnExpression *expression,
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_VARIABLE_NOT_FOUND,
-		               "Link property `%s.%s' could not be found",
+		               "Variable `%s.%s' could not be found",
 		               id, propid);
 	}
 
@@ -1209,52 +1212,218 @@ make_zeros (CdnDimension const *dimension)
 	return g_slist_reverse (ret);
 }
 
+static gboolean
+is_numeric (GSList const *instructions)
+{
+	while (instructions)
+	{
+		if (!(CDN_IS_INSTRUCTION_NUMBER (instructions->data) ||
+		      CDN_IS_INSTRUCTION_MATRIX (instructions->data) ||
+		      CDN_IS_INSTRUCTION_INDEX (instructions->data)))
+		{
+			return FALSE;
+		}
+
+		instructions = g_slist_next (instructions);
+	}
+
+	return TRUE;
+}
+
+static CdnDimension
+instruction_get_dimension (CdnInstruction *i)
+{
+	CdnStackManipulation const *smanip;
+
+	smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+	return smanip->push.dimension;
+}
+
+static gint
+instructions_to_indices (GSList const *instructions,
+                         gint         *ret,
+                         gint          num)
+{
+	gint idx = 0;
+
+	while (instructions)
+	{
+		CdnInstruction *n = instructions->data;
+
+		if (CDN_IS_INSTRUCTION_NUMBER (n))
+		{
+			if (idx >= num)
+			{
+				return -1;
+			}
+
+			gdouble v = cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (n));
+			*ret++ = (gint)(v + 0.5);
+
+			++idx;
+		}
+		else if (CDN_IS_INSTRUCTION_INDEX (n))
+		{
+			CdnInstructionIndex *i;
+
+			i = CDN_INSTRUCTION_INDEX (n);
+
+			if (!cdn_instruction_index_write_indices (i,
+			                                          ret,
+			                                          num - idx))
+			{
+				return -1;
+			}
+			else
+			{
+				CdnStackManipulation const *smanip;
+
+				smanip = cdn_instruction_get_stack_manipulation (n, NULL);
+
+				idx += cdn_dimension_size (&smanip->push.dimension);
+			}
+		}
+		else if (!CDN_IS_INSTRUCTION_MATRIX (n))
+		{
+			return -1;
+		}
+
+		instructions = g_slist_next (instructions);
+	}
+
+	return idx;
+}
+
+static CdnStackArg const *
+instruction_get_push_arg (CdnInstruction *i)
+{
+	CdnStackManipulation const *smanip;
+
+	smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+	return &smanip->push;
+}
+
+static CdnStackArgs const *
+instruction_get_pop_args (CdnInstruction *i)
+{
+	CdnStackManipulation const *smanip;
+
+	smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+	return &smanip->pop;
+}
+
+static void
+free_popped_stack (GSList *i)
+{
+	g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (i);
+}
+
+static GSList *
+pop_stack (CdnExpression *expression,
+           ParserContext *context)
+{
+	GSList *instrs;
+	GSList *tmp;
+	GSList *nth;
+
+	instrs = context->stack->data;
+
+	// Pop these instructions
+	nth = g_slist_nth (expression->priv->instructions,
+	                   g_slist_length (instrs) - 1);
+
+	tmp = expression->priv->instructions;
+	expression->priv->instructions = nth->next;
+
+	nth->next = NULL;
+	g_slist_free (tmp);
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	return instrs;
+}
+
 static CdnInstruction *
 zeros_macro (CdnExpression *expression,
-             ParserContext *context)
+             ParserContext *context,
+             gint           numargs)
 {
-	GSList *second = NULL;
-	GSList *first = NULL;
-	CdnDimension dimension;
+	GSList *columns = NULL;
+	CdnDimension dimension = CDN_DIMENSION(1, 1);
 	GSList *ptr;
 
 	if (context->stack)
 	{
-		second = context->stack->data;
+		columns = context->stack->data;
+		dimension = instruction_get_dimension (g_slist_last (columns)->data);
 	}
 
-	if (context->stack->next)
+	if (numargs == 1 && cdn_dimension_size (&dimension) == 2)
 	{
-		first = context->stack->next->data;
-	}
+		gint indices[2] = {0, 0};
+		GSList *i;
 
-	if (!second || !first ||
-	    second->next || first->next ||
-	    !CDN_IS_INSTRUCTION_NUMBER (second->data) ||
-	    !CDN_IS_INSTRUCTION_NUMBER (first->data))
+		i = pop_stack (expression, context);
+
+		if (instructions_to_indices (i, indices, 2) == -1)
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The `zeros` function expects 2 number arguments or a 1-by-2 number vector");
+
+			free_popped_stack (i);
+			return NULL;
+		}
+
+		free_popped_stack (i);
+
+		dimension.rows = indices[0];
+		dimension.columns = indices[1];
+	}
+	else if (numargs == 2)
+	{
+		GSList *rows = NULL;
+		GSList *i;
+
+		if (context->stack && context->stack->next)
+		{
+			rows = context->stack->next->data;
+		}
+
+		if (!columns || !rows ||
+		    columns->next || rows->next ||
+		    !CDN_IS_INSTRUCTION_NUMBER (rows->data) ||
+		    !CDN_IS_INSTRUCTION_NUMBER (rows->data))
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The `zeros' function expects 2 number arguments or a 1-by-2 number vector");
+
+			return NULL;
+		}
+
+		dimension.rows = (gint) (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (rows->data)) + 0.5);
+		dimension.columns = (gint) (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (columns->data)) + 0.5);
+
+		i = pop_stack (expression, context);
+		g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
+
+		i = pop_stack (expression, context);
+		g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
+	}
+	else
 	{
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "The `zeros' function can only be called with 2 number arguments");
+		               "The `zeros` function expects 2 number arguments or a 1-by-2 number vector");
 
 		return NULL;
 	}
-
-	dimension.rows = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (first->data)));
-	dimension.columns = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (second->data)));
-
-	instructions_pop (expression);
-	instructions_pop (expression);
-
-	g_slist_free (context->stack->next->data);
-	g_slist_free (context->stack->data);
-
-	context->stack = g_slist_delete_link (context->stack,
-	                                      context->stack);
-
-	context->stack = g_slist_delete_link (context->stack,
-	                                      context->stack);
 
 	ptr = make_zeros (&dimension);
 
@@ -1284,10 +1453,22 @@ zeros_macro (CdnExpression *expression,
 
 static CdnInstruction *
 eye_macro (CdnExpression *expression,
-           ParserContext *context)
+           ParserContext *context,
+           gint           numargs)
 {
 	GSList *first = NULL;
 	gint num;
+
+	if (numargs != 1)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `eye' function expects 1 argument, not %d",
+		               numargs);
+
+		return NULL;
+	}
 
 	if (context->stack)
 	{
@@ -1301,7 +1482,7 @@ eye_macro (CdnExpression *expression,
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "The `eye' function can only be called with 1 number argument");
+		               "The `eye' function expects 1 number argument");
 
 		return NULL;
 	}
@@ -1317,7 +1498,7 @@ eye_macro (CdnExpression *expression,
 	// Add identity matrix
 	if (num != 1)
 	{
-		gint r;
+		gint c;
 		gint i = 0;
 		CdnStackArgs args;
 		CdnDimension dim;
@@ -1327,11 +1508,11 @@ eye_macro (CdnExpression *expression,
 		dim.rows = num;
 		dim.columns = num;
 
-		for (r = 0; r < num; ++r)
+		for (c = 0; c < num; ++c)
 		{
-			gint c;
+			gint r;
 
-			for (c = 0; c < num; ++c)
+			for (r = 0; r < num; ++r)
 			{
 				gchar const *s;
 
@@ -1363,27 +1544,26 @@ eye_macro (CdnExpression *expression,
 
 static CdnInstruction *
 length_macro (CdnExpression *expression,
-              ParserContext *context)
+              ParserContext *context,
+              gint           numargs)
 {
 	GSList *first = NULL;
 	gchar *s;
 	CdnStackArgs args;
 	CdnInstruction *ret;
 
-	if (context->stack)
-	{
-		first = context->stack->data;
-	}
-
-	if (!first || first->next)
+	if (numargs != 1)
 	{
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "The `length' function expects 1 argument");
+		               "The `length' function expects 1 argument, not %d",
+		               numargs);
 
 		return NULL;
 	}
+
+	first = context->stack->data;
 
 	get_argdim (expression, context, 1, &args);
 
@@ -1407,67 +1587,96 @@ length_macro (CdnExpression *expression,
 
 static CdnInstruction *
 size_macro (CdnExpression *expression,
-            ParserContext *context)
+            ParserContext *context,
+            gint           numargs)
 {
-	GSList *first = NULL;
-	gchar *sr;
-	gchar *sc;
-	CdnStackArgs args;
-	CdnStackArg nargs[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
-	CdnDimension dim;
-
-	if (context->stack)
-	{
-		first = context->stack->data;
-	}
-
-	if (!first || first->next)
+	if (numargs < 1 || numargs > 2)
 	{
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "The `size' function expects 1 argument");
+		               "The `size' function expects 1 or 2 arguments, not %d",
+		               numargs);
 
 		return NULL;
 	}
 
-	get_argdim (expression, context, 1, &args);
-
-	while (first)
+	if (numargs == 2)
 	{
-		instructions_pop (expression);
-		first = g_slist_delete_link (first, first);
+		GSList *idx = pop_stack (expression, context);
+		gint i;
+		CdnDimension dim;
+		GSList *d;
+
+		if (idx->next || !CDN_IS_INSTRUCTION_NUMBER (idx->data))
+		{
+			free_popped_stack (idx);
+
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The second argument of the `size' function must be a number");
+
+			return NULL;
+		}
+
+		i = (gint)(cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (idx->data)) + 0.5);
+		free_popped_stack(idx);
+
+		if (i != 0 && i != 1)
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The second argument of the `size' function must be either 0 or 1");
+
+			return NULL;
+		}
+
+		d = pop_stack (expression, context);
+		dim = instruction_get_dimension (g_slist_last (d)->data);
+		free_popped_stack (d);
+
+		return cdn_instruction_number_new (dim.dims[i]);
 	}
+	else
+	{
+		gchar *sr;
+		gchar *sc;
+		CdnStackArgs args;
+		CdnStackArg nargs[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
+		GSList *i;
+		CdnDimension dim;
 
-	context->stack = g_slist_delete_link (context->stack,
-	                                      context->stack);
+		i = pop_stack (expression, context);
+		dim = instruction_get_dimension (g_slist_last (i)->data);
+		free_popped_stack (i);
 
-	sr = g_strdup_printf ("%d", args.args[0].rows);
-	sc = g_strdup_printf ("%d", args.args[0].columns);
+		sr = g_strdup_printf ("%d", dim.rows);
+		sc = g_strdup_printf ("%d", dim.columns);
 
-	instructions_push (expression,
-	                   cdn_instruction_number_new_from_string (sr),
-	                   context);
+		instructions_push (expression,
+		                   cdn_instruction_number_new_from_string (sr),
+		                   context);
 
-	instructions_push (expression,
-	                   cdn_instruction_number_new_from_string (sc),
-	                   context);
+		instructions_push (expression,
+		                   cdn_instruction_number_new_from_string (sc),
+		                   context);
 
-	g_free (sr);
-	g_free (sc);
+		g_free (sr);
+		g_free (sc);
 
-	cdn_stack_args_destroy (&args);
+		args.num = 2;
+		args.args = nargs;
 
-	args.num = 2;
-	args.args = nargs;
+		args.args[0].dimension = cdn_dimension_one;
+		args.args[1].dimension = cdn_dimension_one;
 
-	args.args[0].dimension = cdn_dimension_one;
-	args.args[1].dimension = cdn_dimension_one;
+		dim.rows = 1;
+		dim.columns = 2;
 
-	dim.rows = 1;
-	dim.columns = 2;
-
-	return cdn_instruction_matrix_new (&args, &dim);
+		return cdn_instruction_matrix_new (&args, &dim);
+	}
 }
 
 static void
@@ -1504,30 +1713,35 @@ swap_arguments_index (CdnExpression *expression,
 	expression->priv->instructions = tmp;
 }
 
-static GSList *
-pop_stack (CdnExpression *expression,
-           ParserContext *context)
+static void
+swap_arguments_last_to_first (CdnExpression *expression,
+                              ParserContext *context)
 {
-	GSList *instrs;
-	GSList *tmp;
-	GSList *nth;
+	GSList *first = context->stack->data;
+	GSList *second = context->stack->next->data;
+	GSList *third = context->stack->next->next->data;
 
-	instrs = context->stack->data;
+	GSList *firstinstr;
+	GSList *secondinstr;
+	GSList *thirdinstr;
+	GSList *start;
 
-	// Pop these instructions
-	nth = g_slist_nth (expression->priv->instructions,
-	                   g_slist_length (instrs) - 1);
+	// Swaps b, c, a to a, b, c
+	context->stack->data = second;
+	context->stack->next->data = third;
+	context->stack->next->next->data = first;
 
-	tmp = expression->priv->instructions;
-	expression->priv->instructions = nth->next;
+	// Point to item in list being the LAST instruction of the set
+	firstinstr = g_slist_nth (expression->priv->instructions, g_slist_length (first) - 1);
+	secondinstr = g_slist_nth (firstinstr, g_slist_length (second));
+	thirdinstr = g_slist_nth (secondinstr, g_slist_length (third));
 
-	nth->next = NULL;
-	g_slist_free (tmp);
+	// Swap sublists around
+	start = expression->priv->instructions;
 
-	context->stack = g_slist_delete_link (context->stack,
-	                                      context->stack);
-
-	return instrs;
+	expression->priv->instructions = firstinstr->next;
+	firstinstr->next = thirdinstr->next;
+	thirdinstr->next = start;
 }
 
 static gboolean
@@ -1698,6 +1912,182 @@ instructions_push_all (CdnExpression *expression,
 	}
 }
 
+static void
+instructions_push_list (CdnExpression *expression,
+                        ParserContext *context,
+                        GSList        *instructions)
+{
+	while (instructions)
+	{
+		instructions_push (expression, instructions->data, context);
+		instructions = g_slist_delete_link (instructions, instructions);
+	}
+}
+
+static CdnStackArg const *
+get_last_stack_arg (ParserContext *context)
+{
+	return instruction_get_push_arg (g_slist_last (context->stack->data)->data);
+}
+
+static gboolean
+inline_simple (CdnExpression       *expression,
+               ParserContext       *context,
+               CdnMathFunctionType  fid,
+               CdnStackArgs const  *args)
+{
+	switch (fid)
+	{
+	case CDN_MATH_FUNCTION_TYPE_TRIL:
+	case CDN_MATH_FUNCTION_TYPE_TRIU:
+	case CDN_MATH_FUNCTION_TYPE_DIAG:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			// NOOP
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_LINSOLVE:
+	case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			GSList *A;
+			GSList *b;
+
+			CdnStackArg narg[2] = {
+				CDN_STACK_ARG (1, 1),
+				CDN_STACK_ARG (1, 1),
+			};
+
+			CdnStackArgs nargs = {
+				.args = narg,
+				.num = 2,
+			};
+
+			A = pop_stack (expression, context);
+
+			if (fid == CDN_MATH_FUNCTION_TYPE_SLINSOLVE)
+			{
+				narg[1].columns = args->args[2].columns;
+
+				// lambda
+				free_popped_stack (pop_stack (expression, context));
+			}
+			else
+			{
+				narg[1].columns = args->args[1].columns;
+			}
+
+			b = pop_stack (expression, context);
+
+			instructions_push_list (expression, context, b);
+			instructions_push_list (expression, context, A);
+
+			// Push back division operator
+			instructions_push (expression,
+			                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE,
+			                                                 NULL,
+			                                                 &nargs),
+			                   context);
+
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_QR:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			GSList *arg = pop_stack (expression, context);
+
+			CdnStackArg narg[2] = {
+				CDN_STACK_ARG(1, 1),
+				CDN_STACK_ARG(1, 1)
+			};
+
+			CdnStackArgs nargs = {
+				.args = narg,
+				.num = 2,
+			};
+
+			CdnDimension argdim = CDN_DIMENSION (1, 2);
+
+			// Push 1
+			instructions_push (expression,
+			                   cdn_instruction_number_new_from_string ("1"),
+			                   context);
+
+			// Push back the argument
+			instructions_push_list (expression, context, arg);
+
+			// Push matrix instruction
+			instructions_push (expression,
+			                   cdn_instruction_matrix_new (&nargs,
+			                                               &argdim),
+			                   context);
+
+			return TRUE;
+		}
+
+		break;
+	case CDN_MATH_FUNCTION_TYPE_INVERSE:
+	case CDN_MATH_FUNCTION_TYPE_PSEUDO_INVERSE:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			// Do a simple divide directly
+			GSList *arg = pop_stack (expression, context);
+
+			CdnStackArg narg[2] = {
+				CDN_STACK_ARG (1, 1),
+				CDN_STACK_ARG (1, 1),
+			};
+
+			CdnStackArgs nargs = {
+				.args = narg,
+				.num = 2,
+			};
+
+			// Push 1
+			instructions_push (expression,
+			                   cdn_instruction_number_new_from_string ("1"),
+			                   context);
+
+			// Push back the argument
+			instructions_push_list (expression, context, arg);
+
+			// Push back division operator
+			instructions_push (expression,
+			                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE,
+			                                                 NULL,
+			                                                 &nargs),
+			                   context);
+
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_TRANSPOSE:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_CSUM:
+		if (args->args[0].columns == 1)
+		{
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_RSUM:
+		if (args->args[0].rows == 1)
+		{
+			return TRUE;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return FALSE;
+}
+
 static gboolean
 parse_function (CdnExpression *expression,
                 gchar const   *name,
@@ -1730,7 +2120,7 @@ parse_function (CdnExpression *expression,
 	}
 	else
 	{
-		function = parse_context_function (expression, name, cname, context);
+		function = find_context_function (expression, name, cname, context);
 
 		if (!function)
 		{
@@ -1784,10 +2174,10 @@ parse_function (CdnExpression *expression,
 			if (dotname)
 			{
 				dotted = TRUE;
-				function = parse_context_function (expression,
-				                                   name,
-				                                   dotname,
-				                                   context);
+				function = find_context_function (expression,
+				                                  name,
+				                                  dotname,
+				                                  context);
 			}
 
 			if (!function)
@@ -1823,9 +2213,11 @@ parse_function (CdnExpression *expression,
 		return parser_failed (expression,
 		                      context,
 		                      CDN_COMPILE_ERROR_MAXARG,
-		                      "Expected number of arguments (%d) for function `%s' does not match (got %d)",
+		                      "Expected number of arguments (%d) for function `%s%s%s' does not match (got %d)",
 		                      arguments - n_implicit,
 		                      name,
+		                      cname != NULL ? "." : "",
+		                      cname != NULL ? cname : "",
 		                      numargs);
 	}
 
@@ -1913,7 +2305,7 @@ parse_function (CdnExpression *expression,
 				return parser_failed (expression,
 				                      context,
 				                      CDN_COMPILE_ERROR_VARIABLE_NOT_FOUND,
-				                      "The implicit property `%s' for function `%s' is not found",
+				                      "The implicit variable `%s' for function `%s' is not found",
 				                      aname,
 				                      name);
 			}
@@ -1938,6 +2330,48 @@ parse_function (CdnExpression *expression,
 
 			instruction = cdn_instruction_rand_new (&args);
 			cdn_stack_args_destroy (&args);
+
+			// Rand of 1 or 2 arguments (i.e. with bounds) are
+			// injected with a lerp function
+			if (numargs == 1)
+			{
+				// Push rand instruction
+				instructions_push (expression,
+				                   instruction,
+				                   context);
+
+				// Swap upper bound and rand
+				swap_arguments (expression, context);
+
+				// Push the lower bound
+				instructions_push (expression,
+				                   cdn_instruction_number_new_from_string ("0"),
+				                   context);
+
+				// Swap upper and lower bound
+				swap_arguments (expression, context);
+			}
+			else if (numargs == 2)
+			{
+				// Push rand instruction
+				instructions_push (expression,
+				                   instruction,
+				                   context);
+
+				swap_arguments_last_to_first (expression, context);
+			}
+
+			if (numargs > 0)
+			{
+				// Make the 'real' instruction the lerp
+				get_argdim (expression, context, 3, &args);
+
+				instruction = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LERP,
+				                                            NULL,
+				                                            &args);
+
+				cdn_stack_args_destroy (&args);
+			}
 		}
 		else
 		{
@@ -1968,26 +2402,36 @@ parse_function (CdnExpression *expression,
 			{
 				case CDN_MATH_FUNCTION_TYPE_ZEROS:
 					instruction = zeros_macro (expression,
-					                           context);
+					                           context,
+					                           numargs);
 				break;
 				case CDN_MATH_FUNCTION_TYPE_EYE:
 					instruction = eye_macro (expression,
-					                         context);
+					                         context,
+					                         numargs);
 				break;
 				case CDN_MATH_FUNCTION_TYPE_LENGTH:
 					instruction = length_macro (expression,
-					                            context);
+					                            context,
+					                            numargs);
 				break;
 				case CDN_MATH_FUNCTION_TYPE_SIZE:
 					instruction = size_macro (expression,
-					                          context);
-				break;
+					                          context,
+					                          numargs);
 				break;
 				default:
 					get_argdim (expression,
 					            context,
 					            numargs,
 					            &args);
+
+					if (inline_simple (expression, context, fid, &args))
+					{
+						cdn_stack_args_destroy (&args);
+						g_free (dotname);
+						return TRUE;
+					}
 
 					instruction =
 						cdn_instruction_function_new (fid,
@@ -2122,20 +2566,191 @@ convert_2dim_slist (GSList const *lst,
 	return ret;
 }
 
-static gboolean
+static GSList *
+parse_matrix_decompose_variable (CdnInstruction *instruction,
+                                 GSList         *instructions)
+{
+	// Use slicing on the variable
+	CdnStackArg const *arg;
+	guint *slice;
+	CdnDimension dim;
+	gint rows;
+	gint columns;
+	gint r;
+	gint c;
+	GSList *ret = NULL;
+
+	arg = instruction_get_push_arg (instruction);
+
+	rows = arg->dimension.rows;
+	columns = arg->dimension.columns;
+
+	slice = g_new0 (guint, rows);
+
+	// Resulting slice dimensions
+	dim.rows = rows;
+	dim.columns = 1;
+
+	// Prepare initial slice
+	for (r = 0; r < rows; ++r)
+	{
+		slice[r] = (guint)r;
+	}
+
+	// For each column, append a variable slice instruction
+	for (c = 0; c < columns; ++c)
+	{
+		// Append new instructions with the slices
+		CdnInstructionVariable *v;
+
+		v = cdn_mini_object_copy (instruction);
+
+		cdn_instruction_variable_apply_slice (v,
+		                                      slice,
+		                                      rows,
+		                                      &dim);
+
+		// we prepend here, and reverse in the end
+		ret = g_slist_prepend (ret, v);
+
+		// Compute next column slice
+		for (r = 0; r < rows; ++r)
+		{
+			slice[r] += rows;
+		}
+	}
+
+	g_free (slice);
+
+	g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (instructions);
+
+	// keep result instructions in correct order
+	return g_slist_reverse (ret);
+}
+
+static GSList *
+parse_matrix_decompose_matrix (CdnInstruction *instruction,
+                               GSList         *instructions,
+                               GSList         *instructionl)
+{
+	// Check if individual values can be decomposed
+	CdnStackArgs const *args;
+	gint i;
+
+	// Decompose the individual values of the matrix, if possible
+	args = instruction_get_pop_args (instruction);
+
+	for (i = 0; i < args->num; ++i)
+	{
+		// Can only decompose single column values
+		if (args->args[i].dimension.columns != 1)
+		{
+			return NULL;
+		}
+	}
+
+	// To do this, we strip off the matrix instruction
+	cdn_mini_object_unref (instruction);
+	return g_slist_delete_link (instructions, instructionl);
+}
+
+/*
+ * parse_matrix_decompose will try to decompose the last expression on the
+ * stack into single column expressions if possible.
+ */
+static GSList *
+parse_matrix_decompose (GSList *instructions)
+{
+	CdnInstruction *last;
+	GSList *lastl;
+
+	lastl = g_slist_last (instructions);
+	last = lastl->data;
+
+	if (instruction_get_dimension (last).columns == 1)
+	{
+		// No need to decompose single column
+		return instructions;
+	}
+
+	if (CDN_IS_INSTRUCTION_VARIABLE (last))
+	{
+		return parse_matrix_decompose_variable (last, instructions);
+	}
+	else if (CDN_IS_INSTRUCTION_MATRIX (last))
+	{
+		return parse_matrix_decompose_matrix (last, instructions, lastl);
+	}
+	else
+	{
+		// Can't do it!
+		return NULL;
+	}
+}
+
+typedef struct
+{
+	CdnDimension dimension;
+	gint numpop;
+	GSList *arguments;
+} MatrixRow;
+
+static MatrixRow *
+matrix_row_new ()
+{
+	return g_slice_new0 (MatrixRow);
+}
+
+static void
+matrix_row_free (MatrixRow *row)
+{
+	while (row->arguments)
+	{
+		GSList *a = row->arguments->data;
+
+		g_slist_foreach (a, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (a);
+
+		row->arguments = g_slist_delete_link (row->arguments,
+		                                      row->arguments);
+	}
+
+	g_slice_free (MatrixRow, row);
+}
+
+/*
+ * parse_matrix_row parses column expressions until a full row of columns is
+ * parsed. Note that expressions parsed can be multidimensional and this function
+ * will check of the concatenated rows are the same. For example:
+ *
+ * 1) [[1;2;3], [4;5;6]]
+ * 2) [[1;2;3], [5;6]]
+ *
+ * Where the outer matrix is parsed in one time by this function. The first
+ * example has consistent rows, but the second example does not. Therefore this
+ * function returns FALSE (and sets an appropriate error) when trying to parse
+ * the second example.
+ */
+static MatrixRow *
 parse_matrix_row (CdnExpression *expression,
                   ParserContext *context,
-                  gboolean      *isend,
-                  CdnDimension  *dimension,
-                  gint          *numpop)
+                  gboolean      *isend)
 {
+	MatrixRow *ret;
+
 	*isend = FALSE;
 
 	CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
 
 	if (!next)
 	{
-		return FALSE;
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "Unexpected end of expression (expected ; or ])");
+
+		return NULL;
 	}
 
 	*isend = CDN_TOKEN_IS_OPERATOR (next) &&
@@ -2143,97 +2758,75 @@ parse_matrix_row (CdnExpression *expression,
 
 	cdn_token_free (next);
 
+	ret = matrix_row_new ();
+
 	if (*isend)
 	{
-		return TRUE;
+		return ret;
 	}
-
-	*numpop = 0;
-	dimension->rows = 0;
-	dimension->columns = 0;
 
 	while (TRUE)
 	{
-		CdnStackArgs args;
+		CdnStackArg const *arg;
 
-		if (dimension->rows > 1 && *numpop > 1)
-		{
-			// Here we will need to concat the rows with a concat
-			// operation, so we will insert a matrix operation here
-			// if needed
-			get_argdim (expression, context, *numpop, &args);
-
-			instructions_push (expression,
-			                   cdn_instruction_matrix_new (&args,
-			                                               dimension),
-			                   context);
-
-			*numpop = 1;
-			cdn_stack_args_destroy (&args);
-		}
-
+		// Parse one expression
 		if (!parse_expression (expression, context, -1, 0))
 		{
-			return FALSE;
+			return NULL;
 		}
 
-		get_argdim (expression, context, 1, &args);
-		++*numpop;
+		// Get argdim of the last expression to extract the dimension
+		// of the expression
+		arg = get_last_stack_arg (context);
 
-		// Check argument consistency
-		if (dimension->rows != 0)
+		/* Check argument consistency. This function is parsing one row
+		 * in the sense of the matrix syntax (i.e. until ] or ;). The
+		 * invididual arguments being parsed can still be multi row
+		 * themselves. Here we simply check of we concatenate columns
+		 * with the same number of rows.
+		 */
+		if (ret->dimension.rows != 0)
 		{
-			if (dimension->rows != args.args[0].rows)
+			if (ret->dimension.rows != arg->rows)
 			{
 				parser_failed (expression,
 				               context,
 				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 				               "Cannot concatenate %d row%s with %d row%s",
-				               dimension->rows,
-				               dimension->rows > 1 ? "s" : "",
-				               args.args[0].rows,
-				               args.args[0].rows > 1 ? "s" : "");
+				               ret->dimension.rows,
+				               ret->dimension.rows > 1 ? "s" : "",
+				               arg->rows,
+				               arg->rows > 1 ? "s" : "");
 
-				cdn_stack_args_destroy (&args);
-				return FALSE;
-			}
-			else if (dimension->rows != 1)
-			{
-				CdnStackArgs nargs;
-				CdnStackArg ar[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
-
-				nargs.args = ar;
-				nargs.num = 2;
-
-				ar[0].dimension = *dimension;
-				ar[1].dimension = args.args[0].dimension;
-
-				// Here we have multiple rows concatenated with
-				// multiple rows. We are going to implement this
-				// using a hcat operator
-				instructions_push (expression,
-				                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_HCAT,
-				                                                 "hcat",
-				                                                 &nargs),
-				                   context);
-
-				*numpop = 1;
+				matrix_row_free (ret);
+				return NULL;
 			}
 
-			dimension->columns += args.args[0].columns;
+			ret->dimension.columns += arg->columns;
 		}
 		else
 		{
-			*dimension = args.args[0].dimension;
+			// Initial dimensions
+			ret->dimension = arg->dimension;
 		}
 
-		cdn_stack_args_destroy (&args);
+		ret->arguments = g_slist_prepend (ret->arguments,
+		                                  pop_stack (expression, context));
 
+		++ret->numpop;
+
+		// Check next token for the end of the "row"
 		CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
 
 		if (!next)
 		{
-			return FALSE;
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "Unexpected end of expression (expected ; or ])");
+
+			matrix_row_free (ret);
+			return NULL;
 		}
 
 		CdnTokenOperatorType type = CDN_TOKEN_OPERATOR_TYPE_NONE;
@@ -2252,14 +2845,335 @@ parse_matrix_row (CdnExpression *expression,
 			cdn_token_free (cdn_tokenizer_next (context->buffer));
 			*isend = (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END);
 
-			return TRUE;
+			break;
 		}
 		else if (type == CDN_TOKEN_OPERATOR_TYPE_COMMA)
 		{
-			// Consume
+			// Consume comma token and continue parsing the row
 			cdn_token_free (cdn_tokenizer_next (context->buffer));
 		}
 	}
+
+	// store arguments in order of occurence
+	ret->arguments = g_slist_reverse (ret->arguments);
+	return ret;
+}
+
+static GSList *
+matrix_reorder_flat (GSList              *ret,
+                     CdnDimension        *retdim,
+                     GSList             **m,
+                     gint                 mrstride,
+                     gint                *rowsize,
+                     CdnDimension const  *dim)
+{
+	gint c;
+	gint i = 0;
+	gint mi = 0;
+	CdnStackArgs args;
+	gint r;
+	gint rrows = 0;
+	CdnDimension mdim;
+	gint n;
+
+	n = cdn_dimension_size (dim);
+	cdn_stack_args_init (&args, n);
+
+	for (c = 0; c < dim->columns; ++c)
+	{
+		for (r = 0; r < dim->rows; ++r)
+		{
+			ret = g_slist_concat (m[mi + r], ret);
+
+			args.args[n - i - 1].dimension.rows = rowsize[r];
+			args.args[n - i - 1].dimension.columns = 1;
+
+			if (c == 0)
+			{
+				rrows += rowsize[r];
+			}
+
+			++i;
+		}
+
+		mi += mrstride;
+	}
+
+	mdim.rows = rrows;
+	mdim.columns = dim->columns;
+
+	// Insert matrix instruction
+	ret = g_slist_prepend (ret, cdn_instruction_matrix_new (&args,
+	                                                        &mdim));
+
+	if (retdim->columns != 0)
+	{
+		CdnStackArg arg[2] = {
+			CDN_STACK_ARG(rrows, dim->columns),
+			CDN_STACK_ARG(retdim->rows, retdim->columns)
+		};
+
+		CdnStackArgs vargs = {
+			.num = 2,
+			.args = arg,
+		};
+
+		// Also insert a vcat here
+		ret = g_slist_prepend (ret,
+		                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_VCAT,
+		                                                     NULL,
+		                                                     &vargs));
+	}
+	else
+	{
+		retdim->columns = dim->columns;
+	}
+
+	retdim->rows += rrows;
+
+	cdn_stack_args_destroy (&args);
+	return ret;
+}
+
+/* matrix_vcat will concatenate single parsed matrix rows in one matrix
+ * expression. Its purpose is to perform the vcat inline if possible
+ * (on single column values) or to insert vcat() calls otherwise.
+ */
+static void
+matrix_vcat (CdnExpression      *expression,
+             ParserContext      *context,
+             GSList             *rows,
+             CdnDimension const *dim)
+{
+	GSList **m;
+	gint *rowsize;
+	gint mrow = 0;
+	GSList *vcat = NULL;
+	GSList *ret = NULL;
+	CdnDimension retdim = CDN_DIMENSION(0, 0);
+
+	m = g_new0 (GSList *, cdn_dimension_size (dim));
+	rowsize = g_new0 (gint, dim->rows);
+
+	while (rows)
+	{
+		MatrixRow *row = rows->data;
+		gboolean is_single = TRUE;
+		GSList *stack = NULL;
+
+		rowsize[mrow] = row->dimension.rows;
+
+		/* Try to decompose all the arguments that make up the row in
+		 * single valued columns, otherwise we can't rearrange them.
+		 */
+		while (row->arguments)
+		{
+			GSList *arg = row->arguments->data;
+			GSList *newinstr;
+
+			row->arguments = g_slist_delete_link (row->arguments,
+			                                      row->arguments);
+
+			newinstr = parse_matrix_decompose (arg);
+
+			if (newinstr == NULL)
+			{
+				is_single = FALSE;
+				newinstr = arg;
+			}
+
+			// Push instructions on the row stack
+			while (newinstr)
+			{
+				stack = stack_push (stack, newinstr->data, NULL);
+				newinstr = g_slist_delete_link (newinstr, newinstr);
+			}
+		}
+
+		if (is_single)
+		{
+			gint c;
+			gint nr = 0;
+			CdnStackArgs sargs;
+
+			stack = g_slist_reverse (stack);
+			c = mrow;
+
+			cdn_stack_args_init (&sargs, 0);
+
+			// Fill one row of <m> from the stack
+			while (stack)
+			{
+				// note we reverse the stack list here because
+				// we keep values in <m> in reversed order so
+				// we can more efficiently concat them later
+				GSList *rev = g_slist_reverse (stack->data);
+				CdnDimension d;
+				CdnStackArg arg = CDN_STACK_ARG_EMPTY;
+
+				// Accumulate instructions per row block
+				m[c] = g_slist_concat (rev, m[c]);
+
+				// Check if we should go to the next column
+				d = instruction_get_dimension (rev->data);
+
+				arg.dimension = d;
+				cdn_stack_args_append (&sargs, &arg);
+
+				nr += d.rows;
+
+				if (nr == row->dimension.rows)
+				{
+					if (d.rows != row->dimension.rows)
+					{
+						// Insert matrix instruction to
+						// encapsulate the values in
+						// this column
+						CdnInstruction *minstr;
+						CdnDimension cdim = CDN_DIMENSION (row->dimension.rows,
+						                                   1);
+
+						minstr = cdn_instruction_matrix_new (&sargs,
+						                                     &cdim);
+
+						m[c] = g_slist_prepend (m[c], minstr);
+					}
+
+					cdn_stack_args_destroy (&sargs);
+					cdn_stack_args_init (&sargs, 0);
+
+					// advance!
+					c += dim->rows;
+					nr = 0;
+				}
+
+				stack = g_slist_delete_link (stack, stack);
+			}
+
+			++mrow;
+		}
+		else
+		{
+			CdnStackArgs args;
+			gint i = 0;
+			gboolean isone;
+
+			if (mrow > 0)
+			{
+				CdnDimension fd = CDN_DIMENSION(mrow, dim->columns);
+
+				/* We have been collecting things to be
+				 * reordered. Since we now need a vcat for the
+				 * next row, process the builtup matrix and
+				 * add it to the result.
+				 */
+				ret = matrix_reorder_flat (ret,
+				                           &retdim,
+				                           m,
+				                           dim->rows,
+				                           rowsize,
+				                           &fd);
+
+				mrow = 0;
+
+				// Clear memory
+				memset (m, 0, sizeof (GSList *) * cdn_dimension_size (dim));
+				memset (rowsize, 0, sizeof (gint) * dim->rows);
+			}
+
+			cdn_stack_args_init (&args, g_slist_length (stack));
+
+			vcat = NULL;
+			isone = !stack->next;
+
+			// Collect all instructions
+			while (stack)
+			{
+				CdnInstruction *last = g_slist_last (stack->data)->data;
+
+				args.args[i].dimension = instruction_get_dimension (last);
+
+				// note we reverse the stack instructions here
+				// because we build a reversed order result
+				vcat = g_slist_concat (vcat, g_slist_reverse (stack->data));
+				stack = g_slist_delete_link (stack, stack);
+
+				++i;
+			}
+
+			// Add matrix instruction to group it all together if needed
+			if (!isone)
+			{
+				CdnInstruction *mi;
+
+				mi = cdn_instruction_matrix_new (&args,
+				                                 &row->dimension);
+
+				vcat = g_slist_prepend (vcat, mi);
+			}
+
+			if (retdim.rows > 0)
+			{
+				CdnStackArg varg[2] = {
+					CDN_STACK_ARG(row->dimension.rows, row->dimension.columns),
+					CDN_STACK_ARG(retdim.rows, retdim.columns)
+				};
+
+				CdnStackArgs vargs = {
+					.num = 2,
+					.args = varg
+				};
+
+				CdnInstruction *i;
+
+				i = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_VCAT,
+				                                  NULL,
+				                                  &vargs);
+
+				// Add vcat instruction
+				vcat = g_slist_prepend (vcat, i);
+
+				retdim.rows += row->dimension.rows;
+			}
+			else
+			{
+				retdim = row->dimension;
+			}
+
+			ret = g_slist_concat (vcat, ret);
+			cdn_stack_args_destroy (&args);
+		}
+
+		matrix_row_free (row);
+		rows = g_slist_delete_link (rows, rows);
+	}
+
+	// rearrange the last remaining rows if any
+	if (mrow > 0)
+	{
+		CdnDimension fd = CDN_DIMENSION(mrow, dim->columns);
+
+		/* We have been collecting things to be
+		 * reordered. Since we now need a vcat for the
+		 * next row, process the builtup matrix and
+		 * add it to the result.
+		 */
+		ret = matrix_reorder_flat (ret,
+		                           &retdim,
+		                           m,
+		                           dim->rows,
+		                           rowsize,
+		                           &fd);
+	}
+
+	// ret was kept in reverse order, but instructions_push_list expects
+	// it in normal order, so reverse ret first
+	ret = g_slist_reverse (ret);
+
+	instructions_push_list (expression, context, ret);
+
+	g_free (m);
+	g_free (rowsize);
 }
 
 static gboolean
@@ -2268,45 +3182,57 @@ parse_matrix (CdnExpression *expression,
 {
 	CdnDimension tdim = CDN_DIMENSION (0, 0);
 	gint tnumpop = 0;
-	CdnStackArgs args;
+	GSList *rows = NULL;
 
 	while (TRUE)
 	{
-		gboolean isend = TRUE;
-		CdnDimension dimension = CDN_DIMENSION (0, 0);
-		gint numpop = 0;
+		MatrixRow *row;
+		gboolean isend;
 
-		if (!parse_matrix_row (expression,
-		                       context,
-		                       &isend,
-		                       &dimension,
-		                       &numpop))
+		row = parse_matrix_row (expression,
+		                        context,
+		                        &isend);
+
+		if (row == NULL)
 		{
+			g_slist_foreach (rows, (GFunc)matrix_row_free, NULL);
+			g_slist_free (rows);
 			return FALSE;
 		}
 
+		rows = g_slist_prepend (rows, row);
+
 		if (tdim.rows == 0)
 		{
-			tdim.rows = dimension.rows;
-			tdim.columns = dimension.columns;
+			// First time. Just store the dimensions and number of
+			// expressions consumed
+			tdim.rows = row->dimension.rows;
+			tdim.columns = row->dimension.columns;
 
-			tnumpop = numpop;
+			tnumpop = row->numpop;
 		}
-		else if (tdim.columns != dimension.columns)
+		else if (tdim.columns != row->dimension.columns)
 		{
+			gint cols = row->dimension.columns;
+
+			// Check for consistent columns concatenation between
+			// rows parsed
+			g_slist_foreach (rows, (GFunc)matrix_row_free, NULL);
+			g_slist_free (rows);
+
 			return parser_failed (expression,
 			                      context,
 			                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 			                      "Cannot concatenate %d column%s with %d column%s",
 			                      tdim.columns,
 			                      tdim.columns > 1 ? "s" : "",
-			                      dimension.columns,
-			                      dimension.columns > 1 ? "s" : "");
+			                      cols,
+			                      cols > 1 ? "s" : "");
 		}
 		else
 		{
-			tnumpop += numpop;
-			tdim.rows += dimension.rows;
+			tnumpop += row->numpop;
+			tdim.rows += row->dimension.rows;
 		}
 
 		if (isend)
@@ -2315,30 +3241,427 @@ parse_matrix (CdnExpression *expression,
 		}
 	}
 
-	get_argdim (expression, context, tnumpop, &args);
+	// Store rows in order of occurance
+	rows = g_slist_reverse (rows);
 
-	// note that popdims memory is consumed by the matrix instruction
-	// and does not need to be freed
-	instructions_push (expression,
-	                   cdn_instruction_matrix_new (&args,
-	                                               &tdim),
-	                   context);
+	/* vcat when there is more than one parsed row and the resulting number
+	 * of columns is larger than 1.
+	 */
+	if (rows->next && tdim.columns > 1)
+	{
+		/* Here we need to vcat all the rows together. We are going to
+		 * try to do this inline right here as much as possible, by
+		 * rearranging expressions on the stack as needed. If such
+		 * rearrangement is not possible, a 'vcat' call will be inserted
+		 * which dynamically rearranges the terms when the expression
+		 * is executed.
+		 */
+		matrix_vcat (expression, context, rows, &tdim);
+	}
+	else
+	{
+		// Push back arguments on the stack
+		while (rows)
+		{
+			MatrixRow *row = rows->data;
 
-	cdn_stack_args_destroy (&args);
+			while (row->arguments)
+			{
+				instructions_push_list (expression,
+				                        context,
+				                        row->arguments->data);
+
+				row->arguments = g_slist_delete_link (row->arguments,
+				                                      row->arguments);
+			}
+
+			matrix_row_free (row);
+			rows = g_slist_delete_link (rows, rows);
+		}
+
+		if (tnumpop > 1)
+		{
+			CdnStackArgs args;
+
+			// Wrap in matrix instruction
+			get_argdim (expression, context, tnumpop, &args);
+
+			instructions_push (expression,
+			                   cdn_instruction_matrix_new (&args,
+			                                               &tdim),
+			                   context);
+
+			cdn_stack_args_destroy (&args);
+		}
+	}
 
 	return TRUE;
+}
+
+static gboolean
+is_index_range (CdnInstruction       *instruction,
+                CdnInstructionIndex **retval)
+{
+	if (!CDN_IS_INSTRUCTION_INDEX (instruction))
+	{
+		return FALSE;
+	}
+
+	*retval = CDN_INSTRUCTION_INDEX (instruction);
+
+	return cdn_instruction_index_get_index_type (*retval) ==
+	       CDN_INSTRUCTION_INDEX_TYPE_RANGE;
+}
+
+static gboolean
+check_index_dims (CdnExpression *expression,
+                  ParserContext *context,
+                  CdnIndexRange const *rows,
+                  CdnIndexRange const *columns,
+                  CdnDimension const *dim)
+{
+	if (rows->start >= dim->rows)
+	{
+		return parser_failed (expression,
+		                      context,
+		                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		                      "The specified row index is out of bounds (got %d for %d-by-%d)",
+		                      rows->start,
+		                      dim->rows,
+		                      dim->columns);
+	}
+
+	if (columns->start >= dim->columns)
+	{
+		return parser_failed (expression,
+		                      context,
+		                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		                      "The specified column index is out of bounds (got %d for %d-by-%d)",
+		                      columns->start,
+		                      dim->rows,
+		                      dim->columns);
+	}
+
+	return TRUE;
+}
+
+static CdnInstruction *
+make_range_block_or_offset (CdnIndexRange const *rows,
+                            CdnIndexRange const *columns,
+                            CdnStackArg const *arg)
+{
+	if (cdn_index_range_n (rows) == 1 &&
+	    cdn_index_range_n (columns) == 1)
+	{
+		gint offset;
+		CdnDimension retdim = CDN_DIMENSION(1, 1);
+
+		// This is just a simple indexing of one element
+		offset = columns->start * arg->dimension.rows + rows->start;
+
+		return cdn_instruction_index_new_offset (offset, &retdim, arg);
+	}
+	else if (cdn_index_range_n (columns) == 1 ||
+	         (rows->start == 0 && rows->step == 1 && rows->end == arg->dimension.rows &&
+	          columns->step == 1))
+	{
+		// This can be an offset
+		CdnDimension retdim = CDN_DIMENSION(cdn_index_range_n (rows),
+		                                    columns->end - columns->start);
+		gint offset = columns->start * arg->dimension.rows + rows->start;
+
+		return cdn_instruction_index_new_offset (offset, &retdim, arg);
+	}
+	else
+	{
+		return cdn_instruction_index_new_range_block (rows,
+		                                              columns,
+		                                              arg);
+	}
+}
+
+static CdnInstruction *
+make_static_index (CdnExpression *expression,
+                   ParserContext *context,
+                   gint           nargs)
+{
+	gint *indices = NULL;
+	gint n;
+	CdnStackArg const *d3;
+	gboolean continuous;
+	gint offset;
+	CdnDimension retdim;
+	gint i;
+
+	if (nargs == 2)
+	{
+		GSList *i1;
+		GSList *i2;
+		CdnDimension d1;
+		CdnDimension d2;
+		gint *rows;
+		gint *cols;
+		gint i;
+		CdnInstructionIndex *r1;
+		CdnInstructionIndex *r2;
+		gboolean isi1;
+		gboolean isi2;
+
+		i2 = pop_stack (expression, context);
+		i1 = pop_stack (expression, context);
+
+		d3 = get_last_stack_arg (context);
+
+		isi1 = is_index_range (i1->data, &r1);
+		isi2 = is_index_range (i2->data, &r2);
+
+		if (isi1)
+		{
+			cdn_instruction_index_set_range_end (r1, d3->rows);
+		}
+
+		if (isi2)
+		{
+			cdn_instruction_index_set_range_end (r2, d3->columns);
+		}
+
+		if (isi1 && isi2)
+		{
+			CdnIndexRange rows;
+			CdnIndexRange columns;
+
+			rows = *cdn_instruction_index_get_range (r1);
+			columns = *cdn_instruction_index_get_range (r2);
+
+			if (!check_index_dims (expression, context, &rows, &columns, &d3->dimension))
+			{
+				return NULL;
+			}
+
+			return make_range_block_or_offset (&rows, &columns, d3);
+		}
+		else if (isi1 && !i2->next && CDN_IS_INSTRUCTION_NUMBER (i2->data))
+		{
+			CdnIndexRange rows;
+			CdnIndexRange columns = {0, 1, 0};
+
+			rows = *cdn_instruction_index_get_range (r1);
+
+			columns.start = (gint)(cdn_instruction_number_get_value (i2->data) + 0.5);
+			columns.end = columns.start + 1;
+
+			if (!check_index_dims (expression, context, &rows, &columns, &d3->dimension))
+			{
+				return NULL;
+			}
+
+			return make_range_block_or_offset (&rows, &columns, d3);
+		}
+		else if (isi2 && !i1->next && CDN_IS_INSTRUCTION_NUMBER (i1->data))
+		{
+			CdnIndexRange columns;
+			CdnIndexRange rows = {0, 1, 0};
+
+			columns = *cdn_instruction_index_get_range (r2);
+
+			rows.start = (gint)(cdn_instruction_number_get_value (i1->data) + 0.5);
+			rows.end = rows.start + 1;
+
+			if (!check_index_dims (expression, context, &rows, &columns, &d3->dimension))
+			{
+				return NULL;
+			}
+
+			return make_range_block_or_offset (&rows, &columns, d3);
+		}
+
+		d1 = instruction_get_dimension (g_slist_last (i1)->data);
+		d2 = instruction_get_dimension (g_slist_last (i2)->data);
+
+		if (isi1)
+		{
+			CdnIndexRange rows;
+
+			rows = *cdn_instruction_index_get_range (r1);
+
+			d1.rows = cdn_index_range_n (&rows);
+			d1.columns = 1;
+		}
+
+		if (d1.columns == 1 && d2.rows == 1)
+		{
+			// row-x-column indexing
+			rows = g_new (gint, d1.rows);
+			cols = g_new (gint, d2.columns);
+
+			instructions_to_indices (i1, rows, d1.rows);
+			instructions_to_indices (i2, cols, d2.columns);
+
+			for (i = 0; i < d1.rows; ++i)
+			{
+				if (rows[i] >= d3->rows)
+				{
+					parser_failed (expression,
+					               context,
+					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+					               "The row index %d is out of bounds (>= %d)",
+					               rows[i],
+					               d3->rows);
+
+					return NULL;
+				}
+			}
+
+			for (i = 0; i < d2.columns; ++i)
+			{
+				if (cols[i] >= d3->columns)
+				{
+					parser_failed (expression,
+					               context,
+					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+					               "The column index %d is out of bounds (>= %d)",
+					               cols[i],
+					               d3->columns);
+
+					return NULL;
+				}
+			}
+
+			return cdn_instruction_index_new_rows_x_columns (rows,
+			                                                 d1.rows,
+			                                                 cols,
+			                                                 d2.columns,
+			                                                 d3);
+		}
+
+		if (!cdn_dimension_equal (&d1, &d2))
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The dimensions of the two index arguments are different (%d-by-%d and %d-by-%d)",
+			               d1.rows, d1.columns,
+			               d2.rows, d2.columns);
+
+			return NULL;
+		}
+
+		n = cdn_dimension_size (&d1);
+
+		rows = g_new (gint, n);
+		cols = g_new (gint, n);
+
+		instructions_to_indices (i1, rows, n);
+		instructions_to_indices (i2, cols, n);
+
+		// Double indexing. i1 represents rows, i2 represents columns.
+		// Note column-major ordering
+		indices = g_new0 (gint, n);
+
+		for (i = 0; i < n; ++i)
+		{
+			indices[i] = rows[i] + d3->dimension.rows * cols[i];
+		}
+
+		free_popped_stack (i1);
+		free_popped_stack (i2);
+
+		retdim = d1;
+	}
+	else
+	{
+		GSList *i;
+		CdnDimension d;
+		CdnInstructionIndex *idx;
+
+		// First check for existing index.
+		i = pop_stack (expression, context);
+		d3 = get_last_stack_arg (context);
+
+		idx = (CdnInstructionIndex *)i->data;
+
+		if (i->next == NULL && CDN_IS_INSTRUCTION_INDEX (i->data) &&
+		    cdn_instruction_index_get_index_type (idx) ==
+		    CDN_INSTRUCTION_INDEX_TYPE_RANGE)
+		{
+			CdnInstruction *ret;
+			CdnIndexRange r;
+
+			cdn_instruction_index_set_range_end (idx, cdn_stack_arg_size (d3));
+			r = *cdn_instruction_index_get_range (idx);
+
+			ret = cdn_instruction_index_new_range (&r, d3);
+
+			free_popped_stack (i);
+			return ret;
+		}
+
+		// Single indexing. linear index
+		d = instruction_get_dimension (g_slist_last (i)->data);
+
+		n = cdn_dimension_size (&d);
+		indices = g_new0 (gint, n);
+
+		instructions_to_indices (i, indices, n);
+		free_popped_stack (i);
+
+		retdim = d;
+	}
+
+	continuous = TRUE;
+	offset = 0;
+
+	// indices now contains a list of n linear indices into the remaining
+	// thing on the stack. See if it fits.
+	for (i = 0; i < n; ++i)
+	{
+		if (indices[i] >= cdn_dimension_size (&d3->dimension))
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The specified indices are out of bounds");
+
+			return NULL;
+		}
+
+		if (i != 0 && offset + 1 != indices[i])
+		{
+			continuous = FALSE;
+		}
+		else
+		{
+			offset = indices[i];
+		}
+	}
+
+	if (continuous)
+	{
+		gint start = indices[0];
+		g_free (indices);
+
+		return cdn_instruction_index_new_offset (start,
+		                                         &retdim,
+		                                         d3);
+	}
+	else
+	{
+		// NOTE: the instruction takes ownership of the indices memory
+		return cdn_instruction_index_new (indices,
+		                                  &retdim,
+		                                  d3);
+	}
 }
 
 static gboolean
 parse_indexing (CdnExpression *expression,
                 ParserContext *context)
 {
-	CdnStackArgs args;
-	gint numargs = 0;
 	CdnTokenOperatorType type;
+	gint numargs = 0;
 
 	// Indexing is done using one or two arguments, which can be matrices
-	// themselves
+	// themselves, or ranges
 	CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
 
 	if (next && CDN_TOKEN_IS_OPERATOR (next) &&
@@ -2349,10 +3672,12 @@ parse_indexing (CdnExpression *expression,
 	}
 	else
 	{
+		context->indexing = TRUE;
 		cdn_token_free (next);
 
 		if (!parse_expression (expression, context, -1, 0))
 		{
+			context->indexing = FALSE;
 			return FALSE;
 		}
 
@@ -2360,6 +3685,8 @@ parse_indexing (CdnExpression *expression,
 
 		next = cdn_tokenizer_peek (*(context->buffer));
 
+		// Check for a comma. In that case the indexing is a row/column
+		// index.
 		if (CDN_TOKEN_IS_OPERATOR (next))
 		{
 			type = CDN_TOKEN_OPERATOR (next)->type;
@@ -2374,6 +3701,7 @@ parse_indexing (CdnExpression *expression,
 
 				if (!parse_expression (expression, context, -1, 0))
 				{
+					context->indexing = FALSE;
 					return FALSE;
 				}
 
@@ -2382,44 +3710,94 @@ parse_indexing (CdnExpression *expression,
 		}
 		else
 		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "Expected `]' or `,' but got `%s'",
+			               next->text ? next->text : NULL);
+
 			cdn_token_free (next);
+			context->indexing = FALSE;
 
-			if (!parse_expression (expression, context, -1, 0))
-			{
-				return FALSE;
-			}
-
-			++numargs;
+			return FALSE;
 		}
 	}
 
 	next = cdn_tokenizer_next (context->buffer);
 	type = CDN_TOKEN_OPERATOR (next)->type;
 
+	context->indexing = FALSE;
+
 	if (type != CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
 	{
-		cdn_token_free (next);
-
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 		               "Expected `]' but got `%s'",
 		               next->text ? next->text : NULL);
 
+		cdn_token_free (next);
+
 		return FALSE;
 	}
 
-	swap_arguments_index (expression, context, numargs + 1);
+	if (is_numeric (context->stack->data) &&
+	    (numargs == 1 || is_numeric (context->stack->next->data)))
+	{
+		CdnInstruction *i;
 
-	get_argdim (expression, context, numargs + 1, &args);
+		i = make_static_index (expression, context, numargs);
 
-	instructions_push (expression,
-	                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
-	                                                 "index",
-	                                                 &args),
-	                   context);
+		if (i == NULL)
+		{
+			return FALSE;
+		}
 
-	cdn_stack_args_destroy (&args);
+		instructions_push (expression, i, context);
+	}
+	else
+	{
+		CdnStackArgs args;
+		gint i;
+		GSList *s = context->stack;
+
+		for (i = 0; i < numargs; ++i)
+		{
+			CdnInstruction *instr = s->data;
+
+			if (CDN_IS_INSTRUCTION_INDEX (instr) &&
+			    cdn_instruction_index_get_index_type (CDN_INSTRUCTION_INDEX (instr)) ==
+			    CDN_INSTRUCTION_INDEX_TYPE_RANGE)
+			{
+				CdnIndexRange const *range;
+
+				range = cdn_instruction_index_get_range (CDN_INSTRUCTION_INDEX (instr));
+
+				if (range->end < 0)
+				{
+					parser_failed (expression,
+					               context,
+					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+					               "Cannot use range index operator `:' in a dynamic context");
+
+					return FALSE;
+				}
+			}
+
+			s = g_slist_next (s);
+		}
+
+		swap_arguments_index (expression, context, numargs + 1);
+		get_argdim (expression, context, numargs + 1, &args);
+
+		instructions_push (expression,
+		                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
+		                                                 "index",
+		                                                 &args),
+		                   context);
+
+		cdn_stack_args_destroy (&args);
+	}
 
 	cdn_token_free (next);
 
@@ -3073,6 +4451,24 @@ parse_unary_operator (CdnExpression *expression,
 	CdnInstruction *inst = NULL;
 	CdnStackArgs args = {0,};
 
+	if (context->indexing && op->type == CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE)
+	{
+		cdn_token_free (cdn_tokenizer_next (context->buffer));
+		CdnIndexRange r;
+
+		r.start = 0;
+		r.end = -1;
+		r.step = 1;
+
+		// Insert placeholder range. The actual range end will be set
+		// by the outer indexing parser
+		instructions_push (expression,
+		                   cdn_instruction_index_new_range (&r, NULL),
+		                   context);
+
+		return TRUE;
+	}
+
 	// handle group
 	switch (op->type)
 	{
@@ -3260,11 +4656,31 @@ parse_transpose (CdnExpression *expression,
 
 	get_argdim (expression, context, 1, &args);
 
-	ret = instructions_push (expression,
-	                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
-	                                                       "transpose",
-	                                                       &args),
-	                         context);
+	if (args.args[0].rows == 1 || args.args[0].columns == 1)
+	{
+		if (!cdn_dimension_is_one (&args.args[0].dimension))
+		{
+			CdnDimension argdim = CDN_DIMENSION (args.args[0].columns,
+			                                     args.args[0].rows);
+
+			ret = instructions_push (expression,
+			                         cdn_instruction_matrix_new (&args,
+			                                                     &argdim),
+			                         context);
+		}
+		else
+		{
+			ret = TRUE;
+		}
+	}
+	else
+	{
+		ret = instructions_push (expression,
+		                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
+		                                                       "transpose",
+		                                                       &args),
+		                         context);
+	}
 
 	cdn_stack_args_destroy (&args);
 	return ret;
@@ -3285,7 +4701,7 @@ parse_square (CdnExpression *expression,
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_TOKEN,
-		               "The transpose operator can only appear after an expression");
+		               "The square operator can only appear after an expression");
 
 		return FALSE;
 	}
@@ -3309,6 +4725,64 @@ parse_square (CdnExpression *expression,
 
 	cdn_stack_args_destroy (&args);
 	return ret;
+}
+
+static CdnInstruction *
+indexing_range (CdnExpression *expression,
+                ParserContext *context,
+                CdnStackArgs  *args)
+{
+	CdnInstructionNumber *n1;
+	CdnIndexRange range;
+	GSList *second;
+	GSList *first;
+
+	second = pop_stack (expression, context);
+	first = pop_stack (expression, context);
+
+	if (second->next ||
+	    first->next ||
+	    !CDN_IS_INSTRUCTION_NUMBER (first->data) ||
+	    !(CDN_IS_INSTRUCTION_NUMBER (second->data) || (CDN_IS_INSTRUCTION_INDEX (second->data) && cdn_instruction_index_get_index_type (second->data) == CDN_INSTRUCTION_INDEX_TYPE_RANGE)))
+	{
+		free_popped_stack (second);
+		free_popped_stack (first);
+
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The arguments for the range operator `:' can only be single numerical arguments");
+
+		return NULL;
+	}
+
+	n1 = CDN_INSTRUCTION_NUMBER (first->data);
+	range.start = (gint)(cdn_instruction_number_get_value (n1) + 0.5);
+
+	if (CDN_IS_INSTRUCTION_NUMBER (second->data))
+	{
+		CdnInstructionNumber *n2;
+
+		n2 = CDN_INSTRUCTION_NUMBER (second->data);
+
+		range.end = (gint)(cdn_instruction_number_get_value (n2) + 0.5);
+		range.step = 1;
+	}
+	else
+	{
+		CdnInstructionIndex *idx = CDN_INSTRUCTION_INDEX (second->data);
+		CdnIndexRange const *sr;;
+
+		sr = cdn_instruction_index_get_range (idx);
+
+		range.end = sr->end;
+		range.step = sr->start;
+	}
+
+	free_popped_stack (second);
+	free_popped_stack (first);
+
+	return cdn_instruction_index_new_range (&range, NULL);
 }
 
 static gboolean
@@ -3375,6 +4849,9 @@ parse_operator (CdnExpression *expression,
 		case CDN_TOKEN_OPERATOR_TYPE_MULTIPLY:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY, "*", &args);
 		break;
+		case CDN_TOKEN_OPERATOR_TYPE_EMULTIPLY:
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_EMULTIPLY, "*", &args);
+		break;
 		case CDN_TOKEN_OPERATOR_TYPE_DIVIDE:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE, "/", &args);
 		break;
@@ -3415,14 +4892,28 @@ parse_operator (CdnExpression *expression,
 		case CDN_TOKEN_OPERATOR_TYPE_AND:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_AND, "&&", &args);
 		break;
+		case CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE:
+			if (context->indexing)
+			{
+				inst = indexing_range (expression,
+				                       context,
+				                       &args);
+			}
+		break;
 		default:
-			cdn_stack_args_destroy (&args);
-			return FALSE;
 		break;
 	}
 
 	cdn_stack_args_destroy (&args);
-	return instructions_push (expression, inst, context);
+
+	if (inst)
+	{
+		return instructions_push (expression, inst, context);
+	}
+	else
+	{
+		return FALSE;
+	}
 }
 
 static gboolean
@@ -3678,7 +5169,7 @@ parse_expression (CdnExpression   *expression,
 				// group end
 				if (op->type == CDN_TOKEN_OPERATOR_TYPE_NODE_END ||
 				    op->type == CDN_TOKEN_OPERATOR_TYPE_COMMA ||
-				    op->type == CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE ||
+				    (op->type == CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE && !context->indexing) ||
 				    op->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
 				    op->type == CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON)
 				{
@@ -4019,6 +5510,9 @@ cdn_expression_compile (CdnExpression     *expression,
 	CdnDimension olddim;
 	gboolean wasmod;
 	gboolean dimschanged;
+	gchar *buffer = expression->priv->expression;
+	ParserContext ctx = {(gchar const **)&buffer, context, error, NULL, FALSE};
+	gboolean ret;
 
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), FALSE);
@@ -4028,15 +5522,22 @@ cdn_expression_compile (CdnExpression     *expression,
 		return TRUE;
 	}
 
+	if (expression->priv->compiling)
+	{
+		parser_failed (expression,
+		               &ctx,
+		               CDN_COMPILE_ERROR_VARIABLE_RECURSE,
+		               "Infinite recursion in variable expression");
+
+		return FALSE;
+	}
+
+	expression->priv->compiling = TRUE;
+
 	cdn_expression_get_dimension (expression, &olddim);
-
-	gchar *buffer = expression->priv->expression;
-
 	instructions_free (expression);
 
 	cdn_stack_destroy (&(expression->priv->output));
-	ParserContext ctx = {(gchar const **)&buffer, context, error};
-	gboolean ret;
 
 	expression->priv->error_at = 0;
 	expression->priv->error_start = NULL;
@@ -4058,9 +5559,14 @@ cdn_expression_compile (CdnExpression     *expression,
 		}
 	}
 
+	g_slist_foreach (ctx.stack, (GFunc)g_slist_free, NULL);
+	g_slist_free (ctx.stack);
+
 	if (!ret)
 	{
 		instructions_free (expression);
+		expression->priv->compiling = FALSE;
+
 		return FALSE;
 	}
 	else
@@ -4073,6 +5579,7 @@ cdn_expression_compile (CdnExpression     *expression,
 		if (!validate_stack (expression, &ctx, FALSE))
 		{
 			instructions_free (expression);
+			expression->priv->compiling = FALSE;
 
 			return parser_failed (expression,
 			                      &ctx,
@@ -4104,6 +5611,7 @@ cdn_expression_compile (CdnExpression     *expression,
 		g_object_notify (G_OBJECT (expression), "modified");
 	}
 
+	expression->priv->compiling = FALSE;
 	return TRUE;
 }
 
@@ -4212,46 +5720,22 @@ cdn_expression_set_value (CdnExpression  *expression,
 {
 	set_values (expression, &value, cdn_dimension_onep);
 	expression->priv->prevent_cache_reset = TRUE;
-
 }
 
 /**
- * cdn_expression_set_values: (skip):
+ * cdn_expression_set_values:
  * @expression: A #CdnExpression
  * @values: the new values
- * @dim: the dimension
  *
  * Set expression value.
  *
  **/
 void
-cdn_expression_set_values (CdnExpression      *expression,
-                           gdouble const      *values,
-                           CdnDimension const *dim)
+cdn_expression_set_values (CdnExpression       *expression,
+                           CdnMatrix     const *values)
 {
-	set_values (expression, values, dim);
+	set_values (expression, cdn_matrix_get (values), &values->dimension);
 	expression->priv->prevent_cache_reset = TRUE;
-}
-
-/**
- * cdn_expression_set_values_flat:
- * @expression: A #CdnExpression
- * @values: (array length=numvals): the new values
- * @numvals: the number of values
- * @dim: the dimension
- *
- * Set expression value.
- *
- **/
-void
-cdn_expression_set_values_flat (CdnExpression      *expression,
-                                gdouble const      *values,
-                                gint                numvals,
-                                CdnDimension const *dim)
-{
-	g_return_if_fail (cdn_dimension_size (dim) == numvals);
-
-	cdn_expression_set_values (expression, values, dim);
 }
 
 /**
@@ -4269,31 +5753,10 @@ cdn_expression_set_values_flat (CdnExpression      *expression,
 gdouble
 cdn_expression_evaluate (CdnExpression *expression)
 {
-	gdouble const *ret;
+	CdnMatrix const *ret;
 
-	ret = cdn_expression_evaluate_values (expression,
-	                                      NULL);
-
-	return ret ? *ret : 0.0;
-}
-
-static gdouble const *
-values_from_cache (CdnExpression *expression,
-                   CdnDimension  *dimension)
-{
-	if (dimension)
-	{
-		*dimension = expression->priv->cached_dim;
-	}
-
-	if (cdn_dimension_is_one (&expression->priv->cached_dim))
-	{
-		return &(expression->priv->cached_output);
-	}
-	else
-	{
-		return expression->priv->cached_output_multi;
-	}
+	ret = cdn_expression_evaluate_values (expression);
+	return ret ? *cdn_matrix_get (ret) : 0;
 }
 
 static void
@@ -4305,15 +5768,14 @@ set_cache_from_stack (CdnExpression *expression)
 }
 
 /**
- * cdn_expression_evaluate_values: (skip)
+ * cdn_expression_evaluate_values:
  * @expression: a #CdnExpression
  *
  * Returns: the result of evaluating the expression
  *
  **/
-gdouble const *
-cdn_expression_evaluate_values (CdnExpression *expression,
-                                CdnDimension  *dimension)
+CdnMatrix const *
+cdn_expression_evaluate_values (CdnExpression *expression)
 {
 	/* Omit type check to increase speed */
 	if (!expression)
@@ -4323,7 +5785,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 	if (expression->priv->cached)
 	{
-		return values_from_cache (expression, dimension);
+		return &expression->priv->cached_output;
 	}
 
 	if (expression->priv->evaluate_notify)
@@ -4333,7 +5795,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 		if (expression->priv->cached)
 		{
-			return values_from_cache (expression, dimension);
+			return &expression->priv->cached_output;
 		}
 	}
 
@@ -4341,12 +5803,6 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	CdnStack *stack = &(expression->priv->output);
 
 	cdn_stack_reset (stack);
-
-	if (dimension)
-	{
-		dimension->rows = 0;
-		dimension->columns = 0;
-	}
 
 	if (expression->priv->output.size == 0)
 	{
@@ -4371,8 +5827,11 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 		iter = cdn_expression_tree_iter_new (expression);
 
 		cdn_debug_message (DEBUG_MATH,
-		                   "Evaluating: %s",
+		                   "Evaluating: %p: %s",
+		                   expression,
 		                   cdn_expression_tree_iter_to_string (iter));
+
+		cdn_debug_push_indent ();
 
 		cdn_expression_tree_iter_free (iter);
 	}
@@ -4380,6 +5839,11 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
 		cdn_instruction_execute (item->data, stack);
+	}
+
+	if (cdn_debug_is_enabled (CDN_DEBUG_MATH))
+	{
+		cdn_debug_pop_indent ();
 	}
 
 	if (cdn_stack_count (&(expression->priv->output)) !=
@@ -4396,36 +5860,41 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	set_cache_from_stack (expression);
 	expression->priv->cached = expression->priv->has_cache;
 
-	return values_from_cache (expression, dimension);
-}
-
-/**
- * cdn_expression_evaluate_values_flat:
- * @expression: a #CdnExpression.
- * @num: (out caller-allocates): return value of the number of values.
- *
- * Get the values of the expression as a flat array. This is only really
- * useful for bindings because #cdn_expression_evaluate_values is difficult
- * to bind with gobject introspection.
- *
- * Returns: (array length=num) the expression values.
- *
- **/
-gdouble const *
-cdn_expression_evaluate_values_flat (CdnExpression *expression,
-                                     gint          *num)
-{
-	CdnDimension dimension;
-	gdouble const *ret;
-
-	ret = cdn_expression_evaluate_values (expression, &dimension);
-
-	if (num)
+	if (cdn_debug_is_enabled (CDN_DEBUG_MATH))
 	{
-		*num = cdn_dimension_size (&dimension);
+		CdnMatrix const *mat;
+		gdouble const *vals;
+
+		mat = &expression->priv->cached_output;
+		vals = cdn_matrix_get (mat);
+
+		if (cdn_dimension_is_one (&mat->dimension))
+		{
+			cdn_debug_message (DEBUG_MATH, "Evaluated: %g", *vals);
+		}
+		else
+		{
+			gint i;
+			GString *msg;
+
+			msg = g_string_new ("Evaluated: [");
+
+			for (i = 0; i < cdn_matrix_size (mat); ++i)
+			{
+				if (i != 0)
+				{
+					g_string_append (msg, ", ");
+				}
+
+				g_string_append_printf (msg, "%g", vals[i]);
+			}
+
+			cdn_debug_message (DEBUG_MATH, "%s]", msg->str);
+			g_string_free (msg, TRUE);
+		}
 	}
 
-	return ret;
+	return &expression->priv->cached_output;
 }
 
 static gboolean
@@ -4463,6 +5932,13 @@ reset_cache (CdnExpression *expression,
 void
 cdn_expression_reset_cache (CdnExpression *expression)
 {
+	reset_cache (expression, FALSE);
+}
+
+void
+_cdn_expression_reset_rand_cache (CdnExpression *expression)
+{
+	expression->priv->cached = TRUE;
 	reset_cache (expression, FALSE);
 }
 
@@ -4598,7 +6074,7 @@ cdn_expression_reset (CdnExpression *expression)
 	reset_cache (expression,
 	             expression->priv->cached &&
 	             !cdn_dimension_equal (&expression->priv->retdim.dimension,
-	                                   &expression->priv->cached_dim));
+	                                   &expression->priv->cached_output.dimension));
 
 	if (expression->priv->once)
 	{
@@ -4636,7 +6112,7 @@ cdn_expression_reset (CdnExpression *expression)
  *
  **/
 const GSList *
-cdn_expression_get_instructions (CdnExpression *expression)
+cdn_expression_get_instructions (CdnExpression const *expression)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), NULL);
 
@@ -4691,7 +6167,10 @@ cdn_expression_equal (CdnExpression *expression,
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (CDN_IS_EXPRESSION (other), FALSE);
 
-	if (!expression->priv->instructions || !other->priv->instructions)
+	if (!expression->priv->instructions ||
+	    !other->priv->instructions ||
+	    expression->priv->modified ||
+	    other->priv->modified)
 	{
 		return g_strcmp0 (expression->priv->expression,
 		                  other->priv->expression) == 0;
@@ -4783,31 +6262,13 @@ cdn_expression_copy (CdnExpression *expression)
 	ret->priv->cached = expression->priv->cached;
 	ret->priv->prevent_cache_reset = expression->priv->prevent_cache_reset;
 
-	ret->priv->cached_dim = expression->priv->cached_dim;
-
 	cdn_stack_arg_copy (&ret->priv->retdim, &expression->priv->retdim);
 
 	cdn_stack_resize (&ret->priv->output, expression->priv->output.size);
 	cdn_stack_reset (&ret->priv->output);
 
-	if (cdn_dimension_is_one (&ret->priv->cached_dim))
-	{
-		ret->priv->cached_output = expression->priv->cached_output;
-	}
-	else
-	{
-		gint num;
-		gint i;
-
-		num = cdn_dimension_size (&ret->priv->cached_dim);
-		ret->priv->cached_output_multi = g_new (gdouble, num);
-
-		for (i = 0; i < num; ++i)
-		{
-			ret->priv->cached_output_multi[i] =
-				expression->priv->cached_output_multi[i];
-		}
-	}
+	cdn_matrix_copy (&ret->priv->cached_output,
+	                 &expression->priv->cached_output);
 
 	ret->priv->modified = expression->priv->modified;
 	ret->priv->has_cache = expression->priv->has_cache;
@@ -4828,6 +6289,7 @@ cdn_expression_copy (CdnExpression *expression)
 	ret->priv->instructions =
 		g_slist_reverse (ret->priv->instructions);
 
+	validate_stack (ret, NULL, FALSE);
 	return ret;
 }
 
@@ -4900,7 +6362,7 @@ cdn_expression_get_dimension (CdnExpression *expression,
 {
 	if (expression->priv->cached)
 	{
-		*dimension = expression->priv->cached_dim;
+		*dimension = expression->priv->cached_output.dimension;
 		return TRUE;
 	}
 
@@ -4942,41 +6404,6 @@ cdn_expression_set_evaluate_notify (CdnExpression               *expression,
 	expression->priv->evaluate_destroy_notify = destroy_notify;
 	expression->priv->evaluate_userdata = userdata;
 	expression->priv->evaluate_notify = notify;
-}
-
-gdouble *
-cdn_expression_get_cache (CdnExpression *expression,
-                          CdnDimension  *dimension)
-{
-	if ((expression->priv->retdim.rows > 1 ||
-	     expression->priv->retdim.columns > 1))
-	{
-		if ((expression->priv->cached_dim.rows <= 1 &&
-		     expression->priv->cached_dim.columns <= 1) ||
-		    !expression->priv->cached_output_multi)
-		{
-			expression->priv->cached_output_multi =
-				g_new0 (gdouble,
-				        cdn_dimension_size (&expression->priv->retdim.dimension));
-
-			expression->priv->cached_dim = expression->priv->retdim.dimension;
-		}
-
-		if (dimension)
-		{
-			*dimension = expression->priv->cached_dim;
-		}
-
-		return expression->priv->cached_output_multi;
-	}
-
-	if (dimension)
-	{
-		dimension->rows = 0;
-		dimension->columns = 0;
-	}
-
-	return NULL;
 }
 
 /**
@@ -5096,3 +6523,153 @@ cdn_expression_recalculate_sparsity (CdnExpression *expression)
 	g_slice_free (SparsityInfo, info);
 }
 
+void
+_cdn_expression_transfer_dependencies (CdnExpression *expression,
+                                       CdnExpression *transfer_to)
+{
+	GSList *item;
+
+	g_return_if_fail (CDN_IS_EXPRESSION (expression));
+	g_return_if_fail (transfer_to == NULL || CDN_IS_EXPRESSION (transfer_to));
+
+	// Transfer dependencies from other expressions on @expression to
+	// dependencies on @transfer_to
+	for (item = expression->priv->depends_on_me; item; item = g_slist_next (item))
+	{
+		CdnExpression *other;
+		GSList *found;
+
+		other = item->data;
+		found = g_slist_find (other->priv->depends_on, expression);
+
+		if (found)
+		{
+			if (transfer_to)
+			{
+				// Replace the dependency with transfer_to
+				found->data = transfer_to;
+
+				// Also add the dependencies back on transfer_to
+				if (!g_slist_find (transfer_to->priv->depends_on_me, other))
+				{
+					transfer_to->priv->depends_on_me =
+						g_slist_prepend (transfer_to->priv->depends_on_me,
+						                 other);
+				}
+			}
+			else
+			{
+				other->priv->depends_on =
+					g_slist_delete_link (other->priv->depends_on,
+					                     found);
+			}
+		}
+	}
+}
+
+/**
+ * cdn_expression_sum:
+ * @expressions: (element-type CdnExpression): a #GSList of #CdnExpression.
+ *
+ * Create a new expression which represents the sum of the given expressions.
+ *
+ * Returns: (transfer full): a #CdnExpression.
+ *
+ **/
+CdnExpression *
+cdn_expression_sum (GSList const *expressions)
+{
+	GSList const *item;
+	GSList *instructions = NULL;
+	CdnStackArg const *lastarg = NULL;
+	GString *srep;
+	CdnExpression *ret;
+
+	if (!expressions)
+	{
+		return cdn_expression_new0 ();
+	}
+
+	if (!expressions->next)
+	{
+		return cdn_expression_copy (expressions->data);
+	}
+
+	srep = g_string_new ("");
+
+	for (item = expressions; item; item = g_slist_next (item))
+	{
+		CdnExpression *e = item->data;
+		GSList const *instrs;
+		CdnStackArg *sarg;
+
+		if (e->priv->modified)
+		{
+			g_string_free (srep, TRUE);
+			g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+
+			return NULL;
+		}
+
+		if (item != expressions)
+		{
+			g_string_append (srep, " + ");
+		}
+
+		g_string_append (srep, e->priv->expression);
+
+		for (instrs = e->priv->instructions; instrs; instrs = g_slist_next (instrs))
+		{
+			instructions = g_slist_prepend (instructions,
+			                                cdn_mini_object_copy (instrs->data));
+		}
+
+		sarg = cdn_expression_get_stack_arg (e);
+
+		if (lastarg != NULL)
+		{
+			CdnInstruction *i;
+			CdnStackManipulation const *smanip;
+
+			CdnStackArg arg2[2] = {
+				*sarg,
+				*lastarg,
+			};
+
+			CdnStackArgs args = {
+				2,
+				arg2,
+			};
+
+			// Add plus operator
+			i = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
+			                                  NULL,
+			                                  &args);
+
+			instructions = g_slist_prepend (instructions, i);
+
+			smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+
+			if (!smanip)
+			{
+				g_string_free (srep, TRUE);
+				g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+
+				return NULL;
+			}
+
+			lastarg = &smanip->push;
+		}
+		else
+		{
+			lastarg = sarg;
+		}
+	}
+
+	instructions = g_slist_reverse (instructions);
+	ret = cdn_expression_new (srep->str);
+	g_string_free (srep, TRUE);
+
+	cdn_expression_set_instructions_take (ret, instructions);
+	return ret;
+}

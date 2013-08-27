@@ -1,0 +1,123 @@
+require "spatial.cdn"
+require "sensors.cdn"
+require "physics.cdn"
+
+templates
+{
+    node "physics"
+    {
+        node "contacts"
+        {
+            node "contact" {}
+
+            node "soft" : contact, physics.sensors.velocity
+            {
+                initial-state "air"
+
+                # contact parameters
+                maxNormalForce = "50 * model.totalMass"
+
+                normalζ = "0.001"
+                normalStiffness = "1e6 * model.totalMass"
+                normalDamping = "normalζ * 2 * sqrt(model.totalMass * normalStiffness)"
+
+                frictionCoefficient = "0.6"
+
+                frictionζ = "0.0001"
+                frictionStiffness = "1e7 * model.totalMass"
+                frictionDamping = "frictionζ * 2 * sqrt(model.totalMass * frictionStiffness)"
+
+                coefficientOfRestitution = "0"
+
+                # calculate locations in base.
+                #
+                # [3-by-N]
+                p = "LocalPointToBase(location)"
+
+                # calculate velocities in base. The velocity sensor from which
+                # we inherit separates the angular and linear velocities since
+                # only the linear velocity has to be recalculated for the sensor
+                # locations. Here we keep the separation and simply multiply with
+                # the relevants parts of the spatial transformation.
+                #
+                # [3-by-N]
+                dp = "localToBaseTransform[0:3, 0:3] * linearVelocity"
+
+                # the contact position in the normal direction (Z)
+                #
+                # [1-by-N]
+                pN = "p[2, :]"
+
+                # the contact velocity in the normal direction
+                #
+                # [1-by-N]
+                dpN = "dp[2, :]"
+
+                # the contact force due to the contact model stiffness
+                #
+                # [1-by-N]
+                forceNormalStiffness = "normalStiffness * -csign(pN^3, pN)"
+
+                # the contact force due to the contact model damping
+                #
+                # [1-by-N]
+                forceNormalDamping = "2 * normalDamping * -dpN .* abs(pN^3) .* (pN < 0)"
+
+                # [1-by-N]
+                forceNormal = "max(0,
+                                   min(maxNormalForce,
+                                       forceNormalStiffness + forceNormalDamping))"
+
+                # tangential forces due to friction (in X and Y)
+                #
+                # [1-by-N]
+                ep = "contactPoint[@1[!], :] - p[@1[!], :]"
+                "forceTangential{X,Y}" = "(frictionStiffness * csign(ep^3, ep) - frictionDamping * dp[@1[!], :])  .* (pN < 0)"
+
+                # maximum tangential force by simple coulomb friction
+                #
+                # [1-by-N]
+                forceTangentialMax = "forceNormal * frictionCoefficient"
+
+                # tangential contact forces limited by the maximum tangential force
+                #
+                # [1-by-N]
+                "forceTangentialLimit{X,Y}" = "csign(min(abs(forceTangential@1),
+                                                         forceTangentialMax),
+                                                     forceTangential@1)"
+
+                # spatial contact force at each contact point location
+                #
+                # [6-by-N]
+                forceAtLocations = "[zeros(3, size(location, 1));
+                                     forceTangentialLimitX;
+                                     forceTangentialLimitY;
+                                     forceNormal]"
+
+                force = "zeros(6, 1)"
+
+                # Add a jacobian node which will calculate the contact jacobian
+                # needed to calculate the contact impulse on impact
+                node "jacobian" : physics.jacobian {}
+
+                # finally, the contact force is calculated in body coordinates
+                # whereas all the previous quantities are calculated in base
+                # coordinates. Here we first transform each force to the base
+                # origin, sum all the forces, and then transform the resultant
+                # to the body coordinate system.
+                edge self | first
+                {
+                    force <= "Spatial.ForceTransform(baseToLocalTransform) *
+                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
+                }
+
+                      active = 0
+                contactPoint = "zeros(3, size(location, 1))"
+
+                event "ground"    to "air"    when "min(pN)   > 0" within 0.001                 { set active = 0 }
+            }
+        }
+    }
+}
+
+# vi:ts=4:et

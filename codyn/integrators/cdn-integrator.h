@@ -41,6 +41,14 @@ typedef struct _CdnIntegrator        CdnIntegrator;
 typedef struct _CdnIntegratorClass   CdnIntegratorClass;
 typedef struct _CdnIntegratorPrivate CdnIntegratorPrivate;
 
+/**
+ * CdnIntegrator:
+ *
+ * Simulation integrator.
+ *
+ * #CdnIntegrator is a base class for implementing different integration
+ * methods.
+ */
 struct _CdnIntegrator
 {
 	/*< private >*/
@@ -132,6 +140,12 @@ void                 cdn_integrator_set_real_time   (CdnIntegrator *integrator,
                                                      gdouble        real_time);
 
 gdouble              cdn_integrator_get_real_time   (CdnIntegrator *integrator);
+
+gboolean             cdn_integrator_get_terminate   (CdnIntegrator *integrator);
+
+gdouble              cdn_integrator_get_default_timestep (CdnIntegrator *integrator);
+void                 cdn_integrator_set_default_timestep (CdnIntegrator *integrator,
+                                                          gdouble        timestep);
 
 G_END_DECLS
 

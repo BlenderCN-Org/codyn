@@ -39,6 +39,16 @@ typedef struct _CdnImportAlias        CdnImportAlias;
 typedef struct _CdnImportAliasClass   CdnImportAliasClass;
 typedef struct _CdnImportAliasPrivate CdnImportAliasPrivate;
 
+/**
+ * CdnImportAlias:
+ *
+ * Network import alias object.
+ *
+ * This object provides an alias for an imported network. This can be useful
+ * when you have a shared library of templates A. Furthermore, imagine a network
+ * B which imports A and a network C which imports both B and A. The second
+ * import of A into C will then be an alias to the already imported A in B.
+ */
 struct _CdnImportAlias
 {
 	/*< private >*/

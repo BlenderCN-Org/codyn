@@ -84,7 +84,7 @@ test_integrate_multiple_euler ()
 	prop = cdn_node_find_variable (CDN_NODE (network), "node.x");
 
 	g_assert (prop);
-	cdn_assert_tol (cdn_variable_get_value (prop), 0.1);
+	cdn_assert_tol (cdn_variable_get_value (prop), 0.2);
 
 	g_assert (network);
 
@@ -95,10 +95,11 @@ int
 main (int   argc,
       char *argv[])
 {
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
-	g_test_init (&argc, &argv, NULL);
+#endif
 
-	g_type_init ();
+	g_test_init (&argc, &argv, NULL);
 
 	g_test_add_func ("/node/add_child", test_add_child);
 	g_test_add_func ("/node/remove_child", test_remove_child);

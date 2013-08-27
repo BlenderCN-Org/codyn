@@ -24,13 +24,6 @@
 
 G_DEFINE_INTERFACE (CdnUsable, cdn_usable, G_TYPE_OBJECT)
 
-/**
- * SECTION:cdn-usable
- * @short_description: Interface for counting the uses of an object
- *
- * This interface can be implemented when an object provides a use count.
- *
- **/
 static guint
 cdn_usable_use_count_default (CdnUsable *self)
 {

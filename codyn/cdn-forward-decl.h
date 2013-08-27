@@ -13,6 +13,7 @@ typedef CDN_FORWARD_DECL (CdnImport) CdnImportForward;
 typedef CDN_FORWARD_DECL (CdnFunction) CdnFunctionForward;
 typedef CDN_FORWARD_DECL (CdnNetwork) CdnNetworkForward;
 typedef CDN_FORWARD_DECL (CdnIntegrator) CdnIntegratorForward;
+typedef CDN_FORWARD_DECL (CdnParserContext) CdnParserContextForward;
 
 #endif /* __CDN_FORWARD_DECL_H__ */
 

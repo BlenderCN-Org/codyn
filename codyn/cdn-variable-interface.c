@@ -25,19 +25,6 @@
 #include "cdn-tokenizer.h"
 #include "cdn-marshal.h"
 
-/**
- * SECTION:cdn-variable-interface
- * @short_description: Property interface for #CdnNode
- *
- * The property interface is a mapping of property aliases to arbitrary
- * properties. Each #CdnNode has a property interface which manages which
- * properties of children of the node are exposed on the node itself.
- *
- * This allows for controlled accessibility of certain properties of certain
- * children of a node, and ensures data integrity (in a sense).
- *
- */
-
 #define CDN_VARIABLE_INTERFACE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_VARIABLE_INTERFACE, CdnVariableInterfacePrivate))
 
 typedef struct

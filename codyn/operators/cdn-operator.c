@@ -460,7 +460,7 @@ cdn_operator_get_name (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_expressions: (skip):
+ * cdn_operator_all_expressions: (skip)
  * @op: A #CdnOperator
  *
  * Get the list of all expressions.
@@ -477,7 +477,7 @@ cdn_operator_all_expressions (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_indices: (skip):
+ * cdn_operator_all_indices: (skip)
  * @op: A #CdnOperator
  *
  * Get a list of al indices.
@@ -745,7 +745,7 @@ cdn_operator_get_primary_function (CdnOperator *op)
 				}
 				else
 				{
-					gint val = rint (cdn_expression_evaluate (idx->data));
+					gint val = (gint)(cdn_expression_evaluate (idx->data) + 0.5);
 
 					g_array_append_val (ret, val);
 					++num;

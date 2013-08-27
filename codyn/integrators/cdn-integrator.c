@@ -29,17 +29,10 @@
 #include "operators/cdn-operator.h"
 #include "instructions/cdn-instruction-rand.h"
 #include "cdn-debug.h"
+#include "cdn-phaseable.h"
 
 #include <math.h>
-
-/**
- * SECTION:cdn-integrator
- * @short_description: Simulation integrator
- *
- * #CdnIntegrator is a base class for implementing different integration
- * methods.
- *
- */
+#include <string.h>
 
 #define CDN_INTEGRATOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR, CdnIntegratorPrivate))
 
@@ -53,8 +46,9 @@ enum
 	PROP_OBJECT,
 	PROP_TIME,
 	PROP_STATE,
-	PROP_INITIAL_PHASE,
-	PROP_REAL_TIME
+	PROP_REAL_TIME,
+	PROP_MINIMUM_TIMESTEP,
+	PROP_DEFAULT_TIMESTEP
 };
 
 /* Signals */
@@ -76,13 +70,16 @@ struct _CdnIntegratorPrivate
 	CdnIntegratorState *state;
 	GSList *saved_state;
 
-	gchar *initial_phase;
+
 	GTimer *step_timer;
 	gdouble real_time;
 	gdouble rt_correction;
+	gdouble minimum_timestep;
+	gdouble default_timestep;
 
-	guint event_handled : 1;
 	guint terminate : 1;
+	guint inner_event_loop : 1;
+	guint events_handled : 1;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
@@ -92,7 +89,7 @@ G_DEFINE_TYPE (CdnIntegrator, cdn_integrator, CDN_TYPE_OBJECT)
 typedef struct
 {
 	CdnVariable *property;
-	gdouble      value;
+	CdnMatrix values;
 } SavedState;
 
 static SavedState *
@@ -103,7 +100,6 @@ saved_state_new (CdnVariable *property)
 	ret = g_slice_new0 (SavedState);
 
 	ret->property = g_object_ref_sink (property);
-	ret->value = 0;
 
 	return ret;
 }
@@ -111,6 +107,8 @@ saved_state_new (CdnVariable *property)
 static void
 saved_state_free (SavedState *self)
 {
+	cdn_matrix_destroy (&self->values);
+
 	g_object_unref (self->property);
 	g_slice_free (SavedState, self);
 }
@@ -128,8 +126,6 @@ cdn_integrator_finalize (GObject *object)
 
 	g_slist_foreach (self->priv->saved_state, (GFunc)saved_state_free, NULL);
 	g_slist_free (self->priv->saved_state);
-
-	g_free (self->priv->initial_phase);
 
 	g_timer_destroy (self->priv->step_timer);
 
@@ -211,12 +207,14 @@ cdn_integrator_set_property (GObject      *object,
 			g_object_add_weak_pointer (G_OBJECT (self->priv->object),
 			                           (gpointer *)&(self->priv->object));
 		break;
-		case PROP_INITIAL_PHASE:
-			g_free (self->priv->initial_phase);
-			self->priv->initial_phase = g_value_dup_string (value);
-		break;
 		case PROP_REAL_TIME:
 			self->priv->real_time = g_value_get_double (value);
+			break;
+		case PROP_MINIMUM_TIMESTEP:
+			self->priv->minimum_timestep = g_value_get_double (value);
+			break;
+		case PROP_DEFAULT_TIMESTEP:
+			self->priv->default_timestep = g_value_get_double (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -243,11 +241,14 @@ cdn_integrator_get_property (GObject    *object,
 		case PROP_STATE:
 			g_value_set_object (value, self->priv->state);
 		break;
-		case PROP_INITIAL_PHASE:
-			g_value_set_string (value, self->priv->initial_phase);
-		break;
 		case PROP_REAL_TIME:
 			g_value_set_double (value, self->priv->real_time);
+			break;
+		case PROP_MINIMUM_TIMESTEP:
+			g_value_set_double (value, self->priv->minimum_timestep);
+			break;
+		case PROP_DEFAULT_TIMESTEP:
+			g_value_set_double (value, self->priv->default_timestep);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -267,8 +268,6 @@ cdn_integrator_run_impl (CdnIntegrator *integrator,
 	{
 		return;
 	}
-
-	integrator->priv->terminate = FALSE;
 
 	while (from < to)
 	{
@@ -310,7 +309,7 @@ next_random (CdnIntegrator *integrator)
 		// We need to explicitly reset the cache of the expressions
 		// that have random numbers because the expression has no
 		// means of detecting that we changed the random number...
-		cdn_expression_reset_cache (rndexpr->data);
+		_cdn_expression_reset_rand_cache (rndexpr->data);
 		rndexpr = g_slist_next (rndexpr);
 	}
 }
@@ -363,6 +362,11 @@ prepare_next_step (CdnIntegrator *integrator,
 	GSList const *io;
 	GSList const *ops;
 
+	if (!integrator->priv->events_handled)
+	{
+		update_events (integrator);
+	}
+
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
 
@@ -385,10 +389,11 @@ prepare_next_step (CdnIntegrator *integrator,
 	for (item = integrator->priv->saved_state; item; item = g_slist_next (item))
 	{
 		SavedState *s = item->data;
-		s->value = cdn_variable_get_value (s->property);
-	}
+		CdnMatrix const *vals;
 
-	update_events (integrator);
+		vals = cdn_variable_get_values (s->property);
+		cdn_matrix_copy (&s->values, vals);
+	}
 
 	// Update operators
 	ops = cdn_integrator_state_operators (integrator->priv->state);
@@ -409,39 +414,125 @@ restore_saved_state (CdnIntegrator *integrator)
 	{
 		SavedState *s = item->data;
 
-		cdn_variable_set_value (s->property, s->value);
+		cdn_variable_set_values (s->property, &s->values);
 	}
 }
 
 static void
-execute_event (CdnIntegrator *integrator,
-               CdnEvent      *ev)
+execute_events (CdnIntegrator *integrator,
+                GSList        *events)
 {
-	gchar const *phase;
+	gchar const *state;
+	GSList *execute = NULL;
 
-	cdn_event_execute (ev);
-
-	phase = cdn_event_get_goto_phase (ev);
-
-	if (phase)
+	while (events)
 	{
-		cdn_integrator_state_set_phase (integrator->priv->state,
-		                                phase);
-	}
-	else if (cdn_event_get_terminal (ev))
-	{
-		integrator->priv->terminate = TRUE;
+		CdnEvent *ev = events->data;
+		CdnNode *parent;
+		gchar const *curstate;
+
+		parent = cdn_object_get_parent (CDN_OBJECT (ev));
+		curstate = cdn_node_get_state (parent);
+
+		// Make sure event is still active
+		if (cdn_phaseable_is_active (CDN_PHASEABLE (ev), curstate))
+		{
+			state = cdn_event_get_goto_state (ev);
+
+			execute = g_slist_prepend (execute, ev);
+
+			if (state)
+			{
+				cdn_integrator_state_set_state (integrator->priv->state,
+				                                parent,
+				                                state,
+				                                NULL,
+				                                NULL);
+			}
+			else if (cdn_event_get_terminal (ev))
+			{
+				integrator->priv->terminate = TRUE;
+			}
+		}
+
+		events = g_slist_next (events);
 	}
 
 	update_events (integrator);
+
+	execute = g_slist_reverse (execute);
+
+	while (execute)
+	{
+		cdn_event_execute (execute->data);
+		execute = g_slist_delete_link (execute, execute);
+	}
 }
 
-static gboolean
+static GSList *
+append_happened (GSList   *events,
+                 CdnEvent *event,
+                 gdouble  *smallest)
+{
+	gdouble dist;
+	gdouble prec = 1e-9;
+	GSList *first = events;
+
+	dist = cdn_event_last_distance (event);
+
+	if (!events)
+	{
+		*smallest = dist;
+		return g_slist_prepend (NULL, event);
+	}
+
+	if (dist > *smallest + prec)
+	{
+		return events;
+	}
+
+	if (dist >= *smallest)
+	{
+		return g_slist_prepend (events, event);
+	}
+
+	*smallest = dist;
+
+	while (events)
+	{
+		gdouble olddist = cdn_event_last_distance (events->data);
+
+		if (olddist > *smallest + prec)
+		{
+			GSList *next;
+
+			next = events->next;
+			first = g_slist_delete_link (first, events);
+			events = next;
+		}
+		else
+		{
+			events = g_slist_next (events);
+		}
+	}
+
+	first = g_slist_prepend (first, event);
+	return first;
+}
+
+static void
 handle_events (CdnIntegrator *integrator,
                gdouble        t,
                gdouble       *timestep)
 {
 	GSList const *events;
+	GSList *happened = NULL;
+	gdouble smallest = 0;
+
+	if (!integrator->priv->inner_event_loop)
+	{
+		integrator->priv->events_handled = FALSE;
+	}
 
 	// Here we are going to check our events
 	events = cdn_integrator_state_phase_events (integrator->priv->state);
@@ -449,42 +540,101 @@ handle_events (CdnIntegrator *integrator,
 	while (events)
 	{
 		CdnEvent *ev = events->data;
-		gdouble dist;
 
-		if (cdn_event_happened (ev, &dist))
+		if (cdn_event_happened (ev, NULL))
 		{
-			// Backup the simulation a bit
-			if (dist > 10e-9 && *timestep > 10e-9)
-			{
-				gdouble nts;
-
-				restore_saved_state (integrator);
-
-				*timestep = dist * *timestep;
-				nts = cdn_integrator_step (integrator, t, *timestep);
-
-				// Execute the event code
-				if (!integrator->priv->event_handled)
-				{
-					execute_event (integrator, ev);
-				}
-				else
-				{
-					*timestep = nts;
-				}
-			}
-			else
-			{
-				execute_event (integrator, ev);
-			}
-
-			return TRUE;
+			happened = append_happened (happened, ev, &smallest);
 		}
 
 		events = g_slist_next (events);
 	}
 
-	return FALSE;
+	if (happened)
+	{
+		// Backup the simulation a bit if needed
+		if (smallest < (1 - 1e-9) && *timestep > integrator->priv->minimum_timestep)
+		{
+			gdouble nts;
+			gboolean isinner;
+
+			restore_saved_state (integrator);
+
+			*timestep = smallest * *timestep;
+
+			if (*timestep < integrator->priv->minimum_timestep)
+			{
+				*timestep = integrator->priv->minimum_timestep;
+			}
+
+			isinner = integrator->priv->inner_event_loop;
+			integrator->priv->inner_event_loop = TRUE;
+
+			nts = cdn_integrator_step (integrator, t, *timestep);
+
+			integrator->priv->inner_event_loop = isinner;
+
+			*timestep = nts;
+		}
+		else
+		{
+			execute_events (integrator, happened);
+			integrator->priv->events_handled = TRUE;
+		}
+
+		g_slist_free (happened);
+	}
+}
+
+static void
+evaluate_discrete (CdnIntegrator *integrator)
+{
+	GSList const *variables;
+	GSList const *actions;
+	GSList const *variable;
+
+	variables = cdn_integrator_state_discrete_variables (integrator->priv->state);
+
+	for (variable = variables; variable; variable = g_slist_next (variable))
+	{
+		cdn_variable_clear_update (variable->data);
+	}
+
+	actions = cdn_integrator_state_phase_discrete_edge_actions (integrator->priv->state);
+	cdn_integrator_simulation_step_integrate (integrator, actions);
+}
+
+static void
+update_discrete (CdnIntegrator *integrator)
+{
+	GSList const *variables;
+	GSList const *variable;
+
+	variables = cdn_integrator_state_discrete_variables (integrator->priv->state);
+
+	for (variable = variables; variable; variable = g_slist_next (variable))
+	{
+		CdnMatrix *update;
+		CdnMatrix const *m;
+		gint i;
+		gdouble *updatemem;
+		gdouble const *vals;
+		gint num;
+
+		update = cdn_variable_get_update (variable->data);
+		m = cdn_variable_get_values (variable->data);
+
+		updatemem = cdn_matrix_get_memory (update);
+		vals = cdn_matrix_get (m);
+
+		num = cdn_matrix_size (m);
+
+		for (i = 0; i < num; ++i)
+		{
+			updatemem[i] = vals[i] + updatemem[i];
+		}
+
+		cdn_variable_set_values (variable->data, update);
+	}
 }
 
 static gdouble
@@ -494,9 +644,12 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 {
 	gdouble elapsed;
 
-	if (handle_events (integrator, t, &timestep))
+	update_discrete (integrator);
+
+	handle_events (integrator, t, &timestep);
+
+	if (integrator->priv->inner_event_loop)
 	{
-		integrator->priv->event_handled = TRUE;
 		return timestep;
 	}
 
@@ -531,7 +684,6 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 
 	g_timer_reset (integrator->priv->step_timer);
 
-	integrator->priv->event_handled = FALSE;
 	return timestep;
 }
 
@@ -588,15 +740,19 @@ cdn_integrator_reset_impl (CdnIntegrator *integrator)
 		return;
 	}
 
-	items = cdn_integrator_state_integrated_variables (integrator->priv->state);
-
-	while (items)
+	/* Only store state if needed (i.e. when there are events) */
+	if (cdn_integrator_state_events (integrator->priv->state))
 	{
-		integrator->priv->saved_state =
-			g_slist_prepend (integrator->priv->saved_state,
-			                 saved_state_new (items->data));
+		items = cdn_integrator_state_integrated_variables (integrator->priv->state);
 
-		items = g_slist_next (items);
+		while (items)
+		{
+			integrator->priv->saved_state =
+				g_slist_prepend (integrator->priv->saved_state,
+				                 saved_state_new (items->data));
+
+			items = g_slist_next (items);
+		}
 	}
 
 	items = cdn_integrator_state_operators (integrator->priv->state);
@@ -748,14 +904,6 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 	                                                      G_PARAM_READABLE));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_INITIAL_PHASE,
-	                                 g_param_spec_string ("initial-phase",
-	                                                      "Initial Phase",
-	                                                      "Initial phase",
-	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
-
-	g_object_class_install_property (object_class,
 	                                 PROP_REAL_TIME,
 	                                 g_param_spec_double ("real-time",
 	                                                      "Real Time",
@@ -763,7 +911,33 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 	                                                      0,
 	                                                      G_MAXDOUBLE,
 	                                                      0,
-	                                                      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS |
+	                                                      G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_MINIMUM_TIMESTEP,
+	                                 g_param_spec_double ("minimum-timestep",
+	                                                      "Minimum Timestep",
+	                                                      "Minimum timestep",
+	                                                      G_MINDOUBLE,
+	                                                      G_MAXDOUBLE,
+	                                                      1e-9,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS |
+	                                                      G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_DEFAULT_TIMESTEP,
+	                                 g_param_spec_double ("default-timestep",
+	                                                      "Default Timestep",
+	                                                      "Default timestep",
+	                                                      G_MINDOUBLE,
+	                                                      G_MAXDOUBLE,
+	                                                      0.001,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS |
+	                                                      G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -832,27 +1006,24 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 		if (target != NULL)
 		{
 			CdnExpression *expr;
-			CdnDimension dim;
-			CdnDimension edim;
-			gdouble *update;
+			CdnMatrix *update;
 			gint const *indices;
 			gint num_indices;
-			gdouble const *values;
+			CdnMatrix const *values;
 
 			expr = cdn_edge_action_get_equation (action);
 
-			update = cdn_variable_get_update (target, &edim);
+			update = cdn_variable_get_update (target);
 
 			indices = cdn_edge_action_get_indices (action,
 			                                       &num_indices);
 
-			values = cdn_expression_evaluate_values (expr,
-			                                         &dim);
+			values = cdn_expression_evaluate_values (expr);
 
-			sum_values (update,
-			            values,
+			sum_values (cdn_matrix_get_memory (update),
+			            cdn_matrix_get (values),
 			            indices,
-			            indices ? num_indices : cdn_dimension_size (&dim));
+			            indices ? num_indices : cdn_matrix_size (values));
 		}
 
 		actions = g_slist_next (actions);
@@ -981,11 +1152,10 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 		return FALSE;
 	}
 
+	integrator->priv->terminate = FALSE;
+
 	// Generate set of next random values
 	prepare_next_step (integrator, start, 0, FALSE);
-
-	cdn_integrator_state_set_phase (integrator->priv->state,
-	                                integrator->priv->initial_phase);
 
 	g_timer_reset (integrator->priv->step_timer);
 
@@ -1044,6 +1214,11 @@ cdn_integrator_run (CdnIntegrator  *integrator,
 		return FALSE;
 	}
 
+	if (timestep == 0)
+	{
+		timestep = integrator->priv->default_timestep;
+	}
+
 	CDN_INTEGRATOR_GET_CLASS (integrator)->run (integrator,
 	                                            from,
 	                                            timestep,
@@ -1075,6 +1250,11 @@ cdn_integrator_step (CdnIntegrator *integrator,
                      gdouble        timestep)
 {
 	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), 0);
+
+	if (timestep == 0)
+	{
+		timestep = integrator->priv->default_timestep;
+	}
 
 	return CDN_INTEGRATOR_GET_CLASS (integrator)->step (integrator, t, timestep);
 }
@@ -1134,6 +1314,8 @@ cdn_integrator_step_prepare (CdnIntegrator *integrator,
 
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
+
+	evaluate_discrete (integrator);
 
 	return TRUE;
 }
@@ -1285,4 +1467,30 @@ cdn_integrator_get_real_time (CdnIntegrator *integrator)
 	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), 0);
 
 	return integrator->priv->real_time;
+}
+
+gboolean
+cdn_integrator_get_terminate (CdnIntegrator *integrator)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), TRUE);
+
+	return integrator->priv->terminate;
+}
+
+gdouble
+cdn_integrator_get_default_timestep (CdnIntegrator *integrator)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), 0);
+
+	return integrator->priv->default_timestep;
+}
+
+void
+cdn_integrator_set_default_timestep (CdnIntegrator *integrator,
+                                     gdouble        value)
+{
+	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+
+	integrator->priv->default_timestep = value;
+	g_object_notify (G_OBJECT (integrator), "default-timestep");
 }

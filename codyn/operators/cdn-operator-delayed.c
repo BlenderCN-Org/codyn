@@ -31,16 +31,6 @@
 #include <string.h>
 #include <codyn/instructions/cdn-instructions.h>
 
-/**
- * SECTION:cdn-operator-delayed
- * @short_description: Math operator for delayed evaluation of an expression
- *
- * The #CdnOperatorDelayed is a special operator that can be used in
- * mathematical expressions ('delay'). When evaluated, it will return the
- * delayed value of its argument (which can be an arbitrary expression).
- *
- */
-
 #define CDN_OPERATOR_DELAYED_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_OPERATOR_DELAYED, CdnOperatorDelayedPrivate))
 
 typedef struct _HistoryItem HistoryItem;
@@ -208,6 +198,13 @@ history_to_pool (CdnOperatorDelayed *operator,
 	                      num);
 }
 
+static void
+history_reset (CdnOperatorDelayed *operator)
+{
+	history_concat (&operator->priv->history_pool,
+	                &operator->priv->history);
+}
+
 static HistoryItem *
 pool_to_history (CdnOperatorDelayed  *operator,
                  gint                 num)
@@ -365,7 +362,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 		             "The operator `delayed' currently on supports "
 		             "1-by-1 time delay (got %d-by-%d)",
 		             argdim->args[0].rows,
-		             argdim->args[1].columns);
+		             argdim->args[0].columns);
 
 		return FALSE;
 	}
@@ -412,8 +409,7 @@ evaluate_on_stack (CdnOperatorDelayed *d,
                    CdnExpression      *expression,
                    CdnStack           *stack)
 {
-	gdouble const *ret;
-	CdnDimension dim;
+	CdnMatrix const *ret;
 	gdouble told = 0;
 
 	// temporarily set t
@@ -428,9 +424,8 @@ evaluate_on_stack (CdnOperatorDelayed *d,
 		}
 	}
 
-	ret = cdn_expression_evaluate_values (expression, &dim);
-
-	cdn_stack_pushn (stack, ret, cdn_dimension_size (&dim));
+	ret = cdn_expression_evaluate_values (expression);
+	cdn_stack_pushn (stack, cdn_matrix_get (ret), cdn_matrix_size (ret));
 
 	if (d->priv->tvar)
 	{
@@ -533,6 +528,18 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 			}
 
 			return;
+		}
+		else
+		{
+			gint i;
+			gint n;
+
+			n = cdn_stack_arg_size (&d->priv->smanip.push);
+
+			for (i = 0; i < n; ++i)
+			{
+				cdn_stack_push (stack, h->v[i]);
+			}
 		}
 	}
 	else
@@ -689,9 +696,8 @@ cdn_operator_delayed_step (CdnOperator *op,
 {
 	CdnOperatorDelayed *d;
 	HistoryItem *current;
-	gdouble const *v;
+	CdnMatrix const *v;
 	gint nd;
-	CdnDimension dim;
 
 	// direct cast for efficiency
 	d = (CdnOperatorDelayed *)op;
@@ -709,19 +715,18 @@ cdn_operator_delayed_step (CdnOperator *op,
 		cdn_expression_reset_cache (d->priv->expression);
 	}
 
-	v = cdn_expression_evaluate_values (d->priv->expression,
-	                                    &dim);
+	v = cdn_expression_evaluate_values (d->priv->expression);
 
 	d->priv->eval_at_t = t;
 
-	nd = cdn_dimension_size (&dim);
+	nd = cdn_matrix_size (v);
 
 	if (current->v == NULL)
 	{
 		current->v = g_new (gdouble, nd);
 	}
 
-	memcpy (current->v, v, sizeof (gdouble) * nd);
+	memcpy (current->v, cdn_matrix_get (v), sizeof (gdouble) * nd);
 	d->priv->first_last_t = TRUE;
 }
 
@@ -746,6 +751,20 @@ cdn_operator_delayed_get_stack_manipulation (CdnOperator *op)
 }
 
 static void
+cdn_operator_delayed_reset (CdnOperator *op)
+{
+	CdnOperatorDelayed *d;
+
+	d = (CdnOperatorDelayed *)op;
+
+	d->priv->last_t = 0;
+	d->priv->eval_at_t = 0;
+	d->priv->first_last_t = FALSE;
+
+	history_reset (d);
+}
+
+static void
 cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -763,6 +782,7 @@ cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 	op_class->step = cdn_operator_delayed_step;
 	op_class->initialize_integrate = cdn_operator_delayed_initialize_integrate;
 	op_class->get_stack_manipulation = cdn_operator_delayed_get_stack_manipulation;
+	op_class->reset = cdn_operator_delayed_reset;
 
 	g_type_class_add_private (object_class, sizeof(CdnOperatorDelayedPrivate));
 

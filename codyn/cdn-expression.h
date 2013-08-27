@@ -29,6 +29,7 @@
 #include <codyn/cdn-utils.h>
 #include <codyn/cdn-forward-decl.h>
 #include <codyn/cdn-stack.h>
+#include <codyn/cdn-matrix.h>
 
 G_BEGIN_DECLS
 
@@ -50,6 +51,16 @@ typedef void (*CdnExpressionCacheNotify) (CdnExpression *expression,
 typedef void (*CdnExpressionEvaluateNotify) (CdnExpression *expression,
                                              gpointer       userdata);
 
+/**
+ * CdnExpression:
+ *
+ * Mathematical expression evaluation.
+ *
+ * A #CdnExpression contains a mathematical expression. The expression in
+ * string format can be compiled and evaluated. At the compilation phase,
+ * a list of #CdnObject is provided as a context in which variables are mapped
+ * to #CdnVariable in this context.
+ */
 struct _CdnExpression
 {
 	/*< private >*/
@@ -88,28 +99,15 @@ gboolean       cdn_expression_compile          (CdnExpression      *expression,
 
 gdouble        cdn_expression_evaluate         (CdnExpression      *expression);
 
-gdouble const *cdn_expression_evaluate_values  (CdnExpression      *expression,
-                                                CdnDimension       *dim);
-
-gdouble const *cdn_expression_evaluate_values_flat (CdnExpression      *expression,
-                                                    gint               *num);
+CdnMatrix const *cdn_expression_evaluate_values  (CdnExpression      *expression);
 
 void           cdn_expression_set_value        (CdnExpression      *expression,
                                                 gdouble             value);
 
 void           cdn_expression_set_values       (CdnExpression      *expression,
-                                                gdouble const      *values,
-                                                CdnDimension const *dim);
-
-void           cdn_expression_set_values_flat  (CdnExpression      *expression,
-                                                gdouble const      *values,
-                                                gint                numvals,
-                                                CdnDimension const *dim);
+                                                CdnMatrix const    *values);
 
 gboolean       cdn_expression_is_cached        (CdnExpression      *expression);
-
-gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
-                                                CdnDimension       *dim);
 
 void           cdn_expression_reset            (CdnExpression      *expression);
 
@@ -122,12 +120,13 @@ void           cdn_expression_set_from_string  (CdnExpression      *expression,
 
 void           cdn_expression_reset_cache      (CdnExpression      *expression);
 void           cdn_expression_force_reset_cache (CdnExpression *expression);
+void          _cdn_expression_reset_rand_cache (CdnExpression *expression);
 
 gboolean       cdn_expression_get_has_cache    (CdnExpression      *expression);
 void           cdn_expression_set_has_cache    (CdnExpression      *expression,
                                                 gboolean            cache);
 
-const GSList  *cdn_expression_get_instructions (CdnExpression      *expression);
+const GSList  *cdn_expression_get_instructions (CdnExpression const *expression);
 void           cdn_expression_set_instructions (CdnExpression      *expression,
                                                 const GSList       *instructions);
 
@@ -165,6 +164,11 @@ void           cdn_expression_set_pinned_sparsity (CdnExpression *expression,
                                                    gboolean       pinned);
 
 gboolean       cdn_expression_get_pinned_sparsity (CdnExpression *expression);
+
+void          _cdn_expression_transfer_dependencies (CdnExpression *expression,
+                                                     CdnExpression *transfer_to);
+
+CdnExpression *cdn_expression_sum                (GSList const *expressions);
 
 G_END_DECLS
 

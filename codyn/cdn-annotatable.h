@@ -35,6 +35,28 @@ G_BEGIN_DECLS
 typedef struct _CdnAnnotatable		CdnAnnotatable;
 typedef struct _CdnAnnotatableInterface	CdnAnnotatableInterface;
 
+typedef struct _CdnAnnotationInfo CdnAnnotationInfo;
+
+typedef enum
+{
+	CDN_ANNOTATION_ANCHOR_NORTH,
+	CDN_ANNOTATION_ANCHOR_NORTH_EAST,
+	CDN_ANNOTATION_ANCHOR_EAST,
+	CDN_ANNOTATION_ANCHOR_SOUTH_EAST,
+	CDN_ANNOTATION_ANCHOR_SOUTH,
+	CDN_ANNOTATION_ANCHOR_SOUTH_WEST,
+	CDN_ANNOTATION_ANCHOR_WEST,
+	CDN_ANNOTATION_ANCHOR_NORTH_WEST,
+	CDN_ANNOTATION_ANCHOR_CENTER
+} CdnAnnotationAnchor;
+
+/**
+ * CdnAnnotatable:
+ *
+ * Interface for annotating objects.
+ *
+ * This interface can be implemented when an object supports annotations.
+ **/
 struct _CdnAnnotatableInterface
 {
 	GTypeInterface parent;
@@ -55,6 +77,22 @@ gchar *cdn_annotatable_get_annotation (CdnAnnotatable *annotatable);
 
 void   cdn_annotatable_set_annotation (CdnAnnotatable *annotatable,
                                        gchar const    *annotation);
+
+CdnAnnotationInfo *cdn_annotatable_parse_annotation (CdnAnnotatable *annotatable);
+
+GType cdn_annotation_info_get_type ();
+void cdn_annotation_info_free (CdnAnnotationInfo *info);
+
+const gchar *cdn_annotation_info_get_annotation (CdnAnnotationInfo *info);
+
+gboolean cdn_annotation_info_get_location   (CdnAnnotationInfo *info,
+                                             gdouble           *x,
+                                             gdouble           *y);
+
+CdnAnnotationAnchor cdn_annotation_info_get_anchor   (CdnAnnotationInfo *info);
+const gchar *cdn_annotation_info_get_relative_to   (CdnAnnotationInfo *info);
+
+const gchar *cdn_annotation_info_get_text       (CdnAnnotationInfo *info);
 
 G_END_DECLS
 

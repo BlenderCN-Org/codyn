@@ -56,6 +56,18 @@ typedef struct _CdnVariableInterface		CdnVariableInterface;
 typedef struct _CdnVariableInterfaceClass	CdnVariableInterfaceClass;
 typedef struct _CdnVariableInterfacePrivate	CdnVariableInterfacePrivate;
 
+/**
+ * CdnVariableInterface:
+ *
+ * Variable interface for #CdnNode.
+ *
+ * The variable interface is a mapping of variable aliases to arbitrary
+ * variables. Each #CdnNode has a variable interface which manages which
+ * variables of children of the node are exposed on the node itself.
+ *
+ * This allows for controlled accessibility of certain variables of certain
+ * children of a node, and ensures data integrity (in a sense).
+ */
 struct _CdnVariableInterface
 {
 	/*< private >*/

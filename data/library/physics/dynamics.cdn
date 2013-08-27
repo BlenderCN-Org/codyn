@@ -1,7 +1,7 @@
-require "findbodies.cdn"
+include "findbodies.cdn"
 
-include "rnea.cdn"
-include "crba.cdn"
+include "algorithms/rnea.cdn"
+include "algorithms/crba.cdn"
 
 ## The dynamics node is used to accumulate the various quantities of the
 ## general rigid body dynamics equation: H ∙ q̈ + C = τ. The elements of H, C and
@@ -23,19 +23,20 @@ node "dynamics"
 
     ## Generalized accelerations
     ddq = "slinsolve(H, τ - C, parents)"
-
-    ## Jacobian
-    #J = "zeros(6, @numdof)"
+    ddqs = "linsolve(H, τ - C)"
 
     ## Parent indices. This is used only for solving the linear system by
     ## exploiting the branch induced sparsity (slinsolve).
     parents = "[{@parentsdof||@0;@1}]"
 }
 
+include "algorithms/contacts.cdn"
+
 node "@bodies"
 {
-    # Jacobian selection matrix
-    #JS = "[{@bodies|@bodychain[@0[!]]||@0;@1}]"
+    ## Generalized coordinate accelerations differential equation
+    q̇ = "dqdot"
+    q̈ = "ddq"
 }
 
 # Fill in H and C for all relevant body relationships
@@ -50,12 +51,13 @@ edge "HC_@bodies" from   @1
     defines
     {
         # Compute the indices of this bodies' DOF (in column and row)
-        jc = "@{@bodydofidx[@body-index]:+$(@bodydof[@body-index] - 1)||@0\,@1}"
+        jc = "@{@bodydofidx[$(@body-index + 1)]:+$(@bodydof[$(@body-index + 1)] - 1)||@0\,@1}"
         jr = "@{@jc||@0;@1}"
     }
 
     # For each variable fh_* in the input of this edge
     edge   self
+         | first
          | input
          . variables
          | <fh>:/fh_([0-9]+)/
@@ -64,17 +66,15 @@ edge "HC_@bodies" from   @1
         defines
         {
             # Compute the indices of this childs' DOF (in column and row)
-            ic = "@{@bodydofidx[@fh[0]]:+$(@bodydof[@fh[0]] - 1)||@0\,@1}"
+            ic = "@{@bodydofidx[$(@fh[1] + 1)]:+$(@bodydof[$(@fh[1] + 1)] - 1)||@0\,@1}"
             ir = "@{@ic||@0;@1}"
         }
 
         ## Write H from the body into the appropriate part of the dynamics H
         ## matrix
-        "H[[@ir, @jc], [@jc, @ir]]" <= "[H_@fh[0], H_@fh[0]]"
+        "H[[@ir], [@jc]]" <= "transpose(H_@fh[1])"
+        "H[[@jr], [@ic]]" <= "H_@fh[1]"
     }
-
-    # Fill column of the jacobian
-    #"J[[{0:5||@0;@1}], @jc]" <= "J"
 
     ## Write C from the body into the appropriate part of the dynamics C
     ## vector
@@ -82,11 +82,11 @@ edge "HC_@bodies" from   @1
 }
 
 # Integrate accelerations on bodies
-node | <body>:@bodies | parent
+node | <body>:@bodies | sort | parent
 {
     defines
     {
-        j = "@{@bodydofidx[@body[!]]:+$(@bodydof[@body[!]] - 1)||@0;@1}"
+        j = "@{@bodydofidx[$(@body[!] + 1)]:+$(@bodydof[$(@body[!] + 1)] - 1)||@0;@1}"
     }
 
     edge "acceleration_@0" from "dynamics" to "@body"

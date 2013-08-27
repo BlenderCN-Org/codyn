@@ -25,16 +25,6 @@
 #include "cdn-variable.h"
 #include "cdn-function.h"
 
-/**
- * SECTION:cdn-compile-context
- * @short_description: The expression compile context
- *
- * The compile context provides information for compiling expressions such
- * as the available user defined functions and the objects that can be used
- * to lookup properties used in the expression.
- *
- */
-
 #define CURRENT_CONTEXT(x) (CONTEXT (x->priv->contexts->data))
 #define CONTEXT(x) ((Context *)x)
 
@@ -44,8 +34,9 @@ typedef struct
 {
 	GSList *objects;
 	GSList *functions;
-	gboolean function_priority;
-	gboolean function_arg_priority;
+
+	guint function_priority : 1;
+	guint function_arg_priority : 1;
 } Context;
 
 struct _CdnCompileContextPrivate
@@ -71,6 +62,7 @@ context_copy (Context *context)
 
 	ctx->objects = g_slist_copy (context->objects);
 	ctx->functions = g_slist_copy (context->functions);
+
 	ctx->function_priority = context->function_priority;
 	ctx->function_arg_priority = context->function_arg_priority;
 

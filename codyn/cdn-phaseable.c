@@ -23,11 +23,14 @@
 #include "cdn-phaseable.h"
 
 /**
- * SECTION:cdn-phaseable
- * @short_description: Interface for keeping track of the modified state of an object
+ * CdnPhaseable:
  *
- * This interface can be implemented when an object needs to keep track of
- * whether or not it has been modified.
+ * Interface for state dependent actions.
+ *
+ * This interface can be implemented when an object can be active or inactive
+ * depending on node states (see #cdn_node_get_state). Implementations of this
+ * interface should call #cdn_phaseable_set_phase_table to specify a hash table
+ * which the states are stored.
  *
  **/
 
@@ -60,6 +63,16 @@ cdn_phaseable_default_init (CdnPhaseableInterface *iface)
 	}
 }
 
+/**
+ * cdn_phaseable_is_active:
+ * @phaseable: a #CdnPhaseable.
+ * @phase: the phase.
+ *
+ * Get whether this object is active for the given state.
+ *
+ * Returns: %TRUE if the object is active in @phase, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_phaseable_is_active (CdnPhaseable *phaseable,
                          gchar const  *phase)
@@ -80,7 +93,7 @@ cdn_phaseable_is_active (CdnPhaseable *phaseable,
 	}
 	else
 	{
-		return TRUE;
+		return FALSE;
 	}
 }
 
@@ -99,6 +112,72 @@ create_table (CdnPhaseable *phaseable)
 	return table;
 }
 
+typedef struct
+{
+	GHashTable *other;
+	gboolean ret;
+} CompareInfo;
+
+static void
+phaseable_foreach_equal (gchar const *key,
+                         gpointer     value,
+                         CompareInfo *ret)
+{
+	if (!g_hash_table_lookup (ret->other, key))
+	{
+		ret->ret = FALSE;
+	}
+}
+
+/**
+ * cdn_phaseable_equal:
+ * @phaseable: a #CdnPhaseable.
+ * @other: a #CdnPhaseable.
+ *
+ * Returns whether @phaseable is equal to @other in terms of in which states
+ * they are active.
+ *
+ * Returns: %TRUE if @phaseable and @other are active in the same states, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_phaseable_equal (CdnPhaseable *phaseable,
+                     CdnPhaseable *other)
+{
+	GHashTable *t1;
+	GHashTable *t2;
+	CompareInfo info = {NULL, TRUE};
+
+	g_return_val_if_fail (CDN_PHASEABLE (phaseable), FALSE);
+	g_return_val_if_fail (CDN_PHASEABLE (other), FALSE);
+
+	t1 = cdn_phaseable_get_phase_table (phaseable);
+	t2 = cdn_phaseable_get_phase_table (other);
+
+	if ((t1 != NULL) != (t2 != NULL))
+	{
+		return FALSE;
+	}
+
+	if (t1 == NULL)
+	{
+		return TRUE;
+	}
+
+	info.other = t2;
+	g_hash_table_foreach (t1, (GHFunc)phaseable_foreach_equal, &info);
+
+	return info.ret;
+}
+
+/**
+ * cdn_phaseable_add_phase:
+ * @phaseable: a #CdnPhaseable.
+ * @phase: the state.
+ *
+ * Add a state in which @phaseable is active.
+ *
+ **/
 void
 cdn_phaseable_add_phase (CdnPhaseable *phaseable,
                          gchar const  *phase)
@@ -123,6 +202,14 @@ cdn_phaseable_add_phase (CdnPhaseable *phaseable,
 	g_hash_table_unref (table);
 }
 
+/**
+ * cdn_phaseable_remove_phase:
+ * @phaseable: a #CdnPhaseable.
+ * @phase: a state.
+ *
+ * Remove a state in which @phaseable was active.
+ *
+ **/
 void
 cdn_phaseable_remove_phase (CdnPhaseable *phaseable,
                             gchar const  *phase)
@@ -166,6 +253,14 @@ cdn_phaseable_get_phase_table (CdnPhaseable *phaseable)
 	return CDN_PHASEABLE_GET_INTERFACE (phaseable)->get_phase_table (phaseable);
 }
 
+/**
+ * cdn_phaseable_set_phase_table:
+ * @phaseable: a #CdnPhaseable.
+ * @table: a #GHashTable.
+ *
+ * Set the hash table used to store in which states the phaseable is active.
+ *
+ **/
 void
 cdn_phaseable_set_phase_table (CdnPhaseable *phaseable,
                                GHashTable   *table)
@@ -186,6 +281,14 @@ copy_phase (gchar const  *key,
 	                     GINT_TO_POINTER (1));
 }
 
+/**
+ * cdn_phaseable_copy_to:
+ * @phaseable: a #CdnPhaseable.
+ * @dest: a #CdnPhaseable.
+ *
+ * Copy the states in which @phaseable is active to @dest.
+ *
+ **/
 void
 cdn_phaseable_copy_to (CdnPhaseable *phaseable,
                        CdnPhaseable *dest)
@@ -230,7 +333,7 @@ phaseable_foreach (gchar const *key,
  * @func: (scope call): A #CdnPhaseableForeachFunc
  * @userdata: The user data for @func
  *
- * Calls @func for each phase.
+ * Calls @func for each state.
  *
  **/
 void
@@ -256,4 +359,44 @@ cdn_phaseable_foreach (CdnPhaseable            *phaseable,
 		                      (GHFunc)phaseable_foreach,
 		                      &info);
 	}
+}
+
+static void
+phaseable_foreach_add (gchar const *key,
+                       gpointer     value,
+                       GPtrArray   *ptr)
+{
+	g_ptr_array_add (ptr, g_strdup (key));
+}
+
+/**
+ * cdn_phaseable_get_phases:
+ * @phaseable: a #CdnPhaseable.
+ *
+ * Get the list of states in which @phaseable is active. The returned list
+ * should be freed with #g_strfreev.
+ *
+ * Returns: (transfer full): %NULL terminated list of phases. Free the return
+ *                           value with #g_strfreev when done.
+ *
+ **/
+gchar **
+cdn_phaseable_get_phases (CdnPhaseable *phaseable)
+{
+	GPtrArray *ret;
+
+	ret = g_ptr_array_new ();
+
+	GHashTable *table;
+	table = cdn_phaseable_get_phase_table (phaseable);
+
+	if (table)
+	{
+		g_hash_table_foreach (table,
+		                      (GHFunc)phaseable_foreach_add,
+		                      ret);
+	}
+
+	g_ptr_array_add (ret, NULL);
+	return (gchar **)g_ptr_array_free (ret, FALSE);
 }

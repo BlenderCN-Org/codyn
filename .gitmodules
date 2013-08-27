@@ -1,0 +1,3 @@
+[submodule "osx/brew"]
+	path = osx/brew
+	url = https://github.com/mxcl/homebrew.git

@@ -40,6 +40,15 @@ typedef struct _CdnOperatorDt		CdnOperatorDt;
 typedef struct _CdnOperatorDtClass	CdnOperatorDtClass;
 typedef struct _CdnOperatorDtPrivate	CdnOperatorDtPrivate;
 
+/**
+ * CdnOperatorDt:
+ *
+ * Math operator for dt evaluation of an expression.
+ *
+ * The #CdnOperatorDt is a special operator that can be used in
+ * mathematical expressions ('delay'). When evaluated, it will return the
+ * dt value of its argument (which can be an arbitrary expression).
+ */
 struct _CdnOperatorDt
 {
 	/*< private >*/

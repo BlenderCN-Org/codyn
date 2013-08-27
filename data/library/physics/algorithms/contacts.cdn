@@ -1,0 +1,34 @@
+node | "@bodies" . has-template(physics.contacts.soft)
+{
+    event "air" to "ground" when "min(pN) < 0" within 0.001
+    {
+        contactLocation = "csum((pN < 0) .* p) / (max(1, sum(pN < 0)))"
+        contactJacobian = "Spatial.Translation(p) * J0"
+        contactVelocity = "contactJacobian ∙ model.dq"
+
+        invH = "inv(dynamics.H)"
+        contactJacobianT = "transpose(contactJacobian)"
+
+        # The operational space inertia: Λ = (J H⁻¹ Jᵀ)⁻¹
+        operationalSpaceInertia = "pinv(contactJacobian ∙ invH ∙ contactJacobianT)"
+
+        # The inertia weighted jacobian pseudo inverse: J̄ = H⁻¹ Jᵀ Λ
+        inertiaWeightedJacobianPseudoInverse = "invH ∙ contactJacobianᵀ ∙ operationalSpaceInertia"
+
+        # Velocity difference in operational space
+        dv = "-(1 + coefficientOfRestitution) ∙ contactVelocity"
+
+        # The system output velocity after impulse: q̇⁺ = H⁻¹ Jᵀ F + q̇⁻
+        dqAfterImpulse = "inertiaWeightedJacobianPseudoInverse ∙ dv + model.dq"
+
+        set active = "1"
+        set contactPoint = "p"
+
+        set   recurse(parent)
+            | has-template(physics.system)
+            | first .
+                "@bodies".dq = "dqAfterImpulse[[{@bodydofex[$(@@1[!] + 1)]||@0\, @1}]]"
+    }
+}
+
+# vi:ts=4:et

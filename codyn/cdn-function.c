@@ -29,27 +29,6 @@
 
 #include <string.h>
 
-/**
- * SECTION:cdn-function
- * @short_description: Custom user defined function
- *
- * It is possible to define custom user functions in the network which can
- * then be used from any expression. This class provides the basic
- * user function functionality. User defined functions can reference global
- * constants as well as use other user defined functions in their expressions.
- *
- * The #CdnFunction class can be subclassed to provide more specific types
- * of functions. One such example is the #CdnFunctionPolynomial class which
- * can be used to define and evaluate piecewise polynomials.
- *
- * <refsect2 id="CdnFunction-COPY">
- * <title>CdnFunction Copy Semantics</title>
- * When a function is copied with #cdn_object_copy, the function expression
- * and all the arguments are copied as well.
- * </refsect2>
- *
- */
-
 #define CDN_FUNCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_FUNCTION, CdnFunctionPrivate))
 
 /* Properties */
@@ -76,6 +55,8 @@ struct _CdnFunctionPrivate
 	GList *arguments;
 	GHashTable *arguments_hash;
 	GSList *helper_vars;
+	GSList *dependencies;
+	CdnFunction *original;
 
 	guint n_arguments;
 	guint n_implicit;
@@ -122,6 +103,22 @@ on_dimension_cache_removed (CdnFunction *function,
 		                where_the_object_was);
 }
 
+static CdnCompileContext *
+cdn_function_get_compile_context_impl (CdnObject         *object,
+                                       CdnCompileContext *context)
+{
+	CdnFunction *f;
+
+	f = CDN_FUNCTION (object);
+
+	if (f->priv->original && !cdn_object_get_parent (object))
+	{
+		context = cdn_object_get_compile_context (CDN_OBJECT (f->priv->original), context);
+	}
+
+	return CDN_OBJECT_CLASS (cdn_function_parent_class)->get_compile_context (object, context);
+}
+
 static void
 cdn_function_finalize (GObject *object)
 {
@@ -131,6 +128,8 @@ cdn_function_finalize (GObject *object)
 	{
 		g_object_unref (self->priv->expression);
 	}
+
+	g_slist_free (self->priv->dependencies);
 
 	g_slist_free (self->priv->dimension_cache);
 
@@ -146,6 +145,68 @@ cdn_function_finalize (GObject *object)
 	cdn_stack_manipulation_destroy (&self->priv->smanip);
 
 	G_OBJECT_CLASS (cdn_function_parent_class)->finalize (object);
+}
+
+static void
+extract_dependencies (CdnFunction *function)
+{
+	GSList const *deps;
+
+	g_slist_free (function->priv->dependencies);
+	function->priv->dependencies = NULL;
+
+	if (!function->priv->expression)
+	{
+		return;
+	}
+
+	function->priv->dependencies = g_slist_prepend (function->priv->dependencies,
+	                                                function->priv->expression);
+
+	// Ok, then we need to get the deps of this expression, but remove
+	// all the deps which are function arguments
+	deps = cdn_expression_get_dependencies (function->priv->expression);
+
+	while (deps)
+	{
+		GList const *args;
+		gboolean cp;
+
+		cp = TRUE;
+
+		args = cdn_function_get_arguments (function);
+
+		while (args)
+		{
+			CdnVariable *v;
+
+			v = _cdn_function_argument_get_variable (args->data);
+			args = g_list_next (args);
+
+			if (!v)
+			{
+				continue;
+			}
+
+			if (cdn_variable_get_expression (v) == deps->data)
+			{
+				cp = FALSE;
+				break;
+			}
+		}
+
+		if (cp)
+		{
+			function->priv->dependencies =
+				g_slist_prepend (function->priv->dependencies,
+				                 deps->data);
+		}
+
+		deps = g_slist_next (deps);
+	}
+
+	function->priv->dependencies =
+		g_slist_reverse (function->priv->dependencies);
 }
 
 static void
@@ -181,6 +242,7 @@ cdn_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 				                              FALSE);
 			}
 
+			extract_dependencies (self);
 			cdn_object_taint (CDN_OBJECT (self));
 		}
 		break;
@@ -482,6 +544,7 @@ cdn_function_compile_impl (CdnObject         *object,
 		                                                            context,
 		                                                            error))
 		{
+			cdn_compile_context_restore (context);
 			g_object_unref (context);
 			return FALSE;
 		}
@@ -553,6 +616,8 @@ cdn_function_compile_impl (CdnObject         *object,
 	g_object_unref (context);
 
 	extract_helper_vars (self);
+	extract_dependencies (self);
+
 	mark_unused_arguments (self);
 	update_stack_manipulation (self);
 
@@ -571,10 +636,8 @@ cdn_function_evaluate_impl (CdnFunction *function,
 {
 	if (function->priv->expression)
 	{
-		CdnDimension dim;
-		gint num;
-		gint i;
 		GSList *item;
+		CdnMatrix const *ret;
 
 		g_slist_foreach ((GSList *)cdn_expression_get_rand_instructions (function->priv->expression),
 		                 (GFunc)cdn_instruction_rand_next,
@@ -593,15 +656,8 @@ cdn_function_evaluate_impl (CdnFunction *function,
 			                 NULL);
 		}
 
-		gdouble const *ret = cdn_expression_evaluate_values (function->priv->expression,
-		                                                     &dim);
-
-		num = cdn_dimension_size (&dim);
-
-		for (i = 0; i < num; ++i)
-		{
-			cdn_stack_push (stack, ret[i]);
-		}
+		ret = cdn_expression_evaluate_values (function->priv->expression);
+		cdn_stack_pushn (stack, cdn_matrix_get (ret), cdn_matrix_size (ret));
 	}
 	else
 	{
@@ -629,20 +685,18 @@ cdn_function_execute_impl (CdnFunction *function,
 	{
 		CdnFunctionArgument *argument;
 		CdnVariable *v;
-		CdnDimension dim;
-		gdouble *vals;
+		CdnMatrix tmp;
+		CdnDimension const *dim;
 
 		argument = item->data;
 
 		v = _cdn_function_argument_get_variable (argument);
+		dim = &function->priv->smanip.pop.args[i].dimension;
 
-		dim = function->priv->smanip.pop.args[i].dimension;
-		vals = cdn_stack_popn (stack, cdn_dimension_size (&dim));
+		tmp = cdn_matrix_init (cdn_stack_popn (stack, cdn_dimension_size (dim)),
+		                       dim);
 
-		cdn_variable_set_values (v,
-		                         vals,
-		                         &dim);
-
+		cdn_variable_set_values (v, &tmp);
 		item = g_list_previous (item);
 	}
 
@@ -1321,6 +1375,7 @@ cdn_function_for_dimension_impl (CdnFunction        *function,
 		// New cache!
 		other = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (function)));
 		other->priv->has_dimension = TRUE;
+		other->priv->original = function;
 
 		set_argdim (other, argdim);
 
@@ -1672,6 +1727,8 @@ cdn_function_get_derivative_impl (CdnFunction                       *function,
 
 	cdn_expression_tree_iter_free (derived);
 
+	mark_unused_arguments (ret);
+
 	return ret;
 }
 
@@ -1694,6 +1751,7 @@ cdn_function_class_init (CdnFunctionClass *klass)
 	cdn_object_class->apply_template = cdn_function_apply_template_impl;
 	cdn_object_class->unapply_template = cdn_function_unapply_template_impl;
 	cdn_object_class->equal = cdn_function_equal_impl;
+	cdn_object_class->get_compile_context = cdn_function_get_compile_context_impl;
 
 	klass->execute = cdn_function_execute_impl;
 	klass->evaluate = cdn_function_evaluate_impl;
@@ -2126,13 +2184,9 @@ cdn_function_get_n_optional (CdnFunction *function)
 
 		arg = item->data;
 
-		if (cdn_function_argument_get_default_value (arg))
+		if (cdn_function_argument_get_optional (arg))
 		{
 			++ret;
-		}
-		else
-		{
-			ret = 0;
 		}
 	}
 
@@ -2232,4 +2286,54 @@ _cdn_function_get_rand_arguments (CdnFunction *function)
 
 	CdnFunctionRandPrivate *priv = (CdnFunctionRandPrivate *)function->priv;
 	return priv->rand_arguments;
+}
+
+/**
+ * cdn_function_get_dependencies:
+ * @function: a #CdnFunction.
+ *
+ * Get the function expression dependencies.
+ *
+ * Returns: (element-type CdnExpression) (transfer none): a #GSList of #CdnExpression.
+ *
+ **/
+GSList const *
+cdn_function_get_dependencies (CdnFunction *function)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
+
+	return function->priv->dependencies;
+}
+
+/**
+ * cdn_function_is_pure:
+ * @function: a #CdnFunction
+ *
+ * Get whether the function is pure. Pure functions only depend on their
+ * arguments and do not reference any other external variables.
+ *
+ * Returns: %TRUE if the function is pure, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_function_is_pure (CdnFunction *function)
+{
+	GSList *vars;
+
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), TRUE);
+
+	vars = cdn_expression_get_variable_dependencies (function->priv->expression);
+
+	while (vars)
+	{
+		if (!(cdn_variable_get_flags (vars->data) & CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT))
+		{
+			g_slist_free (vars);
+			return FALSE;
+		}
+
+		vars = g_slist_delete_link (vars, vars);
+	}
+
+	return TRUE;
 }

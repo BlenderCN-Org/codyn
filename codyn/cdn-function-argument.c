@@ -25,15 +25,6 @@
 
 #include <string.h>
 
-/**
- * SECTION:cdn-function-argument
- * @short_description: An argument to a custom defined function
- *
- * A #CdnFunctionArgument contains information on an argument (or parameter)
- * to a custom defined function.
- *
- */
-
 #define CDN_FUNCTION_ARGUMENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_FUNCTION_ARGUMENT, CdnFunctionArgumentPrivate))
 
 /* signals */
@@ -543,7 +534,7 @@ cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
 
 	argument->priv->dimension = *dimension;
 
-	if (argument->priv->variable && argument->priv->isexplicit)
+	if (argument->priv->variable)
 	{
 		gchar *zeros;
 		CdnExpression *expr;

@@ -110,7 +110,8 @@ void                   cdn_parser_context_get_error_location   (CdnParserContext
                                                                 gint                       *lstart,
                                                                 gint                       *lend,
                                                                 gint                       *cstart,
-                                                                gint                       *cend);
+                                                                gint                       *cend,
+                                                                GFile                     **file);
 
 gchar                 *cdn_parser_context_get_error_lines      (CdnParserContext           *context);
 
@@ -139,7 +140,8 @@ void                   cdn_parser_context_add_variable         (CdnParserContext
                                                                 CdnVariableFlags            add_flags,
                                                                 CdnVariableFlags            remove_flags,
                                                                 gboolean                    assign_optional,
-                                                                CdnEmbeddedString          *constraint);
+                                                                CdnEmbeddedString          *constraint,
+                                                                CdnEmbeddedString          *state);
 
 void                   cdn_parser_context_set_variable         (CdnParserContext           *context,
                                                                 GPtrArray                  *selectorptr,
@@ -151,7 +153,7 @@ void                   cdn_parser_context_add_action           (CdnParserContext
                                                                 GPtrArray                  *target,
                                                                 GPtrArray                  *expression,
                                                                 CdnEmbeddedString          *phases,
-                                                                gboolean                    integrated);
+                                                                gboolean                    added);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
@@ -184,6 +186,9 @@ void                   cdn_parser_context_push_node            (CdnParserContext
                                                                 CdnEmbeddedString          *id,
                                                                 GSList                     *templates);
 
+void                   cdn_parser_context_set_node_state       (CdnParserContext           *context,
+                                                                GPtrArray                  *states);
+
 void                   cdn_parser_context_push_edge            (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *id,
                                                                 GSList                     *templates,
@@ -215,8 +220,8 @@ void                   cdn_parser_context_push_io_type         (CdnParserContext
                                                                 CdnEmbeddedString *type);
 
 void                   cdn_parser_context_set_io_setting       (CdnParserContext  *context,
-                                                                CdnEmbeddedString *name,
-                                                                CdnEmbeddedString *value);
+                                                                GPtrArray         *nameptr,
+                                                                GPtrArray         *valueptr);
 
 void                   cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
                                                                   CdnSelector       *selector,
@@ -249,8 +254,8 @@ gssize                 cdn_parser_context_read                 (CdnParserContext
 gpointer               cdn_parser_context_get_scanner          (CdnParserContext           *context);
 
 void                   cdn_parser_context_define               (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *name,
-                                                                GObject                    *value,
+                                                                GPtrArray                  *nameptr,
+                                                                GPtrArray                  *valueptr,
                                                                 gboolean                    optional,
                                                                 gboolean                    fromenv);
 
@@ -334,10 +339,6 @@ void                   cdn_parser_context_apply_template        (CdnParserContex
 void                   cdn_parser_context_unapply_template      (CdnParserContext  *context,
                                                                  CdnSelector       *templates,
                                                                  CdnSelector       *targets);
-
-void                   cdn_parser_context_remove_record         (CdnParserContext  *context,
-                                                                 gint               len,
-                                                                 gint               offset);
 
 gboolean               cdn_parser_context_get_first_eof         (CdnParserContext  *context);
 void                   cdn_parser_context_set_first_eof         (CdnParserContext  *context,

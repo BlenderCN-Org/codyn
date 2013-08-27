@@ -1,34 +1,47 @@
 defines
 {
-    # Find all nodes with the physics.body template applied
-    bodies = has-template("physics" . "body")
+    rootbodies = has-template(physics.body) | not(inputs | has-template(physics.joint))
+    bodies = | @rootbodies | recurse(outputs | has-template(physics.joint) | output) | name
 
     # Calculate a list of dof for each body
-    bodydof = | @bodies
+    bodydof = | @bodies | sort
               | if (applied-templates | recurse(applied-templates) | /dof([1-6])/ | last)
               | append-context("@1")
 
     # Calculate a cumulative sum of the dofs (gives index for each body when
-    # dofs are collapsed)
+    # dofs are expanded). i.e. @bodydofidx[<bodyidx>] will give the expanded
+    # index of that particular body
     bodydofidx = "{@bodydof|@cnt[+@0]}"
+
+    bodydofex = "{@bodydofidx|@1:+$(@bodydof[$(@1[!] + 1)] - 1)}"
 
     # The total dofs in the system
     numdof = "@{@bodydof||$(@0 + @1)}"
 
-    # List of comma separated indices for each body the chain of body indices
-    # up to the root
-    bodychain = | @bodies
+    # bodychain will contain for each body, a comma separated list of indices
+    # from (and including) the body upwards to the root of the kinematic tree.
+    bodychain = | @bodies | sort
                 | if(recurse(inputs | has-template(physics.joint) | input) |
                      name |
                      append-context("@bodies[!@0]") |
                      reduce(last, "@0,@@@0"))
 
-    # Construct list of parent indices for each body
-    parents = | @bodies | if (inputs | has-template(physics.joint) | input | name | append-context("@bodies[!@0]"),
-                              append-context("-1"))
+    # parents will contain for each body its direct parent index. Note that here
+    # the fixed world reference frame is indicated by -1 (i.e. the parent of the
+    # root of the kinematic tree is set to -1).
+    parents = | @bodies | sort
+              | if (inputs | has-template(physics.joint) | input | name | append-context("@bodies[!@0]"),
+                append-context("-1"))
 
-    # Construct list of parent indices for each dof
-    parentsdof = "{@bodies|@bodydof[@0[!]]*@parents[@0[!]]}"
+    lastbodydof = "{@bodies|$(@bodydofidx[$(@0[!] + 1)] + @bodydof[$(@0[!] + 1)] - 1)}"
+
+    firstparent = | @bodies | sort
+                    | if (inputs | has-template(physics.joint) | input | name | append-context("@lastbodydof[$(@bodies[!@0] + 1)]"),
+                      append-context("-1"))
+
+    # expand the parents list so that a parent is defined for each dof
+    parentsdof = "{@bodies|@firstparent[$(@0[!] + 1)]\,@bodydofidx[$(@0[!] + 1)]:+$(@bodydof[$(@0[!] + 1)] - 2)}"
+    parentsdof = "{@parentsdof||@0\,@1}"
 }
 
 # vi:ex:ts=4:et

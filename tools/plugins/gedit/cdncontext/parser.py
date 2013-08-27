@@ -19,8 +19,9 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330,
 #  Boston, MA 02111-1307, USA.
 
-import threading, os, json, subprocess, tempfile, signal, fcntl, sys
-import utils
+import os, json, subprocess, tempfile, signal, fcntl, sys
+
+from gi.repository import GObject
 
 class Expansion:
     class Item:
@@ -59,13 +60,19 @@ class Context:
         self.selections = [Selection(x) for x in context['selections']]
 
 class Error:
-    def __init__(self, error):
+    def __init__(self, error, filename, real_filename):
         self.message = error['message']
         self.line = error['line']
         self.line_start = error['line_start']
         self.line_end = error['line_end']
         self.column_start = error['column_start']
         self.column_end = error['column_end']
+
+        b = os.path.basename(filename)
+        self.message = self.message.replace(b, real_filename)
+
+    def __str__(self):
+        return '{0}:{1}: {2}'.format(self.line, self.column_start, self.message)
 
 class Parser:
     def __init__(self, doc, finishedcb):
@@ -77,6 +84,8 @@ class Parser:
         self.filename = None
         self.istmp = False
         self.pipe = None
+        self.cancelled = False
+        self.idle_finished_id = None
 
         if doc.get_modified() or doc.is_untitled():
             loc = doc.get_location()
@@ -92,7 +101,12 @@ class Parser:
                 f = fp.name
 
             bounds = doc.get_bounds()
-            fp.write(doc.get_text(bounds[0], bounds[1], True))
+            t = doc.get_text(bounds[0], bounds[1], True)
+            fp.write(t)
+
+            if len(t) == 0 or t[-1] != '\n':
+                fp.write('\n')
+
             fp.close()
 
             self.filename = os.path.realpath(f)
@@ -100,21 +114,38 @@ class Parser:
         else:
             self.filename = doc.get_location().get_path()
 
+        if not doc.is_untitled():
+            self.real_filename = doc.get_location().get_basename()
+        else:
+            self.real_filename = '(current document)'
+
     def cancel(self):
+        if self.cancelled:
+            return
+
+        if not self.idle_finished_id is None:
+            GObject.source_remove(self.idle_finished_id)
+            self.idle_finished_id = None
+
         self.finishedcb = None
+        self.cancelled = True
 
         if self.pipe:
-            os.kill(self.pipe.pid, signal.SIGTERM)
+            try:
+                os.kill(self.pipe.pid, signal.SIGTERM)
+            except:
+                pass
+
             self.pipe = None
 
-    def run(self):
+    def run(self, line = 1, column = 1):
         dirname = os.path.dirname(self.filename)
         filename = os.path.basename(self.filename)
 
         self.ret = None
 
         try:
-            self.pipe = subprocess.Popen(['cdn-context', filename],
+            self.pipe = subprocess.Popen(['cdn-context', filename, '-l', str(line), '-c', str(column)],
                                          cwd=dirname,
                                          stdout=subprocess.PIPE)
         except Exception as (e):
@@ -127,14 +158,20 @@ class Parser:
         flags = fcntl.fcntl(self.pipe.stdout.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK
         fcntl.fcntl(self.pipe.stdout.fileno(), fcntl.F_SETFL, flags)
 
-        utils.io_add_watch(self.pipe.stdout, self.on_output)
-        utils.child_watch_add(self.pipe.pid, self.on_parser_end)
+        GObject.io_add_watch(self.pipe.stdout, GObject.IO_IN | GObject.IO_HUP, self.on_output)
+        GObject.child_watch_add(self.pipe.pid, self.on_parser_end)
 
     def on_parser_end(self, pid, error_code):
-        try:
-            self.ret = json.loads(self.read_buffer)
-        except Exception as (e):
-            sys.stderr.write('Failed to load json: %s\n' % (e,))
+        self.idle_finished_id = GObject.idle_add(self.idle_finished)
+
+    def idle_finished(self):
+        if not self.cancelled:
+            try:
+                self.ret = json.loads(self.read_buffer)
+            except Exception as (e):
+                sys.stderr.write('Failed to load json: %s\n' % (e,))
+                self.ret = None
+        else:
             self.ret = None
 
         self.pipe = None
@@ -142,9 +179,9 @@ class Parser:
 
         if self.ret and self.ret['status'] == 'ok':
             # Filter data so we just keep our own
-            self.ret['data'] = map(lambda x: Context(x), filter(lambda x: x['filename'] == self.filename, self.ret['data']))
+            self.ret['data'] = map(lambda x: Context(x), filter(lambda x: x['filename'] == os.path.realpath(self.filename), self.ret['data']))
         elif self.ret and self.ret['status'] == 'error':
-            self.ret['data'] = Error(self.ret['data'])
+            self.ret['data'] = Error(self.ret['data'], self.filename, self.real_filename)
 
         if self.istmp:
             try:
@@ -153,16 +190,15 @@ class Parser:
                 pass
 
         if self.finishedcb:
-            utils.idle_add(self.idle_finished)
-
-    def idle_finished(self):
-        if self.finishedcb:
             self.finishedcb(self.ret)
 
         return False
 
     def on_output(self, source, condition):
-        if utils.io_is_in(condition):
+        if self.cancelled:
+            return False
+
+        if condition & (GObject.IO_IN | GObject.IO_PRI):
             line = source.read()
 
             if len(line) > 0:
@@ -172,7 +208,7 @@ class Parser:
                     line = unicode(line, locale.getdefaultlocale()[1], 'replace')
 
                 self.read_buffer += line
-        elif utils.io_is_close(condition):
+        elif condition & ~(GObject.IO_IN | GObject.IO_PRI):
             return False
 
         return True

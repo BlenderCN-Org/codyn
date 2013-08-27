@@ -177,7 +177,7 @@ simplify_network (CdnNetwork *network)
 		v = l->data;
 
 		if ((cdn_variable_get_flags (v) & (CDN_VARIABLE_FLAG_OUT | CDN_VARIABLE_FLAG_INTEGRATED)) ||
-		    cdn_variable_get_actions (v))
+		    cdn_variable_has_actions (v))
 		{
 			CdnExpression *e;
 
@@ -291,6 +291,15 @@ simplify_network (CdnNetwork *network)
 	g_hash_table_destroy (processed);
 }
 
+/**
+ * cdn_network_simplify:
+ * @network a #CdnNetwork.
+ *
+ * This function is an experimental feature which tries to symbolically
+ * simplify each expression in the network. This can potentially improve the
+ * simulation time. Note that at this time, this feature has not been tested
+ * well, and most likely will cause your network to behave incorrectly.
+ */
 void
 cdn_network_simplify (CdnNetwork *network)
 {

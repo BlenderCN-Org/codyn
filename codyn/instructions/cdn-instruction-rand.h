@@ -43,6 +43,8 @@ void            cdn_instruction_rand_set_seed (CdnInstructionRand *self,
 
 guint           cdn_instruction_rand_get_seed (CdnInstructionRand *self);
 
+void            cdn_instruction_rand_reset (CdnInstructionRand *self);
+
 G_END_DECLS
 
 #endif /* __CDN_INSTRUCTION_RAND_H__ */

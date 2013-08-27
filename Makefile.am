@@ -1,4 +1,4 @@
-SUBDIRS = codyn data tests m4 win32 tools io
+SUBDIRS = codyn data tests m4 win32 tools io blender
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -46,7 +46,7 @@ dist-hook:
 		echo Creating ChangeLog && \
 		(GIT_DIR=$(top_srcdir)/.git \
 		  ./missing --run git log $(CHANGELOG_START)^^.. --stat -M -C --name-status  --date=short --no-color) | \
-		  fmt --split-only > ChangeLog.tmp \
+		  fmt > ChangeLog.tmp \
 		&& mv -f ChangeLog.tmp $(top_distdir)/ChangeLog \
 		|| ( rm -f ChangeLog.tmp ; \
 		  echo Failed to generate ChangeLog >&2 ); \

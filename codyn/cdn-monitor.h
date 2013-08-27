@@ -42,6 +42,17 @@ typedef struct _CdnMonitor        CdnMonitor;
 typedef struct _CdnMonitorClass   CdnMonitorClass;
 typedef struct _CdnMonitorPrivate CdnMonitorPrivate;
 
+/**
+ * CdnMonitor:
+ *
+ * Property value monitor.
+ *
+ * A #CdnMonitor can be used to monitor the value of a certain #CdnVariable
+ * while simulating. The monitor will collect the value of the property at
+ * each simulation step and provides methods to access these values.
+ * Particularly useful is #cdn_monitor_get_data_resampled which retrieves the
+ * data resampled at specific times.
+ */
 struct _CdnMonitor
 {
 	/*< private >*/

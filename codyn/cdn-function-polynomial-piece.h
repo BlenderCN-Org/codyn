@@ -39,8 +39,18 @@ typedef struct _CdnFunctionPolynomialPiece		CdnFunctionPolynomialPiece;
 typedef struct _CdnFunctionPolynomialPieceClass		CdnFunctionPolynomialPieceClass;
 typedef struct _CdnFunctionPolynomialPiecePrivate	CdnFunctionPolynomialPiecePrivate;
 
+/**
+ * CdnFunctionPolynomialPiece:
+ *
+ * Piecewise polynomial piece.
+ *
+ * This class provides a single piece of a piecewise polynomial function. See
+ * #CdnFunctionPolynomial for more information on the support for piecewise
+ * polynomial functions.
+ */
 struct _CdnFunctionPolynomialPiece
 {
+	/*< private >*/
 	GInitiallyUnowned parent;
 
 	CdnFunctionPolynomialPiecePrivate *priv;
@@ -48,6 +58,7 @@ struct _CdnFunctionPolynomialPiece
 
 struct _CdnFunctionPolynomialPieceClass
 {
+	/*< private >*/
 	GInitiallyUnownedClass parent_class;
 };
 

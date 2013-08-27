@@ -40,25 +40,52 @@
 #include "cdn-io-method.h"
 #include "instructions/cdn-instruction-rand.h"
 
+#define CDN_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CDN_TYPE_NETWORK, CdnNetworkPrivate))
+
 /**
- * SECTION:cdn-network
- * @short_description: The main CDN network object
+ * CdnNetwork:
  *
- * The cdn network is the main component of the codyn library. The network
- * consists of #CdnObject and #CdnEdge objects which combined make
- * up the network.
+ * The main codyn network object.
  *
- * The easiest way of using the library is to write the network using the
- * XML representation (see #xml-specification). You then create the network
- * from file using #cdn_network_new_from_file. To simulate the network, use
- * #cdn_network_run or for running single steps #cdn_network_step.
+ * The #CdnNetwork class is a #CdnNode subclass representing the top-level
+ * node in which all other nodes are defined. Variables defined on the network
+ * are therefore automatically available to all the nodes in your network and
+ * can be considered as global variables. Please see #CdnNode for useful API
+ * for finding child nodes, and adding/removing nodes from the network.
  *
- * For more information, see
- * <link linkend='making-a-network'>Making a network</link>.
+ * A #CdnNetwork can be loaded from either an XML format or the newer Codyn
+ * language format. Please see #cdn_network_new_from_file,
+ * #cdn_network_new_from_path, #cdn_network_new_from_stream and
+ * #cdn_network_new_from_string for more information.
+ *
+ * Networks are mainly composed of two types of objects, nodes and edges. A
+ * node (see #CdnNode) is a container of variables which can be either state
+ * variables or normal variables. Edges (see #CdnEdge) on the other hand
+ * represent connections between two nodes. Conceptually, they define the
+ * relationship between two nodes in terms of how variables in one node
+ * influence variables in another node. A typical example of the use of an
+ * edge is to implement coupling between two dynamical subsystems.
+ *
+ * To simulate a network, you can either use #cdn_network_run, which
+ * simulates the network for a given amount of time in one time.
+ * #cdn_network_run blocks until the simulation is done. Alternatively, you
+ * can use #cdn_network_begin, #cdn_network_step and #cdn_network_end to do
+ * the same without blocking. The simulation will use the integrater which can
+ * be set using #cdn_network_set_integrator.
+ *
+ * Templates in a network (useful when loading a network from a file) can be
+ * accessed through a special template node. This node only serves as a
+ * container for the templates and can be accessed from a network using
+ * #cdn_network_get_template_node.
+ *
+ * A network also governs the random number generator that is used to implement
+ * the `rand()` function. You can set the seed that is used for the random
+ * number generator with #cdn_network_set_random_seed. The default random seed
+ * is read from `/dev/urandom` on UNIX like systems. On non-UNIX systems, or when
+ * reading from `/dev/urandom` fails, the initial seed is set to the current
+ * system time (milliseconds since epoch).
  *
  */
-
-#define CDN_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CDN_TYPE_NETWORK, CdnNetworkPrivate))
 
 /* Properties */
 enum
@@ -80,6 +107,7 @@ struct _CdnNetworkPrivate
 
 	GHashTable *imports;
 	GSList *linked_libraries;
+	CdnParserContext *parser_context;
 
 	guint seed;
 };
@@ -179,6 +207,11 @@ cdn_network_finalize (GObject *object)
 	                      network);
 
 	g_hash_table_destroy (network->priv->imports);
+
+	if (network->priv->parser_context)
+	{
+		g_object_unref (network->priv->parser_context);
+	}
 
 	G_OBJECT_CLASS (cdn_network_parent_class)->finalize (object);
 }
@@ -446,7 +479,7 @@ reset_rands (CdnNetwork *network)
 
 	while (rands)
 	{
-		cdn_instruction_rand_next (rands->data);
+		cdn_instruction_rand_reset (rands->data);
 		rands = g_slist_next (rands);
 	}
 }
@@ -508,6 +541,12 @@ cdn_network_reset_impl (CdnObject *object)
 
 	network = CDN_NETWORK (object);
 
+	// Reset the integrator
+	if (network->priv->integrator)
+	{
+		cdn_object_reset (CDN_OBJECT (network->priv->integrator));
+	}
+
 	// Reset the object
 	CDN_OBJECT_CLASS (cdn_network_parent_class)->reset (object);
 
@@ -554,6 +593,11 @@ cdn_network_class_init (CdnNetworkClass *klass)
 		              1,
 		              CDN_TYPE_COMPILE_ERROR);
 
+	/**
+	 * CdnNetwork:integrator:
+	 *
+	 * The integrator used to simulate the network.
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_INTEGRATOR,
 	                                 g_param_spec_object ("integrator",
@@ -564,7 +608,11 @@ cdn_network_class_init (CdnNetworkClass *klass)
 
 	g_type_class_add_private (object_class, sizeof (CdnNetworkPrivate));
 
-
+	/**
+	 * CdnNetwork:file:
+	 *
+	 * The file from which the network was read (may be %NULL).
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_FILE,
 	                                 g_param_spec_object ("file",
@@ -573,7 +621,11 @@ cdn_network_class_init (CdnNetworkClass *klass)
 	                                                      G_TYPE_FILE,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
-
+	/**
+	 * CdnNetwork:filename:
+	 *
+	 * The filename from which the network was read (may be %NULL).
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_FILENAME,
 	                                 g_param_spec_string ("filename",
@@ -657,6 +709,15 @@ cdn_network_init (CdnNetwork *network)
 	                                                NULL);
 }
 
+/**
+ * cdn_network_set_random_seed:
+ * @network: a #CdnNetwork.
+ * @seed: the new seed.
+ *
+ * Set the random seed used to initialize the random number generator. The
+ * network will be reset when calling this function which will reset the random
+ * number generator with the given seed.
+ */
 void
 cdn_network_set_random_seed (CdnNetwork *network,
                              guint       seed)
@@ -667,6 +728,14 @@ cdn_network_set_random_seed (CdnNetwork *network,
 	cdn_object_reset (CDN_OBJECT (network));
 }
 
+/**
+ * cdn_network_get_random_seed:
+ * @network: a #CdnNetwork.
+ *
+ * Get the random seed used to initialize the random number generator.
+ *
+ * Returns: the seed.
+ */
 guint
 cdn_network_get_random_seed (CdnNetwork *network)
 {
@@ -887,21 +956,11 @@ cdn_network_format_from_file (GFile *file)
 	return ret;
 }
 
-/**
- * cdn_network_load_from_stream:
- * @network: A #CdnNetwork
- * @stream: The stream to load
- * @error: A #GError
- *
- * Load a network from a stream
- *
- * Returns: %TRUE if the stream could be loaded, %FALSE otherwise
- *
- **/
-gboolean
-cdn_network_load_from_stream (CdnNetwork    *network,
-                              GInputStream  *stream,
-                              GError       **error)
+static gboolean
+load_from_stream (CdnNetwork    *network,
+                  GInputStream  *stream,
+                  gboolean       clearfirst,
+                  GError       **error)
 {
 	gboolean ret;
 	CdnNetworkFormat fmt;
@@ -910,7 +969,10 @@ cdn_network_load_from_stream (CdnNetwork    *network,
 	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), FALSE);
 
-	cdn_object_clear (CDN_OBJECT (network));
+	if (clearfirst)
+	{
+		cdn_object_clear (CDN_OBJECT (network));
+	}
 
 	if (!(G_IS_SEEKABLE (stream) && g_seekable_can_seek (G_SEEKABLE (stream))) &&
 	    !G_IS_BUFFERED_INPUT_STREAM (stream))
@@ -956,20 +1018,29 @@ cdn_network_load_from_stream (CdnNetwork    *network,
 }
 
 /**
- * cdn_network_load_from_file:
+ * cdn_network_load_from_stream:
  * @network: A #CdnNetwork
- * @file: The file to load
+ * @stream: The stream to load
  * @error: A #GError
  *
- * Load a network from a file
+ * Load a network from a stream
  *
- * Returns: %TRUE if the file could be loaded, %FALSE otherwise
+ * Returns: %TRUE if the stream could be loaded, %FALSE otherwise
  *
  **/
 gboolean
-cdn_network_load_from_file (CdnNetwork  *network,
-                            GFile       *file,
-                            GError     **error)
+cdn_network_load_from_stream (CdnNetwork    *network,
+                              GInputStream  *stream,
+                              GError       **error)
+{
+	return load_from_stream (network, stream, TRUE, error);
+}
+
+static gboolean
+load_from_file (CdnNetwork  *network,
+                GFile       *file,
+                gboolean     clearfirst,
+                GError     **error)
 {
 	gboolean ret;
 	CdnNetworkFormat fmt;
@@ -982,7 +1053,10 @@ cdn_network_load_from_file (CdnNetwork  *network,
 	set_file (network, file);
 	stream = NULL;
 
-	cdn_object_clear (CDN_OBJECT (network));
+	if (clearfirst)
+	{
+		cdn_object_clear (CDN_OBJECT (network));
+	}
 
 	bstream = g_file_read (file, NULL, error);
 
@@ -1024,15 +1098,64 @@ cdn_network_load_from_file (CdnNetwork  *network,
 		ctx = cdn_parser_context_new (network);
 		cdn_parser_context_push_input (ctx, file, stream, FALSE);
 
+		if (network->priv->parser_context != NULL)
+		{
+			g_object_unref (network->priv->parser_context);
+			network->priv->parser_context = NULL;
+		}
+
 		ret = cdn_parser_context_parse (ctx, TRUE, error);
 
-		g_object_unref (ctx);
+		if (ret)
+		{
+			g_object_unref (ctx);
+		}
+		else
+		{
+			network->priv->parser_context = ctx;
+			g_object_set (ctx, "network", NULL, NULL);
+		}
 	}
 
 	if (stream)
 	{
 		g_object_unref (stream);
 	}
+
+	return ret;
+}
+
+/**
+ * cdn_network_load_from_file:
+ * @network: A #CdnNetwork
+ * @file: The file to load
+ * @error: A #GError
+ *
+ * Load a network from a file
+ *
+ * Returns: %TRUE if the file could be loaded, %FALSE otherwise
+ *
+ **/
+gboolean
+cdn_network_load_from_file (CdnNetwork  *network,
+                            GFile       *file,
+                            GError     **error)
+{
+	return load_from_file (network, file, TRUE, error);
+}
+
+static gboolean
+load_from_path (CdnNetwork   *network,
+                const gchar  *path,
+                gboolean      clearfirst,
+                GError      **error)
+{
+	GFile *file;
+	gboolean ret;
+
+	file = g_file_new_for_path (path);
+	ret = load_from_file (network, file, clearfirst, error);
+	g_object_unref (file);
 
 	return ret;
 }
@@ -1056,9 +1179,21 @@ cdn_network_load_from_path (CdnNetwork   *network,
 	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (path != NULL, FALSE);
 
-	GFile *file = g_file_new_for_path (path);
-	gboolean ret = cdn_network_load_from_file (network, file, error);
-	g_object_unref (file);
+	return load_from_path (network, path, TRUE, error);
+}
+
+static gboolean
+load_from_string (CdnNetwork   *network,
+                  const gchar  *s,
+                  gboolean      clearfirst,
+                  GError      **error)
+{
+	GInputStream *stream;
+	gboolean ret;
+
+	stream = g_memory_input_stream_new_from_data (s, -1, NULL);
+	ret = load_from_stream (network, stream, clearfirst, error);
+	g_object_unref (stream);
 
 	return ret;
 }
@@ -1079,19 +1214,10 @@ cdn_network_load_from_string (CdnNetwork   *network,
                               const gchar  *s,
                               GError      **error)
 {
-	GInputStream *stream;
-	gboolean ret;
-
 	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (s != NULL, FALSE);
 
-	cdn_object_clear (CDN_OBJECT (network));
-
-	stream = g_memory_input_stream_new_from_data (s, -1, NULL);
-	ret = cdn_network_load_from_stream (network, stream, error);
-	g_object_unref (stream);
-
-	return ret;
+	return load_from_string (network, s, TRUE, error);
 }
 
 /**
@@ -1311,66 +1437,6 @@ cdn_network_end (CdnNetwork  *network,
 }
 
 /**
- * cdn_network_merge:
- * @network: a #CdnNetwork
- * @other: a #CdnNetwork to merge
- *
- * Merges all the globals, templates and objects from @other into @network.
- *
- **/
-void
-cdn_network_merge (CdnNetwork  *network,
-                   CdnNetwork  *other)
-{
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (CDN_IS_NETWORK (other));
-
-	GSList *props = cdn_object_get_variables (CDN_OBJECT (other));
-	GSList *item;
-
-	for (item = props; item; item = g_slist_next (item))
-	{
-		CdnVariable *property = item->data;
-
-		if (!cdn_object_get_variable (CDN_OBJECT (network),
-		                              cdn_variable_get_name (property)))
-		{
-			cdn_object_add_variable (CDN_OBJECT (network),
-			                         cdn_variable_copy (property),
-			                         NULL);
-		}
-	}
-
-	g_slist_free (props);
-
-	/* Copy over templates */
-	CdnNode *template_group = cdn_network_get_template_node (other);
-	GSList const *templates = cdn_node_get_children (template_group);
-
-	while (templates)
-	{
-		CdnObject *template = templates->data;
-
-		if (!cdn_node_get_child (network->priv->template_group,
-		                          cdn_object_get_id (template)))
-		{
-			cdn_node_add (network->priv->template_group,
-			               template,
-			               NULL);
-		}
-	}
-
-	/* Copy over children */
-	GSList const *children = cdn_node_get_children (CDN_NODE (other));
-
-	while (children)
-	{
-		cdn_node_add (CDN_NODE (network), children->data, NULL);
-		children = g_slist_next (children);
-	}
-}
-
-/**
  * cdn_network_merge_from_file:
  * @network: a #CdnNetwork
  * @file: network file
@@ -1380,23 +1446,15 @@ cdn_network_merge (CdnNetwork  *network,
  * similar to creating a network from a file and merging it with @network.
  *
  **/
-void
+gboolean
 cdn_network_merge_from_file (CdnNetwork  *network,
                              GFile       *file,
                              GError     **error)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (G_IS_FILE (file));
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (G_IS_FILE (file), FALSE);
 
-	CdnNetwork *other;
-
-	other = cdn_network_new_from_file (file, error);
-
-	if (other != NULL)
-	{
-		cdn_network_merge (network, other);
-		g_object_unref (other);
-	}
+	return load_from_file (network, file, FALSE, error);
 }
 
 /**
@@ -1409,24 +1467,38 @@ cdn_network_merge_from_file (CdnNetwork  *network,
  * similar to creating a network from a file and merging it with @network.
  *
  **/
-void
+gboolean
 cdn_network_merge_from_path (CdnNetwork  *network,
                              const gchar *path,
                              GError     **error)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (path != NULL);
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (path != NULL, FALSE);
 
-	CdnNetwork *other;
-
-	other = cdn_network_new_from_path (path, error);
-
-	if (other != NULL)
-	{
-		cdn_network_merge (network, other);
-		g_object_unref (other);
-	}
+	return load_from_path (network, path, FALSE, error);
 }
+
+
+/**
+ * cdn_network_merge_from_stream:
+ * @network: a #CdnNetwork
+ * @stream: network stream
+ * @error: error return value
+ *
+ * Merges the network defined in the stream @stream into @network.
+ *
+ **/
+gboolean
+cdn_network_merge_from_stream (CdnNetwork    *network,
+                             GInputStream  *stream,
+                             GError       **error)
+{
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), FALSE);
+
+	return load_from_stream (network, stream, FALSE, error);
+}
+
 
 /**
  * cdn_network_merge_from_string:
@@ -1438,23 +1510,15 @@ cdn_network_merge_from_path (CdnNetwork  *network,
  * similar to creating a network from xml and merging it with @network.
  *
  **/
-void
+gboolean
 cdn_network_merge_from_string (CdnNetwork   *network,
                                gchar const  *s,
                                GError      **error)
 {
-	CdnNetwork *other;
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (s != NULL, FALSE);
 
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (s != NULL);
-
-	other = cdn_network_new_from_string (s, error);
-
-	if (other != NULL)
-	{
-		cdn_network_merge (network, other);
-		g_object_unref (other);
-	}
+	return load_from_string (network, s, FALSE, error);
 }
 
 /**
@@ -1644,7 +1708,9 @@ cdn_init ()
 {
 	static gboolean inited = FALSE;
 
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
+#endif
 
 #if !GLIB_CHECK_VERSION(2, 31, 0)
 	g_thread_init (NULL);
@@ -1660,6 +1726,25 @@ cdn_init ()
 
 typedef void (*CdnLinkedLibraryInit) (CdnNetwork *network);
 
+/**
+ * cdn_network_link_library:
+ * @network a #CdnNetwork.
+ * @path path to the dynamic library to link.
+ * @error a #GError
+ *
+ * Link a dynamic library (.so, .dylib or .dll) at runtime. This method is
+ * mainly useful for internal use. It's used by the codyn format which has
+ * a link_library keyword to dynamically link a library when the network is
+ * loaded. The loaded library typically installs new math functions or defines
+ * a new type of integrator.
+ *
+ * When the library is loaded, a symbol with the name "cdn_linked_library_init"
+ * is resolved. If found, the symbol (interpreted as a function) is called with
+ * @network as a parameter.
+ *
+ * Returns: %TRUE if the library was linked successfully, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_network_link_library (CdnNetwork   *network,
                           gchar const  *path,
@@ -1694,4 +1779,18 @@ cdn_network_link_library (CdnNetwork   *network,
 		                 mod);
 
 	return TRUE;
+}
+
+/**
+ * cdn_network_get_parser_context:
+ * @network the #CdnNetwork
+ *
+ * Returns: (transfer none): the parser context.
+ */
+CdnParserContext *
+cdn_network_get_parser_context (CdnNetwork *network)
+{
+	g_return_val_if_fail (CDN_IS_NETWORK (network), NULL);
+
+	return network->priv->parser_context;
 }

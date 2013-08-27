@@ -14,14 +14,14 @@ static gchar simple_xml[] = ""
 "\n"
 "edge \"edge\" from \"s1\" to \"s1\"\n"
 "{\n"
-"  x <= 1\n"
+"  x' += 1\n"
 "  y <= t\n"
 "}\n";
 
 static gchar simple_node_xml[] = ""
 "node \"node\" {"
 "  node \"s1\" { x = 0 | integrated in out once }"
-"  edge \"edge\" from \"s1\" to \"s1\" { x <= 1 }"
+"  edge \"edge\" from \"s1\" to \"s1\" { x' += 1 }"
 "}";
 
 static void
@@ -252,10 +252,11 @@ int
 main (int   argc,
       char *argv[])
 {
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
-	g_test_init (&argc, &argv, NULL);
+#endif
 
-	g_type_init ();
+	g_test_init (&argc, &argv, NULL);
 
 	g_test_add_func ("/network/load", test_load);
 	g_test_add_func ("/network/integrate", test_integrate);

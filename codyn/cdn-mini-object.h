@@ -87,6 +87,7 @@ typedef struct _CdnParamSpecMiniObject CdnParamSpecMiniObject;
 
 struct _CdnParamSpecMiniObject
 {
+	/*< private >*/
 	GParamSpec parent_instance;
 };
 

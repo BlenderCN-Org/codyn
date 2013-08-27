@@ -27,14 +27,6 @@
 #include <string.h>
 #include "config.h"
 
-/**
- * SECTION:cdn-import
- * @short_description: Network import object
- *
- * The #CdnImport object can be used to import templates and objects from
- * an external network file.
- *
- **/
 #define CDN_IMPORT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_IMPORT, CdnImportPrivate))
 
 #define IMPORT_DIR "codyn-" API_VERSION
@@ -203,7 +195,9 @@ default_search_path (void)
 {
 	const gchar * const *xdg_dirs;
 	gchar const *ienv;
-	GPtrArray *dirs = g_ptr_array_new ();
+	GPtrArray *dirs;
+
+	dirs = g_ptr_array_new ();
 
 	ienv = g_getenv (IMPORT_ENV);
 
@@ -691,17 +685,22 @@ static void
 import_objects (CdnImport *self,
                 CdnNode  *parent)
 {
-	GSList const *children;
+	GSList *children;
 
-	children = cdn_node_get_children (parent);
+	children = g_slist_copy ((GSList *)cdn_node_get_children (parent));
 
 	while (children)
 	{
+		g_object_ref (children->data);
+
+		cdn_node_remove (parent, children->data, NULL);
 		cdn_node_add (CDN_NODE (self), children->data, NULL);
+
+		g_object_unref (children->data);
 
 		add_imported_object (self, children->data);
 
-		children = g_slist_next (children);
+		children = g_slist_delete_link (children, children);
 	}
 }
 
@@ -733,6 +732,7 @@ auto_import_templates (CdnImport  *self,
 	               NULL);
 
 	add_imported_object (self, auto_import);
+	g_object_unref (auto_import);
 }
 
 static void
@@ -774,7 +774,7 @@ import_globals (CdnImport  *self,
 gboolean
 cdn_import_load (CdnImport   *self,
                  CdnNetwork  *network,
-                 CdnNode    *parent,
+                 CdnNode     *parent,
                  GError     **error)
 {
 	gchar const *annotation;

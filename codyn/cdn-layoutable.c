@@ -23,14 +23,6 @@
 #include "cdn-layoutable.h"
 #include <codyn/cdn-network.h>
 
-/**
- * SECTION:cdn-layoutable
- * @short_description: Interface for object layouting
- *
- * This interface can be implemented when an object can be layouted.
- *
- **/
-
 G_DEFINE_INTERFACE (CdnLayoutable, cdn_layoutable, G_TYPE_OBJECT)
 
 /* Default implementation */

@@ -31,14 +31,6 @@
 
 #include <math.h>
 
-/**
- * SECTION:cdn-edge-action
- * @short_description: Link action equation
- *
- * A #CdnEdgeAction is an action inside a link which sets a target
- * #CdnVariable to the value of a particular #CdnExpression equation.
- */
-
 #define CDN_EDGE_ACTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EDGE_ACTION, CdnEdgeActionPrivate))
 
 struct _CdnEdgeActionPrivate
@@ -62,6 +54,7 @@ struct _CdnEdgeActionPrivate
 	guint disposing : 1;
 	guint integrated : 1;
 	guint integrated_set : 1;
+	guint adds : 1;
 };
 
 /* Properties */
@@ -182,6 +175,7 @@ set_property (CdnEdgeAction *action,
 	if (action->priv->property)
 	{
 		cdn_usable_unuse (CDN_USABLE (action->priv->property));
+
 		g_object_unref (action->priv->property);
 		action->priv->property = NULL;
 	}
@@ -189,6 +183,21 @@ set_property (CdnEdgeAction *action,
 	if (property)
 	{
 		action->priv->property = g_object_ref_sink (property);
+
+		if (action->priv->integrated_set)
+		{
+			if (action->priv->integrated)
+			{
+				cdn_variable_add_flags (action->priv->property,
+				                        CDN_VARIABLE_FLAG_INTEGRATED);
+			}
+			else
+			{
+				cdn_variable_remove_flags (action->priv->property,
+				                           CDN_VARIABLE_FLAG_INTEGRATED);
+			}
+		}
+
 		cdn_usable_use (CDN_USABLE (action->priv->property));
 	}
 }
@@ -636,7 +645,7 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 
 	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), NULL);
 
-	newaction = cdn_edge_action_new (g_strdup (action->priv->target),
+	newaction = cdn_edge_action_new (action->priv->target,
 	                                 cdn_expression_copy (action->priv->equation));
 
 	cdn_annotatable_set_annotation (CDN_ANNOTATABLE (newaction),
@@ -653,6 +662,8 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 
 	newaction->priv->integrated = action->priv->integrated;
 	newaction->priv->integrated_set = action->priv->integrated_set;
+	newaction->priv->enabled = action->priv->enabled;
+	newaction->priv->adds = action->priv->adds;
 
 	return newaction;
 }
@@ -683,7 +694,7 @@ cdn_edge_action_equal (CdnEdgeAction *action,
 	if (action == NULL || other == NULL)
 	{
 		return action == other;
- 	}
+	}
 
 	if (g_strcmp0 (action->priv->target, other->priv->target) != 0)
 	{
@@ -766,21 +777,21 @@ cdn_edge_action_set_index (CdnEdgeAction *action,
 static void
 get_indices (CdnEdgeAction *action)
 {
-	CdnDimension dim;
-	gdouble const *values;
+	CdnMatrix const *values;
+	gdouble const *vals;
 	gint i;
 
-	values = cdn_expression_evaluate_values (action->priv->index,
-	                                         &dim);
+	values = cdn_expression_evaluate_values (action->priv->index);
+	vals = cdn_matrix_get (values);
 
-	action->priv->num_indices = cdn_dimension_size (&dim);
+	action->priv->num_indices = cdn_matrix_size (values);
 
 	g_free (action->priv->indices);
 	action->priv->indices = g_new (gint, action->priv->num_indices);
 
 	for (i = 0; i < action->priv->num_indices; ++i)
 	{
-		action->priv->indices[i] = (gint)rint (values[i]);
+		action->priv->indices[i] = (gint)(vals[i] + 0.5);
 	}
 }
 
@@ -918,8 +929,13 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 			return ret;
 		}
 
+		cdn_expression_get_dimension (action->priv->equation,
+		                              &edim);
+
 		if (action->priv->index)
 		{
+			CdnDimension idim;
+
 			if (!cdn_expression_compile (action->priv->index,
 			                             context,
 			                             error))
@@ -937,10 +953,35 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 				g_object_unref (context);
 				return FALSE;
 			}
-		}
 
-		cdn_expression_get_dimension (action->priv->equation,
-		                              &edim);
+			cdn_expression_get_dimension (action->priv->index, &idim);
+
+			if (!cdn_dimension_equal (&edim, &idim))
+			{
+				if (error)
+				{
+					GError *gerror;
+
+					gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+					                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
+					                      "The edge action index dimensions (%d-by-%d) do not correspond to the dimensions of the action equation (%d-by-%d)",
+					                      idim.rows, idim.columns,
+					                      edim.rows, edim.columns);
+
+					cdn_compile_error_set (error,
+					                       gerror,
+					                       CDN_OBJECT (action->priv->link),
+					                       NULL,
+					                       action,
+					                       NULL);
+
+					g_error_free (gerror);
+				}
+
+				g_object_unref (context);
+				return FALSE;
+			}
+		}
 
 		cdn_expression_get_dimension (cdn_variable_get_expression (action->priv->property),
 		                              &dim);
@@ -986,6 +1027,20 @@ _cdn_edge_action_set_integrated (CdnEdgeAction *action,
 {
 	action->priv->integrated_set = TRUE;
 	action->priv->integrated = integrated;
+
+	if (action->priv->property)
+	{
+		if (integrated)
+		{
+			cdn_variable_add_flags (action->priv->property,
+			                        CDN_VARIABLE_FLAG_INTEGRATED);
+		}
+		else
+		{
+			cdn_variable_remove_flags (action->priv->property,
+			                           CDN_VARIABLE_FLAG_INTEGRATED);
+		}
+	}
 }
 
 gboolean
@@ -1001,3 +1056,20 @@ _cdn_edge_action_get_integrated (CdnEdgeAction *action,
 
 	return action->priv->integrated_set;
 }
+
+void
+cdn_edge_action_set_adds (CdnEdgeAction *action,
+                          gboolean       adds)
+{
+	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
+	
+	action->priv->adds = adds;
+}
+
+gboolean
+cdn_edge_action_get_adds (CdnEdgeAction *action)
+{
+	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), FALSE);
+	return action->priv->adds;
+}
+

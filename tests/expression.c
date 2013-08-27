@@ -4,6 +4,8 @@
 #include <codyn/codyn.h>
 #include <codyn/cdn-expression.h>
 #include <codyn/cdn-object.h>
+#include <codyn/cdn-debug.h>
+
 #include "utils.h"
 
 static CdnExpression *expression;
@@ -17,12 +19,16 @@ expression_initialize_context (gchar const *exp, CdnObject *context)
 	CdnCompileContext *ctx = cdn_compile_context_new ();
 	cdn_compile_context_prepend_object (ctx, context);
 
-	gboolean ret = cdn_expression_compile (expression, ctx, NULL);
+	CdnCompileError *err = cdn_compile_error_new ();
+	gboolean ret = cdn_expression_compile (expression, ctx, err);
 	g_object_unref (ctx);
 
 	if (!ret)
 	{
-		fprintf (stderr, "Could not parse expression: %s\n", exp);
+		fprintf (stderr,
+		         "%s\n",
+		         cdn_compile_error_get_formatted_string (err));
+
 		exit (1);
 	}
 }
@@ -37,51 +43,6 @@ static gdouble
 expression_eval ()
 {
 	return cdn_expression_evaluate (expression);
-}
-
-static void
-test_operator_plus ()
-{
-	expression_initialize ("3 + 4");
-	cdn_assert_tol (expression_eval (), (3 + 4));
-}
-
-static void
-test_operator_minus ()
-{
-	expression_initialize ("3 - 4");
-	cdn_assert_tol (expression_eval (), (3 - 4));
-}
-
-static void
-test_operator_minus_unary ()
-{
-	expression_initialize ("3 + -4");
-	cdn_assert_tol (expression_eval (), (3 + -4));
-}
-
-static void
-test_priority ()
-{
-	expression_initialize ("3 * 4 + 3");
-	cdn_assert_tol (expression_eval (), (3 * 4 + 3));
-
-	expression_initialize ("3 + 4 * 2");
-	cdn_assert_tol (expression_eval (), (3 + 4 * 2));
-}
-
-static void
-test_function_sin ()
-{
-	expression_initialize ("sin (pi)");
-	cdn_assert_tol (expression_eval (), sin (M_PI));
-}
-
-static void
-test_function_varargs ()
-{
-	expression_initialize ("max (0, 2 * pi)");
-	cdn_assert_tol (expression_eval (), 2 * M_PI);
 }
 
 static void
@@ -112,22 +73,6 @@ test_complex ()
 }
 
 static void
-test_scientific_notation ()
-{
-	expression_initialize ("1e-2");
-	cdn_assert_tol (expression_eval (), 1e-2);
-
-	expression_initialize ("1e+20");
-	cdn_assert_tol (expression_eval (), 1e+20);
-
-	expression_initialize ("1.25e-5");
-	cdn_assert_tol (expression_eval (), 1.25e-5);
-
-	expression_initialize ("10.2523e+4");
-	cdn_assert_tol (expression_eval (), 10.2523e+4);
-}
-
-static void
 test_random ()
 {
 	double ret;
@@ -142,11 +87,11 @@ test_random ()
 	cdn_assert_tol (ret, val);
 
 	srand (4);
-	expression_initialize ("rand (-1, 1)");
+	expression_initialize ("rand (-2.5, 4.3)");
 	ret = expression_eval ();
 
 	srand (4);
-	val = RAND (-1, 1);
+	val = RAND (-2.5, 4.3);
 	cdn_assert_tol (ret, val);
 }
 
@@ -167,23 +112,26 @@ test_globals ()
 	cdn_assert_tol (1, cdn_variable_get_value (x));
 }
 
+static void
+test_math ()
+{
+	cdn_test_variables_with_annotated_output_from_path ("test_math.cdn");
+}
+
 int
 main (int   argc,
       char *argv[])
 {
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
+#endif
+
 	g_test_init (&argc, &argv, NULL);
 
-	g_type_init ();
+	cdn_debug_init ();
 
-	g_test_add_func ("/expression/operator_plus", test_operator_plus);
-	g_test_add_func ("/expression/operator_minus", test_operator_minus);
-	g_test_add_func ("/expression/operator_minus_unary", test_operator_minus_unary);
-	g_test_add_func ("/expression/priority", test_priority);
-	g_test_add_func ("/expression/function_sin", test_function_sin);
+	g_test_add_func ("/expression/math", test_math);
 	g_test_add_func ("/expression/complex", test_complex);
-	g_test_add_func ("/expression/function_varargs", test_function_varargs);
-	g_test_add_func ("/expression/scientific_notation", test_scientific_notation);
 	g_test_add_func ("/expression/random", test_random);
 	g_test_add_func ("/expression/globals", test_globals);
 

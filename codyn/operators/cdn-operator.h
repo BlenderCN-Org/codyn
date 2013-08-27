@@ -59,6 +59,7 @@ typedef void (*CdnForeachFunctionFunc)(CdnFunctionForward *func,
 
 struct _CdnOperator
 {
+	/*< private >*/
 	GObject parent;
 
 	CdnOperatorPrivate *priv;

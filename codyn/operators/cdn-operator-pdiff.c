@@ -35,16 +35,6 @@
 
 #include <math.h>
 
-/**
- * SECTION:cdn-operator-diff
- * @short_description: Math operator for diff evaluation of an expression
- *
- * The #CdnOperatorPDiff is a special operator that can be used in
- * mathematical expressions ('delay'). When evaluated, it will return the
- * diff value of its argument (which can be an arbitrary expression).
- *
- */
-
 #define CDN_OPERATOR_PDIFF_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_OPERATOR_PDIFF, CdnOperatorPDiffPrivate))
 
 struct _CdnOperatorPDiffPrivate

@@ -1182,7 +1182,7 @@ derive_variable_real (CdnInstructionVariable *instr,
 		{
 			return iter_new_take (cdn_instruction_variable_new (dv));
 		}
-		else if (cdn_variable_get_integrated (variable))
+		else if (cdn_variable_has_flag (variable, CDN_VARIABLE_FLAG_INTEGRATED))
 		{
 			return derive_integrated (variable, ctx);
 		}
@@ -1316,8 +1316,13 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 
 	if (!towards)
 	{
+		CdnDimension dim;
+
+		cdn_expression_get_dimension (cdn_function_get_expression (func),
+		                              &dim);
+
 		g_free (towardsmap);
-		return iter_new_numstr ("0");
+		return iter_new_zeros (&dim);
 	}
 
 	flags = ctx->flags;
@@ -1744,13 +1749,20 @@ cdn_expression_tree_iter_derive (CdnExpressionTreeIter             *iter,
 		return iter_copy (iter);
 	}
 
-	cdn_debug_message (DEBUG_DIFF,
-	                   "Deriving: {%s}",
-	                   cdn_expression_tree_iter_to_string_dbg (iter));
 
-#ifdef DEBUG_PRINTIT
 	if (cdn_debug_is_enabled (CDN_DEBUG_DIFF))
 	{
+		CdnStackManipulation const *smanip;
+
+		smanip = cdn_instruction_get_stack_manipulation (iter->instruction, NULL);
+
+		cdn_debug_message (DEBUG_DIFF,
+		                   "Deriving: {%s} (%d-by-%d)",
+		                   cdn_expression_tree_iter_to_string_dbg (iter),
+		                   smanip ? smanip->push.rows : 0,
+		                   smanip ? smanip->push.columns : 0);
+
+#ifdef DEBUG_PRINTIT
 		print_syms (symbols);
 		print_towards (towards);
 	}

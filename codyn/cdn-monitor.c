@@ -31,18 +31,6 @@
 #include <string.h>
 #include <math.h>
 
-/**
- * SECTION:cdn-monitor
- * @short_description: Property value monitor
- *
- * A #CdnMonitor can be used to monitor the value of a certain #CdnVariable
- * while simulating. The monitor will collect the value of the property at
- * each simulation step and provides methods to access these values.
- * Particularly useful is #cdn_monitor_get_data_resampled which retrieves the
- * data resampled at specific times.
- *
- */
-
 #define CDN_MONITOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_MONITOR, CdnMonitorPrivate))
 
 #define MONITOR_GROW_SIZE 1000
@@ -63,9 +51,12 @@ struct _CdnMonitorPrivate
 	CdnIntegrator *integrator;
 
 	gdouble *values;
-	gdouble *sites;
 	guint num_values;
-	guint size;
+	guint size_values;
+
+	gdouble *sites;
+	guint num_sites;
+	guint size_sites;
 
 	guint signals[NUM_SIGNALS];
 };
@@ -86,9 +77,13 @@ reset_monitor (CdnMonitor *monitor)
 	g_free (monitor->priv->sites);
 
 	monitor->priv->values = NULL;
-	monitor->priv->sites = NULL;
-	monitor->priv->size = 0;
 	monitor->priv->num_values = 0;
+	monitor->priv->size_values = 0;
+
+	monitor->priv->sites = NULL;
+	monitor->priv->num_sites = 0;;
+	monitor->priv->size_sites = 0;
+
 }
 
 static void
@@ -134,10 +129,15 @@ disconnect_network (CdnMonitor *monitor)
 static void
 cdn_monitor_grow (CdnMonitor *monitor)
 {
-	monitor->priv->size += MONITOR_GROW_SIZE;
+	CdnDimension dim;
 
-	array_resize (monitor->priv->values, double, monitor->priv->size);
-	array_resize (monitor->priv->sites, double, monitor->priv->size);
+	cdn_variable_get_dimension (monitor->priv->property, &dim);
+
+	monitor->priv->size_values += MONITOR_GROW_SIZE * cdn_dimension_size (&dim);
+	monitor->priv->size_sites += MONITOR_GROW_SIZE;
+
+	array_resize (monitor->priv->values, gdouble, monitor->priv->size_values);
+	array_resize (monitor->priv->sites, gdouble, monitor->priv->size_sites);
 }
 
 static void
@@ -146,14 +146,25 @@ cdn_monitor_update (CdnMonitor    *monitor,
                     gdouble        timestep,
                     CdnIntegrator *integrator)
 {
-	if (monitor->priv->size == 0 ||
-	    monitor->priv->num_values >= monitor->priv->size - 1)
+	CdnMatrix const *vals;
+	gdouble const *v;
+	gint i;
+
+	if (monitor->priv->size_sites == 0 ||
+	    monitor->priv->num_sites >= monitor->priv->size_sites - 1)
 	{
 		cdn_monitor_grow (monitor);
 	}
 
-	monitor->priv->values[monitor->priv->num_values] = cdn_variable_get_value (monitor->priv->property);
-	monitor->priv->sites[monitor->priv->num_values++] = time;
+	vals = cdn_variable_get_values (monitor->priv->property);
+	v = cdn_matrix_get (vals);
+
+	for (i = 0; i < cdn_matrix_size (vals); ++i)
+	{
+		monitor->priv->values[monitor->priv->num_values++] = v[i];
+	}
+
+	monitor->priv->sites[monitor->priv->num_sites++] = time;
 }
 
 static void
@@ -339,8 +350,6 @@ static void
 cdn_monitor_init (CdnMonitor *self)
 {
 	self->priv = CDN_MONITOR_GET_PRIVATE (self);
-
-	cdn_monitor_grow (self);
 }
 
 /**
@@ -373,7 +382,8 @@ cdn_monitor_new (CdnNetwork  *network,
  *
  * Returns the data as monitored during the simulation. See also
  * #cdn_monitor_get_data_resampled for retrieving a resampled version
- * of the monitor data
+ * of the monitor data. Note that the data returned is N-x-M values where
+ * N is the number of sampled data points and M the size of the variable.
  *
  * Returns: (array length=size): internal array of monitored values. The pointer should
  * not be freed
@@ -406,11 +416,13 @@ cdn_monitor_get_data (CdnMonitor *monitor,
 /**
  * cdn_monitor_get_sites:
  * @monitor: a #CdnMonitor
- * @size: (out caller-allocates): return value for number of values
+ * @size: (out caller-allocates): return value for number of sites
  *
  * Returns the data sites as monitored during the simulation. See also
  * #cdn_monitor_get_data_resampled for retrieving a resampled version
- * of the monitor data
+ * of the monitor data. Note that the size of the sites is always equal to the
+ * number of sampled data points, but not necessarily equal to the number of
+ * values returned by #cdn_monitor_get_data (since values might be vectors/matrices).
  *
  * Returns: (array length=size): internal array of monitored sites. The pointer should
  * not be freed
@@ -434,7 +446,7 @@ cdn_monitor_get_sites (CdnMonitor *monitor,
 
 	if (size)
 	{
-		*size = monitor->priv->num_values;
+		*size = monitor->priv->num_sites;
 	}
 
 	return monitor->priv->sites;
@@ -474,11 +486,11 @@ bsearch_find (gdouble const  *list,
  * @monitor: a #CdnMonitor
  * @sites: (array length=size): the data sites at which to resample the data
  * @size: the size of the data sites array
- * @ret: (out callee-allocates): the return location for the resampled data
+ * @ret: (out caller-allocates): the return location for the resampled data
  *
  * Returns the data as monitored during the simulation, but resampled at
  * specific data sites. @ret will have to be already allocated and large
- * enough to hold @size values.
+ * enough to hold @size values of the dimension of the monitored variable.
  *
  * Returns: %TRUE if @ret was successfully filled with data, %FALSE otherwise
  *
@@ -489,6 +501,12 @@ cdn_monitor_get_data_resampled (CdnMonitor     *monitor,
                                 guint           size,
                                 gdouble        *ret)
 {
+	gint stride;
+	gdouble const *data;
+	guint i;
+	gdouble const *monsites;
+	CdnDimension dim;
+
 	g_return_val_if_fail (CDN_IS_MONITOR (monitor), FALSE);
 	
 	if (!sites || size == 0 || !monitor || !monitor->priv->property)
@@ -497,29 +515,31 @@ cdn_monitor_get_data_resampled (CdnMonitor     *monitor,
 		return FALSE;
 	}
 
-	gdouble const *data = monitor->priv->values;
-	guint i;
+	data = monitor->priv->values;
+	monsites = monitor->priv->sites;
 
-	gdouble const *monsites = monitor->priv->sites;
+	cdn_variable_get_dimension (monitor->priv->property, &dim);
+	stride = cdn_dimension_size (&dim);
 
 	for (i = 0; i < size; ++i)
 	{
 		guint idx = bsearch_find (monsites,
-		                          (gint)monitor->priv->num_values,
+		                          (gint)monitor->priv->num_sites,
 		                          sites[i]);
 
 		guint fidx = idx > 0 ? idx - 1 : 0;
-		guint sidx = idx < monitor->priv->num_values ? idx : monitor->priv->num_values - 1;
+		guint sidx = idx < monitor->priv->num_sites ? idx : monitor->priv->num_sites - 1;
 
-		if (fidx >= monitor->priv->num_values ||
-		    sidx >= monitor->priv->num_values)
+		if (fidx >= monitor->priv->num_sites ||
+		    sidx >= monitor->priv->num_sites)
 		{
-			ret[i] = data[monitor->priv->num_values - 1];
+			memcpy (ret + i * stride, data + (monitor->priv->num_sites - 1) * stride, sizeof (gdouble) * stride);
 		}
 		else
 		{
 			// interpolate between the values
 			gdouble factor;
+			gint j;
 
 			if (fabs(monsites[sidx] - monsites[fidx]) < 0.00000001)
 			{
@@ -530,7 +550,10 @@ cdn_monitor_get_data_resampled (CdnMonitor     *monitor,
 				factor = (monsites[sidx] - sites[i]) / (monsites[sidx] - monsites[fidx]);
 			}
 
-			ret[i] = data[fidx] * factor + (data[sidx] * (1 - factor));
+			for (j = 0; j < stride; ++j)
+			{
+				ret[i * stride + j] = data[fidx * stride + j] * factor + (data[sidx * stride + j] * (1 - factor));
+			}
 		}
 	}
 

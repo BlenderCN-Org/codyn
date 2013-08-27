@@ -1,0 +1,71 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 8 -m y
+
+## A simple example of a bouncing ball "simulation". This example demonstrates
+## how to use codyn to implement very simple physics dynamics and how to use
+## the event system. The ball in this example is a simple point mass, subject
+## to gravity. In addition, when the ball impacts the ground, the effect of
+## a spring and damper is simulated by adding a forcing term to the acceleration.
+## The codyn event system is used to transition between the two states of the
+## ball 1) in the air (subject to only gravity) and 2) on the ground, subject
+## to both gravity and the spring/damper forces.
+
+# Set the initial state to be in the air
+initial-state "air"
+
+integrator
+{
+    method = "runge-kutta"
+    default-timestep = "0.001"
+}
+
+## The radius of the ball
+radius = 0.1
+
+## How many times we have bounced the ball
+bounced = 0
+
+## The initial value of the state variable (the position of the ball)
+y = 1
+
+## Gravity
+g = 9.81
+
+## Mass
+m = 1
+
+## Springiness of the ball
+k = 1000
+
+## Damping of the ball
+d = 1
+
+## Spring force of the ball when it's being compressed
+fspring = "k ∙ (radius - y)"
+
+## Acceleration of y due to gravity
+ÿ = "-m ∙ g"
+
+## Acceleration of y due to the spring force. This term is only active when
+## the ball is on the ground, which in turn is handled using the event system
+ÿ = "fspring - d ∙ ẏ" state "ground"
+
+## Transfer from the air to the ground when y becomes smaller than the ball radius
+event "air"    to "ground" when "y < radius" within 0.001
+{
+    # Keep track of the number of times we bounced
+    set bounced = "bounced + 1"
+}
+
+## Transfer from ground to air when y becomes larger than the ball radius
+event "ground" to    "air" when "y > radius" within 0.001 {}
+
+## Terminate after 10 bounces
+event any to terminate when "bounced >= 10" {}
+
+layout
+{
+    objects | debug at 10, "$(4 + @y[+2])"
+}
+
+# vi:ts=4:et

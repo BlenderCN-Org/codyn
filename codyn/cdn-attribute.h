@@ -40,6 +40,13 @@ typedef struct _CdnAttribute		CdnAttribute;
 typedef struct _CdnAttributeClass	CdnAttributeClass;
 typedef struct _CdnAttributePrivate	CdnAttributePrivate;
 
+/**
+ * CdnAttribute:
+ *
+ * Cdn format attribute.
+ *
+ * This object represents an attribute in the Cdn format.
+ **/
 struct _CdnAttribute
 {
 	/*< private >*/

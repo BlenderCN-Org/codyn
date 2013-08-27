@@ -40,6 +40,15 @@ typedef struct _CdnOperatorSimplify		CdnOperatorSimplify;
 typedef struct _CdnOperatorSimplifyClass	CdnOperatorSimplifyClass;
 typedef struct _CdnOperatorSimplifyPrivate	CdnOperatorSimplifyPrivate;
 
+/**
+ * CdnOperatorSimplify:
+ *
+ * Math operator for simplify evaluation of an expression.
+ *
+ * The #CdnOperatorSimplify is a special operator that can be used in
+ * mathematical expressions ('delay'). When evaluated, it will return the
+ * simplify value of its argument (which can be an arbitrary expression).
+ */
 struct _CdnOperatorSimplify
 {
 	/*< private >*/

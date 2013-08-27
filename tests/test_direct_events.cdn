@@ -1,0 +1,27 @@
+## 0:0.1:0.4
+
+# la
+node "n"
+{
+    initial-state "start"
+
+    a = "t"
+
+    ## 2
+    ## 2
+    ## 3
+    ## 3
+    ## 2
+    b = 0
+
+    event "start" to "next" when "a > 0" {}
+    event "next" to "start" when "a > 0.2" {}
+
+    edge self
+    {
+        b <= "2" state "start"
+        b <= "3" state "next"
+    }
+}
+
+# vi:ts=4:et

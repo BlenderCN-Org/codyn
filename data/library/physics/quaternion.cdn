@@ -1,6 +1,36 @@
 node "Quaternion"
 {
-    FromAxisAngle(axis, angle) = "[cos(angle / 2), axis * sin(angle / 2)]"
+    FromAxisAngle(axis, angle) = "[cos(angle / 2); axis ∙ sin(angle / 2)]"
+    _FromEulerAngles(cx, cy, cz, sx, sy, sz) = "[cx ∙ cy ∙ cz + sx ∙ sy ∙ sz;
+                                                 sx ∙ cy ∙ cz - cx ∙ sy ∙ sz;
+                                                 cx ∙ sy ∙ cz + sx ∙ cy ∙ sz;
+                                                 cx ∙ cy ∙ sz - sx ∙ sy ∙ cz]"
+
+    FromEulerAngles(x, y, z) = "_FromEulerAngles(cos(x / 2),
+                                                 cos(y / 2),
+                                                 cos(z / 2),
+                                                 sin(x / 2),
+                                                 sin(y / 2),
+                                                 sin(z / 2))"
+
+    Rotate(q, r) = "ToMatrix3x3(q) * r"
+
+    RotationX(angle) = "[cos(angle / 2); sin(angle / 2); 0; 0]"
+    RotationY(angle) = "[cos(angle / 2); 0; sin(angle / 2); 0]"
+    RotationZ(angle) = "[cos(angle / 2); 0; 0; sin(angle / 2)]"
+
+    Multiply(q1, q2) = "[
+        q1[0] ∙ q2[0] - q1[1] ∙ q2[1] - q1[2] ∙ q2[2] - q1[3] ∙ q2[3];
+        q1[0] ∙ q2[1] + q1[1] ∙ q2[0] + q1[2] ∙ q2[3] - q1[3] ∙ q2[2];
+        q1[0] ∙ q2[2] - q1[1] ∙ q2[3] + q1[2] ∙ q2[0] + q1[3] ∙ q2[1];
+        q1[0] ∙ q2[3] + q1[1] ∙ q2[2] - q1[2] ∙ q2[1] + q1[3] ∙ q2[0]
+    ]"
+
+    ToMatrix3x3(q) = "2 ∙ [
+        q[0]^2 + q[1]^2 - 0.5,	       q[1] ∙ q[2] + q[3] ∙ q[0],     q[1] ∙ q[3] - q[2] ∙ q[0];
+        q[1] ∙ q[2] - q[3] ∙ q[0],     q[0]^2 + q[2]^2 - 0.5,	      q[2] ∙ q[3] + q[1] ∙ q[0];
+        q[1] ∙ q[3] + q[2] ∙ q[0],     q[2] ∙ q[3] - q[1] ∙ q[0],     q[0]^2 + q[3]^2 - 0.5
+    ]"
 }
 
 # vi:ex:ts=4:et

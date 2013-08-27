@@ -41,7 +41,7 @@ struct _CdnPhaseableInterface
 	GTypeInterface parent;
 
 	GHashTable *(*get_phase_table) (CdnPhaseable *phaseable);
-	void        (*set_phase_table) (CdnPhaseable *taggable,
+	void        (*set_phase_table) (CdnPhaseable *phaseable,
 	                                GHashTable   *table);
 };
 
@@ -58,7 +58,7 @@ void        cdn_phaseable_add_phase          (CdnPhaseable            *phaseable
                                               gchar const             *phase);
 
 void        cdn_phaseable_remove_phase       (CdnPhaseable            *phaseable,
-                                              gchar const             *tag);
+                                              gchar const             *phase);
 
 GHashTable *cdn_phaseable_get_phase_table    (CdnPhaseable            *phaseable);
 void        cdn_phaseable_set_phase_table    (CdnPhaseable            *phaseable,
@@ -70,6 +70,11 @@ void        cdn_phaseable_copy_to            (CdnPhaseable            *phaseable
 void        cdn_phaseable_foreach            (CdnPhaseable            *phaseable,
                                               CdnPhaseableForeachFunc  func,
                                               gpointer                 userdata);
+
+gboolean    cdn_phaseable_equal              (CdnPhaseable            *phaseable,
+                                              CdnPhaseable            *other);
+
+gchar     **cdn_phaseable_get_phases         (CdnPhaseable            *phaseable) G_GNUC_WARN_UNUSED_RESULT;
 
 G_END_DECLS
 

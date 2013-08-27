@@ -299,7 +299,7 @@ load_io_method (gchar const *path)
 	if (g_type_module_use (G_TYPE_MODULE (method)))
 	{
 		io_methods = g_slist_prepend (io_methods,
-		                                 method);
+		                              method);
 	}
 	else
 	{
@@ -384,6 +384,7 @@ load_all_io_methods ()
 	}
 
 	path = g_build_filename (LIBDIR, apidir, imdir, NULL);
+
 	load_io_methods (path);
 	g_free (path);
 }

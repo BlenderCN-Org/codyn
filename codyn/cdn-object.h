@@ -69,6 +69,15 @@ typedef enum
 	CDN_OBJECT_NUM_ERRORS
 } CdnObjectError;
 
+/**
+ * CdnObject:
+ *
+ * Basis for all cdn objects.
+ *
+ * #CdnObject is a base class for all the objects which can be added to a
+ * network. It provides property storage and virtual methods which can be
+ * implemented that drive the simulation process.
+ */
 struct _CdnObject
 {
 	/*< private >*/

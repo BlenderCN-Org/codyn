@@ -25,16 +25,6 @@
 
 #define CDN_INTEGRATOR_EULER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_EULER, CdnIntegratorEulerPrivate))
 
-/**
- * SECTION:cdn-integrator-euler
- * @short_description: Euler integrator
- *
- * The euler integrator is a #CdnIntegrator subclass implementing a simple
- * euler integration scheme. See #CdnIntegratorPredictCorrect or
- * #CdnIntegratorRungeKutta for more accurate (but slower) integrators.
- *
- */
-
 /*struct _CdnIntegratorEulerPrivate
 {
 };*/
@@ -48,16 +38,22 @@ cdn_integrator_euler_finalize (GObject *object)
 }
 
 static void
-integrate_values (gdouble *values,
-                  gdouble const *s,
-                  gint num,
-                  gdouble timestep)
+integrate_values (CdnMatrix       *values,
+                  CdnMatrix const *s,
+                  gdouble          timestep)
 {
 	gint i;
+	gdouble *update;
+	gdouble const *vals;
+	gint num;
+
+	update = cdn_matrix_get_memory (values);
+	vals = cdn_matrix_get (s);
+	num = cdn_matrix_size (s);
 
 	for (i = 0; i < num; ++i)
 	{
-		values[i] = s[i] + values[i] * timestep;
+		update[i] = vals[i] + update[i] * timestep;
 	}
 }
 
@@ -85,15 +81,13 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 	while (integrated)
 	{
 		CdnVariable *variable;
-		CdnDimension dim;
-		gdouble *update;
+		CdnMatrix *update;
 
 		variable = integrated->data;
-		update = cdn_variable_get_update (variable, &dim);
+		update = cdn_variable_get_update (variable);
 
 		integrate_values (update,
-		                  cdn_variable_get_values (variable, &dim),
-		                  cdn_dimension_size (&dim),
+		                  cdn_variable_get_values (variable),
 		                  timestep);
 
 		integrated = g_slist_next (integrated);
@@ -103,13 +97,10 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 
 	while (integrated)
 	{
-		CdnVariable *variable;
-		gdouble *update;
-		CdnDimension dim;
+		CdnMatrix *update;
 
-		variable = integrated->data;
-		update = cdn_variable_get_update (integrated->data, &dim);
-		cdn_variable_set_values (variable, update, &dim);
+		update = cdn_variable_get_update (integrated->data);
+		cdn_variable_set_values (integrated->data, update);
 
 		integrated = g_slist_next (integrated);
 	}

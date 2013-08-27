@@ -483,6 +483,7 @@ cdn_decompose_dot (gchar const *name,
 
 		dc = g_string_sized_new (strlen (name));
 		g_string_append_unichar (dc, g_utf8_get_char (name));
+
 		g_string_append (dc, g_utf8_next_char (g_utf8_next_char (name)));
 
 		if (next == 775)
@@ -510,6 +511,8 @@ cdn_decompose_dot (gchar const *name,
 
 	while (last > ret)
 	{
+		gchar const *cur = last;
+
 		last = g_utf8_prev_char (last);
 		next = g_utf8_get_char (last);
 
@@ -517,7 +520,7 @@ cdn_decompose_dot (gchar const *name,
 		{
 			gchar *tmp;
 
-			tmp = g_strndup (ret, last - ret + 1);
+			tmp = g_strndup (ret, cur - ret);
 			g_free (ret);
 			return tmp;
 		}

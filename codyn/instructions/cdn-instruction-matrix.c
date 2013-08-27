@@ -143,7 +143,6 @@ cdn_instruction_matrix_recalculate_sparsity (CdnInstruction *instruction)
 		cdn_stack_arg_set_sparsity (&self->priv->smanip.push, sparsity, sp);
 		g_free (sparsity);
 	}
-
 }
 
 static void

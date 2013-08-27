@@ -569,6 +569,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	if (!g_regex_match (em->priv->indirection_regex, s, 0, &info))
 	{
+		g_match_info_free (info);
 		return g_strdup("");
 	}
 
@@ -579,7 +580,6 @@ resolve_indirection (CdnEmbeddedString   *em,
 		// This is a numbered expansion
 		gchar *flag;
 
-		num = g_match_info_fetch (info, 1);
 		flag = g_match_info_fetch (info, 2);
 
 		flags = get_indirection_flags (flag);
@@ -622,6 +622,11 @@ resolve_indirection (CdnEmbeddedString   *em,
 					ret = g_strdup_printf ("%d", i - 1);
 					break;
 				}
+			}
+
+			if (!ret)
+			{
+				ret = g_strdup ("-1");
 			}
 
 			flags = INDIRECTION_NONE;
@@ -739,6 +744,8 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	g_free (name);
 	g_free (num);
+
+	g_match_info_free (info);
 
 	return ret;
 }
@@ -996,18 +1003,33 @@ cdn_embedded_string_expand (CdnEmbeddedString    *s,
 
 static gchar *
 fast_itoa (gint   val,
-           gchar *ret)
+           gchar *ret,
+           gint   retsize)
 {
-	gint i = 30;
+	gint i = retsize - 2;
+	gboolean neg = FALSE;
+	gint stop = 0;
 
 	if (val == 0)
 	{
 		ret[i--] = '0';
 	}
+	else if (val < 0)
+	{
+		neg = TRUE;
+		++stop;
 
-	for (; val && i; --i, val /= 10)
+		val = -val;
+	}
+
+	for (; val && i > stop; --i, val /= 10)
 	{
 		ret[i] = "0123456789"[val % 10];
+	}
+
+	if (neg)
+	{
+		ret[i--] = '-';
 	}
 
 	return ret + i + 1;
@@ -1024,7 +1046,7 @@ parse_expansion_range_rev (gchar const *s)
 
 	if (rangereg == NULL)
 	{
-		rangereg = g_regex_new ("\\s*([0-9]+):([+-]?[0-9]+)(:([+-]?[0-9]+))?\\s*$",
+		rangereg = g_regex_new ("\\s*([+-]?[0-9]+):([+-]{0,2}[0-9]+)(:([+-]{0,2}[0-9]+))?\\s*$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -1032,7 +1054,7 @@ parse_expansion_range_rev (gchar const *s)
 
 	if (timesreg == NULL)
 	{
-		timesreg = g_regex_new ("^([0-9]+)[*]([^ ].*)$",
+		timesreg = g_regex_new ("^([+-]?[0-9]+)[*]([^ ].*)$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -1088,10 +1110,10 @@ parse_expansion_range_rev (gchar const *s)
 		{
 			while (cstart <= cend)
 			{
-				gchar it[32] = {0,};
+				gchar it[33] = {0,};
 
 				gchar const *pptr[] = {
-					fast_itoa (cstart, it),
+					fast_itoa (cstart, it, sizeof (it) / sizeof (gchar)),
 					NULL
 				};
 
@@ -1282,7 +1304,6 @@ apply_filters_rev (CdnEmbeddedString *s,
 	GPtrArray *ptr;
 	gchar **ptrs;
 	GSList *part;
-	GSList *fitem;
 	CdnExpansionContext *newctx;
 
 	filt = find_filter (s, position);
@@ -1295,7 +1316,6 @@ apply_filters_rev (CdnEmbeddedString *s,
 	items = g_slist_reverse (items);
 
 	// Add one expansion of all the parts
-	all = cdn_expansion_new (NULL);
 	ptr = g_ptr_array_new ();
 
 	for (part = items; part; part = g_slist_next (part))
@@ -1314,9 +1334,11 @@ apply_filters_rev (CdnEmbeddedString *s,
 
 	cdn_expansion_unref (all);
 
-	for (fitem = filt; fitem; fitem = g_slist_next (fitem))
+	while (filt)
 	{
-		Node *n = fitem->data;
+		Node *n = filt->data;
+
+		filt = g_slist_delete_link (filt, filt);
 
 		/* First filter here what we have until now */
 		if (n->type == CDN_EMBEDDED_STRING_NODE_REDUCE)
@@ -1338,7 +1360,6 @@ apply_filters_rev (CdnEmbeddedString *s,
 	}
 
 	cdn_expansion_context_unref (newctx);
-
 	return g_slist_reverse (items);
 }
 
@@ -1714,10 +1735,10 @@ annotate_first (GSList *items)
 }
 
 static GSList *
-expand_elements (CdnEmbeddedString   *s,
+expand_elements (CdnEmbeddedString    *s,
                  CdnExpansionContext  *ctx,
-                 ExNode              *elements,
-                 GError             **error)
+                 ExNode               *elements,
+                 GError              **error)
 {
 	ExNode *child;
 	GSList *ret = NULL;
@@ -1880,10 +1901,10 @@ expansion_append1 (CdnExpansion *a,
 }
 
 static GSList *
-expand_concat (CdnEmbeddedString   *s,
+expand_concat (CdnEmbeddedString    *s,
                CdnExpansionContext  *ctx,
-               ExNode              *node,
-               GError             **error)
+               ExNode               *node,
+               GError              **error)
 {
 	ExNode *child;
 	GSList *ret = NULL;
@@ -1906,20 +1927,30 @@ expand_concat (CdnEmbeddedString   *s,
 			{
 				CdnExpansion *et;
 
-				// Append the item onto the ritm
+				// Append the item onto the ritm which is the up until now
+				// collected items
 				if (ritm)
 				{
 					if (!ritm->next && !item->next)
 					{
+						// last result item to expand and last item
+						// to add. returns either and frees the other
 						et = expansion_append2 (ritm->data, item->data);
 					}
 					else if (!ritm->next)
 					{
+						// last result item to expand but there are still
+						// more ex items. returns item->data
 						et = expansion_append1 (ritm->data, item->data);
 					}
 					else
 					{
 						et = expansion_append (ritm->data, item->data);
+
+						if (!item->next)
+						{
+							cdn_expansion_unref (ritm->data);
+						}
 					}
 				}
 				else
@@ -1947,8 +1978,8 @@ expand_concat (CdnEmbeddedString   *s,
 		}
 
 		g_slist_free (ex);
-
 		g_slist_free (ret);
+
 		ret = g_slist_reverse (newret);
 
 		child = child->next;
@@ -2237,6 +2268,8 @@ expand_elements_escape (CdnEmbeddedString   *s,
 		pos = child->end;
 		child = child->next;
 
+		g_slist_free (items);
+
 		++idx;
 	}
 
@@ -2456,3 +2489,57 @@ cdn_embedded_string_add_string (CdnEmbeddedString *s,
 	return s;
 }
 
+/**
+ * cdn_embedded_string_as_expansion:
+ * @s: a #CdnEmbeddedString.
+ * @context: a #CdnExpansionContext.
+ * @error: a #GError.
+ *
+ * Create an expansion representing the embedded string. The first
+ * element represents the non-multiexpanded expansion of the embedded string.
+ * The embedded string @s is first multi-expanded. Then, all 0th elements of
+ * each expansion in @expanded are added to the result expansion (i.e.
+ * represented in elements 1:N).
+ *
+ * Returns: (transfer full): a #CdnExpansion.
+ *
+ **/
+CdnExpansion *
+cdn_embedded_string_as_expansion (CdnEmbeddedString    *s,
+                                  CdnExpansionContext  *context,
+                                  GError              **error)
+{
+	GSList *ex;
+	GPtrArray *ptr;
+	gchar **p;
+	CdnExpansion *ret;
+	GSList *item;
+
+	ex = cdn_embedded_string_expand_multiple (s, context, error);
+
+	if (ex == NULL)
+	{
+		return NULL;
+	}
+
+	ptr = g_ptr_array_new ();
+
+	for (item = ex; item; item = g_slist_next (item))
+	{
+		g_ptr_array_add (ptr,
+		                 (gpointer)cdn_expansion_get (item->data,
+		                                              0));
+	}
+
+	g_ptr_array_add (ptr, NULL);
+	p = (gchar **)g_ptr_array_free (ptr, FALSE);
+
+	ret = cdn_expansion_new ((gchar const * const *)p);
+
+	g_free (p);
+
+	g_slist_foreach (ex, (GFunc)cdn_expansion_unref, NULL);
+	g_slist_free (ex);
+
+	return ret;
+}

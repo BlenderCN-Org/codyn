@@ -1,0 +1,52 @@
+require "transform.cdn"
+
+templates
+{
+    node "physics" { node "rendering"
+    {
+        node "shape"
+        {
+            transform = "eye(4)" | out
+            color = "[0.5; 0.5; 0.5]"
+        }
+
+        node "sphere" : shape
+        {
+            radius = "0.1"
+        }
+
+        node "box" : shape
+        {
+            size = "[1, 1, 1]"
+        }
+
+        node "cylinder" : shape
+        {
+            height = 1
+            radius = 0.1
+        }
+
+        node "plane" : shape
+        {
+        }
+
+        node "camera"
+        {
+            orthographic = "0"
+            orthographicScale = "0"
+
+            transform = "Transform.Translation(translation) *
+                         Transform.Rotation(Quaternion.ToMatrix3x3(rotation))"
+
+            translation = "[5; -5; 0.5]"
+
+            rotation = "Quaternion.Multiply(Quaternion.RotationZ(-0.25 * pi),
+                                            Quaternion.RotationX(-0.5 * pi))"
+
+            localMatrix = transform
+            worldMatrix = transform
+        }
+    } }
+}
+
+# vi:ts=4:et

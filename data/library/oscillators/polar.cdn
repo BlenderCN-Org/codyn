@@ -1,0 +1,55 @@
+templates
+{
+    import "generic.cdn" as "generic"
+
+    ## Cartesian properties for polar oscillator
+    node "add_cartesian"
+    {
+        x ?= "r ∙ cos(φ)"
+        y ?= "r ∙ sin(φ)"
+    }
+
+    node "cartesian_for_polar" : "add_cartesian"
+    {
+        XDot(r_dot, φ_dot)(x, y, r) =
+            "r == 0 ? r_dot : r_dot ∙ x / r - φ_dot ∙ y"
+
+        YDot(r_dot, φ_dot)(x, y, r) =
+            "r == 0 ? r_dot : r_dot ∙ y / r + φ_dot ∙ x"
+    }
+
+    ## Cartesian derivatives
+    node "cartesian_dot" : "cartesian_for_polar"
+    {
+        x_dot = "XDot(ṙ, φ̇)"
+        y_dot = "YDot(ṙ, φ̇)"
+    }
+
+    ## Polar input properties for Cartesian oscillator
+    node "polar_input" : "cartesian_for_polar"
+    {
+        node "node"
+        {
+            ## r input
+            s_r_dot = 0
+
+            ## phi input
+            s_φ_dot = 0
+        }
+
+        edge on self
+        {
+            ẋ += "XDot(s_r_dot, s_φ_dot)"
+            ẏ += "YDot(s_r_dot, s_φ_dot)"
+        }
+    }
+
+    ## Diffusive phase coupling for polar oscillators
+    edge "polar_phase_coupling" : "generic" . "polar_coupling_base"
+    {
+        ## Value added by the coupling to the instantaneous angular frequency
+        φ̇ += "φ_dot"
+    }
+}
+
+# vi:ts=4:et

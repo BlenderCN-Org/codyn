@@ -422,7 +422,7 @@ cdn_expansion_context_calculate (CdnExpansionContext  *context,
 }
 
 /**
- * cdn_expansion_context_debug_print: (skip):
+ * cdn_expansion_context_debug_print: (skip)
  * @context: A #CdnExpansionContext
  * @file: A #FILE
  *

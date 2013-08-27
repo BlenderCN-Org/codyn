@@ -1,4 +1,9 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.005:5 -m system./p[0-9]+/.q -r
+
 include "physics/physics.cdn"
+include "physics/contacts.cdn"
+include "physics/rendering.cdn"
 
 integrator
 {
@@ -7,28 +12,59 @@ integrator
 
 defines
 {
-    n = 1
-
-    l = "{@n*1}"
-    m = "{@n*1}"
+    n = 3
 }
 
-node "system"
+node "system" : physics.system
 {
-    node "p{0:$(@n - 1)}" : physics.revoluteY
+    node "p{1:@n}" : physics.joints.revoluteY, physics.transformations
     {
-        m = "@m[@@1]"
-        com = "[0; 0; -$(@l[@@1] / 2)]"
-        coordinateTransform = "Sp.Translate([0, 0, $(@@1 == 0 ? 0 : -@l[$(@@1 - 1)])])"
+          m = "1"
+        com = "[0; 0; -0.5]"
+         tr = "[0; 0; -1]"
+          I = "Inertia.Cylinder(m, 0.1, 0.8)"
 
-        layout
-        {
-            at $((@1 + 3) * cos((@1 + 3) / (10 + 3) * 2 * pi)), $((@1 + 3) * -sin((@1 + 3) / (10 + 3) * 2 * pi))
-        }
+        localMatrix | out
+    }
+    
+    node "p1"
+    {
+        q0 = "0.3 * pi"
+        tr = "[0; 0; @n * cos(0.5 * q0)]"
+
+        q = "q0"
     }
 
-    edge from "p{0:$(@n - 2)}" to "p$(@1 + 1)" : physics.joint {}
+    node "floor" : physics.rendering.box
+    {
+        size = "[100; 1; 0.05]"
+        color = "[0.8; 0.8; 1.0]"
 
+        transform = "Transform.Translation([0; -0.5; -0.05])"
+    }
+
+    node "camera" : physics.rendering.camera
+    {
+        orthographic = "1"
+        transform = "Transform.Translation([0; -5; 1.2]) *
+                     Transform.RotationX(-0.5 * pi)"
+    }
+
+    node | "p@n"
+    {
+        node "contact" : physics.contacts.soft
+        {
+            location = "[ 0;
+                          0;
+                         -1]"
+        }
+
+        forceExternal = "contact.force"
+    }
+
+    edge from "p{1:@n}" to "p$(@1 + 1)" : physics.joint {}
+
+    include "physics/model.cdn"
     include "physics/dynamics.cdn"
 }
 

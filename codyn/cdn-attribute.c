@@ -22,14 +22,6 @@
 
 #include "cdn-attribute.h"
 
-/**
- * SECTION:cdn-attribute
- * @short_description: Cdn format attribute
- *
- * This object represents an attribute in the Cdn format.
- *
- **/
-
 #define CDN_ATTRIBUTE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_ATTRIBUTE, CdnAttributePrivate))
 
 struct _CdnAttributePrivate

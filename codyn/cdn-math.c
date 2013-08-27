@@ -29,7 +29,11 @@
 #include <string.h>
 
 #ifdef HAVE_LAPACK
+#ifdef PLATFORM_OSX
+#include <vecLib/clapack.h>
+#else
 #include <clapack.h>
+#endif
 #endif
 
 #ifdef HAVE_BLAS
@@ -43,14 +47,6 @@
 #include "cdn-compile-error.h"
 
 #include "cdn-math.h"
-
-/**
- * SECTION:cdn-math
- * @short_description: Math function/operators
- *
- * Math expression helper functions.
- *
- */
 
 #define foreach_element(op)							\
 gint i;										\
@@ -85,8 +81,23 @@ op_##func (CdnStack           *stack,						\
            CdnStackArgs const *argdim,						\
            gpointer            userdata)					\
 {										\
-	foreach_element2 (stack, argdim, code);					\
-}
+	if ((argdim->args[0].columns == 1 || argdim->args[1].columns == 1) &&	\
+	    argdim->args[0].rows == argdim->args[1].rows &&			\
+	    argdim->args[0].rows != 1)						\
+	{									\
+		foreach_celement2 (stack, argdim, code);			\
+	}									\
+	else if ((argdim->args[0].rows == 1 || argdim->args[1].rows == 1) &&	\
+	    argdim->args[0].columns == argdim->args[1].columns &&		\
+	    argdim->args[0].columns != 1)					\
+	{									\
+		foreach_relement2 (stack, argdim, code);			\
+	}									\
+	else									\
+	{									\
+		foreach_element2 (stack, argdim, code);				\
+	}									\
+}										\
 
 typedef gdouble (*BinaryFunction)(gdouble a, gdouble b);
 
@@ -167,6 +178,203 @@ foreach_element2 (CdnStack           *stack,
 	}
 }
 
+static void
+foreach_celement2 (CdnStack           *stack,
+                   CdnStackArgs const *argdim,
+                   BinaryFunction      func)
+{
+	gdouble *a;
+	gdouble *b;
+	gdouble *aptr;
+	size_t c;
+	size_t cols;
+
+	if (argdim->args[0].columns == 1)
+	{
+		b = cdn_stack_output_ptr (stack) - argdim->args[0].rows;
+		a = b - cdn_stack_arg_size (&argdim->args[1]);
+		cols = argdim->args[1].columns;
+	}
+	else
+	{
+		a = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+		b = a - argdim->args[1].rows;
+		cols = argdim->args[0].columns;
+	}
+
+	aptr = a;
+
+	for (c = 0; c < cols; ++c)
+	{
+		size_t r;
+		gdouble *bptr = b;
+
+		for (r = 0; r < argdim->args[1].rows; ++r)
+		{
+			*aptr = func (*aptr, *bptr);
+
+			++aptr;
+			++bptr;
+		}
+	}
+
+	if (argdim->args[0].columns == 1)
+	{
+		// Remove b from the stack
+		cdn_stack_set_output_ptr (stack, b);
+	}
+	else
+	{
+		// Move a and remove b from the stack
+		memmove (b, a, sizeof (gdouble) * cdn_stack_arg_size (&argdim->args[0]));
+
+		cdn_stack_set_output_ptr (stack,
+		                          cdn_stack_output_ptr (stack) - argdim->args[1].rows);
+	}
+}
+
+static void
+foreach_relement2 (CdnStack           *stack,
+                   CdnStackArgs const *argdim,
+                   BinaryFunction      func)
+{
+	gdouble *a;
+	gdouble *b;
+	gdouble *aptr;
+	gdouble *bptr;
+
+	size_t c;
+	size_t rows;
+
+	if (argdim->args[0].rows == 1)
+	{
+		b = cdn_stack_output_ptr (stack) - argdim->args[0].columns;
+		a = b - cdn_stack_arg_size (&argdim->args[1]);
+
+		rows = argdim->args[1].rows;
+	}
+	else
+	{
+		a = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+		b = a - argdim->args[1].columns;
+
+		rows = argdim->args[0].rows;
+	}
+
+	aptr = a;
+	bptr = b;
+
+	for (c = 0; c < argdim->args[1].columns; ++c)
+	{
+		size_t r;
+
+		for (r = 0; r < rows; ++r)
+		{
+			*aptr = func (*aptr, *bptr);
+			++aptr;
+		}
+
+		++bptr;
+	}
+
+	if (argdim->args[0].rows == 1)
+	{
+		// Remove b from the stack
+		cdn_stack_set_output_ptr (stack, b);
+	}
+	else
+	{
+		// Move a and remove b from the stack
+		memmove (b, a, sizeof (gdouble) * cdn_stack_arg_size (&argdim->args[0]));
+
+		cdn_stack_set_output_ptr (stack,
+		                          cdn_stack_output_ptr (stack) - argdim->args[1].columns);
+	}
+}
+
+typedef gdouble (*TernaryFunction)(gdouble a, gdouble b, gdouble c);
+
+static void
+foreach_element3 (CdnStack           *stack,
+                  CdnStackArgs const *argdim,
+                  TernaryFunction     op)
+{
+	gint num1;
+	gint num2;
+	gint num3;
+	gdouble *ptr;
+	gdouble *maxptr;
+	gdouble *minptr;
+
+	num1 = cdn_stack_arg_size (argdim->args + 2);
+	num2 = cdn_stack_arg_size (argdim->args + 1);
+	num3 = cdn_stack_arg_size (argdim->args + 0);
+
+	maxptr = cdn_stack_output_ptr (stack) - num3;
+	minptr = maxptr - num2;
+	ptr = minptr - num1;
+
+	if (num1 == 1 && num2 == 1 && num3 == 1)
+	{
+		*ptr = op (*ptr, *(ptr + 1), *(ptr + 2));
+		++ptr;
+	}
+	else if (num1 == 1 && num2 == 1)
+	{
+		gdouble val;
+		gdouble min;
+		gint i;
+
+		val = *ptr;
+		min = *(ptr + 1);
+
+		for (i = 0; i < num3; ++i)
+		{
+			*ptr = op (val, min, *(ptr + 2));
+			++ptr;
+		}
+	}
+	else if (num1 == 1)
+	{
+		gdouble val;
+		gint i;
+
+		val = *ptr;
+
+		for (i = 0; i < num2; ++i)
+		{
+			*ptr++ = op (val, *minptr++, *maxptr);
+
+			if (num3 > 1)
+			{
+				++maxptr;
+			}
+		}
+	}
+	else
+	{
+		gint i;
+
+		for (i = 0; i < num1; ++i)
+		{
+			*ptr = op (*ptr, *minptr, *maxptr);
+			++ptr;
+
+			if (num2 > 1)
+			{
+				++minptr;
+			}
+
+			if (num3 > 1)
+			{
+				++maxptr;
+			}
+		}
+	}
+
+	cdn_stack_set_output_ptr (stack, ptr);
+}
+
 static gdouble
 sign_value (gdouble value)
 {
@@ -198,6 +406,8 @@ SIMPLE_MATH_MAP_CODE (sign, sign_value)
 BIN_MATH_MAP (atan2)
 BIN_MATH_MAP (pow)
 BIN_MATH_MAP_CODE (csign, copysign)
+
+BIN_MATH_MAP_CODE (hypotv, hypot)
 
 static gdouble
 min (gdouble  a,
@@ -251,15 +461,71 @@ op_nested (CdnStack            *stack,
            gdouble              initial,
            gdouble            (*func)(gdouble, gdouble, gboolean))
 {
-	gboolean first = TRUE;
-	gdouble value;
-	gint i;
-
-	value = initial;
-
-	for (i = 0; i < argdim->num; ++i)
+	if (argdim->num == 2)
 	{
-		gint n = cdn_stack_arg_size (argdim->args + i);
+		gdouble *ptrA;
+		gdouble *ptrB;
+		gint i;
+		gdouble *outptr;
+
+		gint n1 = cdn_stack_arg_size (&argdim->args[1]);
+		gint n2 = cdn_stack_arg_size (&argdim->args[0]);
+
+		ptrB = cdn_stack_output_ptr (stack) - n2;
+		ptrA = ptrB - n1;
+
+		if (n1 == n2)
+		{
+			outptr = ptrB;
+
+			for (i = 0; i < n1; ++i)
+			{
+				*ptrA = func (*ptrA, func (initial, *ptrB, TRUE), FALSE);
+
+				++ptrA;
+				++ptrB;
+			}
+
+			cdn_stack_set_output_ptr (stack, outptr);
+		}
+		else if (n1 == 1)
+		{
+			gdouble v = *ptrA;
+
+			for (i = 0; i < n2; ++i)
+			{
+				*ptrA = func (v, func (initial, *ptrB, TRUE), FALSE);
+
+				++ptrA;
+				++ptrB;
+			}
+
+			// Pop one value of A
+			cdn_stack_pop (stack);
+		}
+		else
+		{
+			gdouble v = *ptrB;
+
+			for (i = 0; i < n1; ++i)
+			{
+				*ptrA = func (v, func (initial, *ptrA, TRUE), FALSE);
+				++ptrA;
+			}
+
+			// Pop one value of B
+			cdn_stack_pop (stack);
+		}
+	}
+	else
+	{
+		// Operate on single argument
+		gdouble value;
+		gboolean first = TRUE;
+
+		value = initial;
+
+		gint n = cdn_stack_arg_size (&argdim->args[0]);
 
 		while (n > 0)
 		{
@@ -268,9 +534,9 @@ op_nested (CdnStack            *stack,
 
 			--n;
 		}
-	}
 
-	cdn_stack_push (stack, value);
+		cdn_stack_push (stack, value);
+	}
 }
 
 #define NESTED_MATH_MAP(func, initial) NESTED_MATH_MAP_CODE(func, func, initial)
@@ -298,14 +564,6 @@ NESTED_MATH_MAP (sum, 0)
 NESTED_MATH_MAP (product, 1)
 NESTED_MATH_MAP (sqsum, 0)
 
-static gdouble
-hypot_impl (gdouble  a,
-            gdouble  b,
-            gboolean initial)
-{
-	return a + b * b;
-}
-
 static void
 op_hypot (CdnStack           *stack,
           CdnStackArgs const *argdim,
@@ -325,18 +583,23 @@ op_hypot (CdnStack           *stack,
 
 		cdn_stack_push (stack, hypot (a, b));
 	}
-	else if (argdim->num == 1 &&
-	         argdim->args[0].rows == 1 &&
-	         argdim->args[0].columns == 1)
+	else if (argdim->num == 2)
 	{
-		// NOOP
-		return;
+		op_hypotv (stack, argdim, userdata);
 	}
 	else
 	{
-		op_nested (stack, argdim, 0, hypot_impl);
+		op_nested (stack, argdim, 0, sqsum);
 		cdn_stack_push (stack, sqrt (cdn_stack_pop (stack)));
 	}
+}
+
+static gdouble
+op_lerp_impl (gdouble val,
+              gdouble min,
+              gdouble max)
+{
+	return min + (max - min) * val;
 }
 
 static void
@@ -344,12 +607,15 @@ op_lerp (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gdouble third = cdn_stack_pop (stack);
-	gdouble second = cdn_stack_pop (stack);
-	gdouble first = cdn_stack_pop (stack);
+	foreach_element3 (stack, argdim, op_lerp_impl);
+}
 
-	// TODO: multidim
-	cdn_stack_push (stack, first + (second - first) * third);
+static gdouble
+op_clip_impl (gdouble val,
+              gdouble min,
+              gdouble max)
+{
+	return val < min ? min : (val > max ? max : val);
 }
 
 static void
@@ -357,12 +623,26 @@ op_clip (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gdouble max = cdn_stack_pop (stack);
-	gdouble min = cdn_stack_pop (stack);
-	gdouble val = cdn_stack_pop (stack);
+	foreach_element3 (stack, argdim, op_clip_impl);
+}
 
-	// TODO: multidim
-	cdn_stack_push (stack, val < min ? min : (val > max ? max : val));
+static gdouble
+op_cycle_impl (gdouble val,
+               gdouble min,
+               gdouble max)
+{
+	if (val > max)
+	{
+		return min + fmod (val - min, max - min);
+	}
+	else if (val < min)
+	{
+		return max - fmod (min - val, max - min);
+	}
+	else
+	{
+		return val;
+	}
 }
 
 static void
@@ -370,24 +650,7 @@ op_cycle (CdnStack           *stack,
           CdnStackArgs const *argdim,
           gpointer            userdata)
 {
-	gdouble max = cdn_stack_pop (stack);
-	gdouble min = cdn_stack_pop (stack);
-	gdouble val = cdn_stack_pop (stack);
-
-	// TODO: multidim
-
-	if (val > max)
-	{
-		cdn_stack_push (stack, min + fmod (val - min, max - min));
-	}
-	else if (val < min)
-	{
-		cdn_stack_push (stack, max - fmod (min - val, max - min));
-	}
-	else
-	{
-		cdn_stack_push (stack, val);
-	}
+	foreach_element3 (stack, argdim, op_cycle_impl);
 }
 
 static void
@@ -531,7 +794,7 @@ matrix_multiply (CdnStack           *stack,
 	ptrA = ptrB - num1;
 
 #ifdef HAVE_BLAS
-	cblas_dgemm (CblasRowMajor,
+	cblas_dgemm (CblasColMajor,
 	             CblasNoTrans,
 	             CblasNoTrans,
 	             argdim->args[1].rows,
@@ -539,42 +802,40 @@ matrix_multiply (CdnStack           *stack,
 	             argdim->args[1].columns,
 	             1,
 	             ptrA,
-	             argdim->args[1].columns,
+	             argdim->args[1].rows,
 	             ptrB,
-	             argdim->args[0].columns,
+	             argdim->args[0].rows,
 	             0,
 	             ptrC,
-	             argdim->args[0].columns);
+	             argdim->args[1].rows);
 #else
 {
-	gint r;
-	gint idx = 0;
-	gint ar = 0;
+	gint c;
+	gint wr = 0;
+	gint bc = 0;
 
 	// Naive implementation
-	for (r = 0; r < argdim->args[0].columns; ++r)
+	for (c = 0; c < argdim->args[0].columns; ++c)
 	{
-		gint c;
+		gint r;
 
-		for (c = 0; c < argdim->args[1].columns; ++c)
+		for (r = 0; r < argdim->args[1].rows; ++r)
 		{
 			gdouble s = 0;
-			gint bc = 0;
-			gint i;
+			gint ar = r;
 
+			// dot product of row <r> in <A> and column <c> in <B>
 			for (i = 0; i < argdim->args[0].rows; ++i)
 			{
-				s += ptrA[ar + i] * ptrB[c + bc];
-				bc += argdim->args[0].columns;
+				s += ptrA[ar + i] * ptrB[bc + i];
+				ar += argdim->args[1].rows;
 			}
 
-			ptrC[idx] = s;
-			++idx;
+			ptrC[wr] = s;
 		}
 
-		ar += argdim->args[0].rows;
+		bc += argdim->args[0].rows;
 	}
-}
 #endif
 
 	memmove (ptrA, ptrC, sizeof (gdouble) * numend);
@@ -680,6 +941,10 @@ op_ternary (CdnStack           *stack,
 	}
 }
 
+/*
+ * op_mindex is used to index a <matrix> (args[0]) with by pairs of
+ * row/column indices given respectively in args[2] and args[1].
+ */
 static void
 op_mindex (CdnStack           *stack,
            CdnStackArgs const *argdim,
@@ -697,8 +962,8 @@ op_mindex (CdnStack           *stack,
 	gdouble *iptr2;
 	gint n;
 
-	a1 = (cdn_stack_arg_size (argdim->args + 2) == 1);
-	a2 = (cdn_stack_arg_size (argdim->args + 1) == 1);
+	a1 = (cdn_stack_arg_size (&argdim->args[2]) == 1);
+	a2 = (cdn_stack_arg_size (&argdim->args[1]) == 1);
 
 	rows = a1 ? argdim->args[1].rows : argdim->args[2].rows;
 	cols = a1 ? argdim->args[1].columns : argdim->args[2].columns;
@@ -708,21 +973,25 @@ op_mindex (CdnStack           *stack,
 
 	vptr = cdn_stack_output_ptr (stack) - vrows * vcols;
 
-	iptr2 = vptr - cdn_stack_arg_size (argdim->args + 1);
-	iptr1 = iptr2 - cdn_stack_arg_size (argdim->args + 2);
+	iptr2 = vptr - cdn_stack_arg_size (&argdim->args[1]);
+	iptr1 = iptr2 - cdn_stack_arg_size (&argdim->args[2]);
 
 	n = rows * cols;
 	nv = vrows * vcols;
 
 	if (a1 && !a2)
 	{
-		gint r = (gint)(*iptr1 + 0.5) * vcols;
+		// In this case, the first argument indicating the row index is
+		// a single value.
+		gint r = (gint)(*iptr1 + 0.5);
 		gint i;
 
+		// Iterate over column indices and overwrite result directly
+		// in the stack.
 		for (i = 0; i < n; ++i)
 		{
 			gint c = (gint)(*iptr2++ + 0.5);
-			gint idx = r + c;
+			gint idx = r + c * vrows;
 
 			if (idx < 0 || idx >= nv)
 			{
@@ -738,13 +1007,15 @@ op_mindex (CdnStack           *stack,
 	}
 	else if (a2 && !a1)
 	{
-		gint c = (gint)(*iptr2 + 0.5);
+		// In this case, the second argument indicating the column index is
+		// a single value.
+		gint c = (gint)(*iptr2 + 0.5) * vrows;
 		gint i;
 
 		for (i = 0; i < n; ++i)
 		{
 			gint r = (gint)(*iptr1 + 0.5);
-			gint idx = r * vcols + c;
+			gint idx = r + c;
 
 			if (idx < 0 || idx >= nv)
 			{
@@ -758,8 +1029,47 @@ op_mindex (CdnStack           *stack,
 
 		cdn_stack_popn (stack, nv + 1);
 	}
+	else if (argdim->args[2].columns == 1 && argdim->args[1].rows == 1)
+	{
+		// In this case, we index the cross of rows-x-columns
+		gint c;
+		gdouble *wptr;
+		gdouble *retptr;
+		gint nret;
+
+		// write result in the extra space
+		wptr = cdn_stack_output_ptr (stack);
+		retptr = iptr1;
+
+		for (c = 0; c < argdim->args[1].columns; ++c)
+		{
+			gint r = 0;
+			gint cc = (gint)(*iptr2 + 0.5);
+
+			for (r = 0; r < argdim->args[2].rows; ++r)
+			{
+				gint rr = (gint)(iptr1[r] + 0.5);
+				gint i;
+
+				i = vrows * cc + rr;
+
+				*wptr++ = vptr[i];
+			}
+
+			++iptr2;
+		}
+
+		nret = argdim->args[2].rows * argdim->args[1].columns;
+
+		memmove (retptr,
+		         cdn_stack_output_ptr (stack),
+		         sizeof (gdouble) * nret);
+
+		cdn_stack_popn (stack, (nv + argdim->args[2].rows + argdim->args[1].columns) - nret);
+	}
 	else
 	{
+		// In this case, both rows and columns are equally sized vectors
 		gint i;
 
 		for (i = 0; i < n; ++i)
@@ -767,7 +1077,7 @@ op_mindex (CdnStack           *stack,
 			gint c = (gint)(*iptr2++ + 0.5);
 			gint r = (gint)(*iptr1 + 0.5);
 
-			gint idx = r * vcols + c;
+			gint idx = r + c * vrows;
 
 			if (idx < 0 || idx >= nv)
 			{
@@ -797,8 +1107,8 @@ op_index (CdnStack           *stack,
 	}
 
 	// Sample from the output
-	gint num1 = cdn_stack_arg_size (argdim->args + 1);
-	gint num2 = cdn_stack_arg_size (argdim->args);
+	gint num1 = cdn_stack_arg_size (&argdim->args[1]);
+	gint num2 = cdn_stack_arg_size (&argdim->args[0]);
 
 	gdouble *vptr = cdn_stack_output_ptr (stack) - num2;
 	gdouble *iptr = vptr - num1;
@@ -820,6 +1130,18 @@ op_index (CdnStack           *stack,
 	cdn_stack_popn (stack, num2);
 }
 
+/*
+ * op_lindex is used to dynamically convert row/column indices to linear indices.
+ * lindex(a, b, rows)
+ *
+ * where <rows> is the number of rows of the thing to
+ * generate indices for. <a> and <b> indicate row and column indices respectively.
+ *
+ * dim(a) == dim(b) => each element in <a> is a row with corresponding column in <b>
+ * dim(a) == 1 => row <a> for each column in <b>
+ * dim(b) == 1 => column <b> for each row in <a>
+ * size(a, 1) == size(b, 0) => matrix combination of each <a> vs each <b>
+ */
 static void
 op_lindex (CdnStack           *stack,
            CdnStackArgs const *argdim,
@@ -832,14 +1154,15 @@ op_lindex (CdnStack           *stack,
 	gint si;
 	gint w;
 
-	a1 = (cdn_stack_arg_size (argdim->args + 2) == 1);
-	a2 = (cdn_stack_arg_size (argdim->args + 1) == 1);
+	a1 = (cdn_stack_arg_size (&argdim->args[2]) == 1);
+	a2 = (cdn_stack_arg_size (&argdim->args[1]) == 1);
 
 	w = (gint)(cdn_stack_pop (stack) + 0.5);
 
 	ptr2 = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (argdim->args + 1);
 	ptr1 = ptr2 - cdn_stack_arg_size (argdim->args + 2);
 
+	// dim(a) == dim(b)
 	if (argdim->args[1].rows == argdim->args[2].rows &&
 	    argdim->args[1].columns == argdim->args[2].columns)
 	{
@@ -851,12 +1174,19 @@ op_lindex (CdnStack           *stack,
 
 		for (i = 0; i < n; ++i)
 		{
-			*ptr1 = (gint)(*ptr2++ + 0.5) + ((gint)(*ptr1 + 0.5)) * w;
+			gint av;
+			gint bv;
+
+			av = (gint)(*ptr1 + 0.5);
+			bv = (gint)(*ptr2++ + 0.5);
+
+			*ptr1 = bv * w + av;
 			++ptr1;
 		}
 
 		cdn_stack_popn (stack, n);
 	}
+	// dim(a) == 1
 	else if (a1)
 	{
 		gint i;
@@ -864,15 +1194,16 @@ op_lindex (CdnStack           *stack,
 
 		n = cdn_stack_arg_size (argdim->args + 1);
 
-		si = (gint)(*ptr1 + 0.5) * w;
+		si = (gint)(*ptr1 + 0.5);
 
 		for (i = 0; i < n; ++i)
 		{
-			*ptr1++ = si + (gint)(*ptr2++ + 0.5);
+			*ptr1++ = si + (gint)(*ptr2++ + 0.5) * w;
 		}
 
 		cdn_stack_pop (stack);
 	}
+	// dim(b) == 1
 	else if (a2)
 	{
 		gint i;
@@ -880,11 +1211,11 @@ op_lindex (CdnStack           *stack,
 
 		n = cdn_stack_arg_size (argdim->args + 2);
 
-		si = (gint)(*ptr2 + 0.5);
+		si = (gint)(*ptr2 + 0.5) * w;
 
 		for (i = 0; i < n; ++i)
 		{
-			*ptr1 = si + ((gint)(*ptr1 + 0.5)) * w;
+			*ptr1 = si + ((gint)(*ptr1 + 0.5));
 			++ptr1;
 		}
 
@@ -894,7 +1225,7 @@ op_lindex (CdnStack           *stack,
 	{
 		gint nr;
 		gint nc;
-		gint r;
+		gint c;
 		gint n;
 		gdouble *outptr;
 
@@ -904,16 +1235,16 @@ op_lindex (CdnStack           *stack,
 		outptr = cdn_stack_output_ptr (stack);
 
 		// single row and single column combined
-		for (r = 0; r < nr; ++r)
+		for (c = 0; c < nc; ++c)
 		{
-			gint c;
+			gint r;
 			gint si;
 
-			si = (gint)(ptr1[r] + 0.5) * w;
+			si = (gint)(ptr2[c] + 0.5) * w;
 
-			for (c = 0; c < nc; ++c)
+			for (r = 0; r < nr; ++r)
 			{
-				*outptr++ = si + (gint)(ptr2[c] + 0.5);
+				*outptr++ = si + (gint)(ptr1[r] + 0.5);
 			}
 		}
 
@@ -935,6 +1266,7 @@ op_transpose (CdnStack           *stack,
 	gint numr;
 	gint numc;
 	gint start;
+	gint num;
 
 	numr = argdim->args[0].rows;
 	numc = argdim->args[0].columns;
@@ -945,11 +1277,13 @@ op_transpose (CdnStack           *stack,
 		return;
 	}
 
+	num = numr * numc;
+
 	gdouble *m = cdn_stack_ptr (stack) +
 	             cdn_stack_count (stack) -
-	             numr * numc;
+	             num;
 
-	for (start = 0; start < numr * numc; ++start)
+	for (start = 0; start < num; ++start)
 	{
 		gint next = start;
 		gint i = 0;
@@ -958,7 +1292,7 @@ op_transpose (CdnStack           *stack,
 		do
 		{
 			++i;
-			next = (next % numr) * numc + next / numr;
+			next = (next % numc) * numr + next / numc;
 		} while (next > start);
 
 		if (next < start || i == 1)
@@ -970,7 +1304,7 @@ op_transpose (CdnStack           *stack,
 
 		do
 		{
-			i = (next % numr) * numc + next / numr;
+			i = (next % numc) * numr + next / numc;
 			m[next] = (i == start) ? tmp : m[i];
 			next = i;
 		} while (next > start);
@@ -978,35 +1312,208 @@ op_transpose (CdnStack           *stack,
 }
 
 #ifdef HAVE_LAPACK
+
+#ifdef PLATFORM_OSX
+#define LP_int __CLPK_integer
+#define LP_double __CLPK_doublereal
+#else
+#define LP_int gint
+#define LP_double gdouble
+#endif
+
+#ifndef PLATFORM_OSX
+extern void dgetrf_ (LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dgetri_ (LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dgelsd_ (LP_int *,
+                     LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dgesv_ (LP_int *,
+                    LP_int *,
+                    LP_double *,
+                    LP_int *,
+                    LP_int *,
+                    LP_double *,
+                    LP_int *,
+                    LP_int *);
+
+extern void dgeqrf_ (LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dorgqr_ (LP_int *,
+                     LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *);
+#endif
+
 static void
 op_inverse (CdnStack           *stack,
             CdnStackArgs const *argdim,
             gpointer            userdata)
 {
-	gint n;
-	gdouble *ptr;
-	gint *ipiv;
-	gint nn;
+	LP_int n;
+	LP_double *ptr;
+	LP_int *ipiv;
+	LP_int nn;
+	LP_int info;
+	LP_double *work;
+	LP_int lwork;
 
 	n = argdim->args[0].rows;
 	nn = n * n;
 
 	ptr = cdn_stack_output_ptr (stack) - nn;
 
-	ipiv = (gint *)(cdn_stack_output_ptr (stack));
+	ipiv = (LP_int *)(cdn_stack_output_ptr (stack));
+	work = cdn_stack_output_ptr (stack) + n;
+	lwork = (cdn_stack_ptr (stack) + cdn_stack_size (stack)) - work;
 
-	clapack_dgetrf (CblasRowMajor,
-	                n,
-	                n,
-	                ptr,
-	                n,
-	                ipiv);
+	dgetrf_ (&n, &n, ptr, &n, ipiv, &info);
+	dgetri_ (&n, ptr, &n, ipiv, work, &lwork, &info);
+}
 
-	clapack_dgetri (CblasRowMajor,
-	                n,
-	                ptr,
-	                n,
-	                ipiv);
+static LP_int
+pseudo_inverse_iwork (CdnDimension const *dim)
+{
+	LP_int mindim;
+	LP_int nlvl;
+
+	mindim = dim->rows < dim->columns ? dim->rows : dim->columns;
+	nlvl = (LP_int)log2(mindim / (25.0 + 1.0)) + 1;
+
+	if (nlvl < 0)
+	{
+		nlvl = 0;
+	}
+
+	return 3 * mindim * nlvl + 11 * mindim;
+}
+
+#include <glib/gprintf.h>
+
+static void
+op_pseudo_inverse (CdnStack           *stack,
+                   CdnStackArgs const *argdim,
+                   gpointer            userdata)
+{
+	LP_int n;
+	LP_int m;
+	LP_double *A;
+	LP_double *b;
+	LP_double *bptr;
+	LP_double *s;
+	LP_double *work;
+	LP_int *iwork;
+	LP_int liwork;
+	LP_int i;
+	LP_int rank;
+	LP_int info;
+	LP_int worksize;
+	LP_double rcond = -1;
+	LP_int maxdim;
+	LP_int mindim;
+	LP_int lb;
+
+	m = argdim->args[0].rows;
+	n = argdim->args[0].columns;
+
+	if (m > n)
+	{
+		maxdim = m;
+		mindim = n;
+	}
+	else
+	{
+		maxdim = n;
+		mindim = m;
+	}
+
+	// Reserved space starts with b
+	lb = maxdim;
+	b = cdn_stack_output_ptr (stack);
+
+	// Get where the matrix A is
+	A = b - (n * m);
+
+	// Then comes s
+	s = b + lb * lb;
+
+	// Then comes work and iwork
+	liwork = pseudo_inverse_iwork (&argdim->args[0].dimension);
+	iwork = (LP_int *)(s + mindim);
+
+	work = s + mindim + liwork;
+	worksize = (cdn_stack_ptr (stack) + cdn_stack_size (stack)) - work;
+
+	bptr = b;
+
+	memset (bptr, 0, sizeof (gdouble) * (lb * lb));
+
+	// fill b with identity matrix
+	for (i = 0; i < lb; ++i)
+	{
+		*bptr = 1;
+		bptr += lb + 1;
+	}
+
+	dgelsd_ (&m,
+	         &n,
+	         &lb,
+	         A,
+	         &m,
+	         b,
+	         &lb,
+	         s,
+	         &rcond,
+	         &rank,
+	         work,
+	         &worksize,
+	         iwork,
+	         &info);
+
+	// copy back from b the n-by-m pseudo inverse
+	for (i = 0; i < m; ++i)
+	{
+		memcpy (A, b, sizeof (gdouble) * n);
+
+		A += n;
+		b += lb;
+	}
 }
 
 static void
@@ -1014,11 +1521,16 @@ op_linsolve (CdnStack           *stack,
              CdnStackArgs const *argdim,
              gpointer            userdata)
 {
-	gdouble *ptrA;
-	gdouble *ptrB;
-	gint *ptrIpv;
-	gint numa;
-	gint numb;
+	LP_double *ptrA;
+	LP_double *ptrB;
+	LP_int *ptrIpv;
+	LP_int numa;
+	LP_int numb;
+	LP_int n;
+	LP_int nrhs;
+	LP_int lda;
+	LP_int ldb;
+	LP_int info;
 
 	numa = cdn_stack_arg_size (argdim->args);
 	numb = cdn_stack_arg_size (argdim->args + 1);
@@ -1027,21 +1539,99 @@ op_linsolve (CdnStack           *stack,
 	ptrB = ptrA - numb;
 
 	// Use the extra space we allocated on the stack to write ipv
-	ptrIpv = (gint *)cdn_stack_output_ptr (stack);
+	ptrIpv = (LP_int *)cdn_stack_output_ptr (stack);
 
-	clapack_dgesv (CblasRowMajor,
-	               argdim->args[0].rows,
-	               argdim->args[1].columns,
-	               ptrA,
-	               argdim->args[0].columns,
-	               ptrIpv,
-	               ptrB,
-	               argdim->args[0].rows);
+	n = argdim->args[0].rows;
+	nrhs = argdim->args[1].columns;
+	lda = argdim->args[0].columns;
+	ldb = argdim->args[0].rows;
+
+	dgesv_ (&n,
+	        &nrhs,
+	        ptrA,
+	        &lda,
+	        ptrIpv,
+	        ptrB,
+	        &ldb,
+	        &info);
 
 	cdn_stack_popn (stack, numa);
 }
+
+static void
+op_qr (CdnStack           *stack,
+       CdnStackArgs const *argdim,
+       gpointer            userdata)
+{
+	LP_double *ptrA;
+	LP_int m;
+	LP_int n;
+	LP_int lwork;
+	LP_double *tau;
+	LP_double *work;
+	LP_int mindim;
+	LP_int info;
+	gdouble *ptrWr;
+	gdouble *ptrRd;
+	gint numa;
+	LP_int i;
+
+	m = argdim->args[0].rows;
+	n = argdim->args[0].columns;
+
+	mindim = m < n ? m : n;
+
+	numa = cdn_stack_arg_size (argdim->args);
+	ptrA = cdn_stack_output_ptr (stack) - numa;
+	tau = cdn_stack_output_ptr (stack) + m * m;
+
+	// remaining work size
+	work = tau + mindim;
+	lwork = (cdn_stack_ptr (stack) + cdn_stack_size (stack)) - work;
+
+	dgeqrf_ (&m,
+	         &n,
+	         ptrA,
+	         &m,
+	         tau,
+	         work,
+	         &lwork,
+	         &info);
+
+	ptrWr = ptrA + m * m;
+	ptrRd = ptrA;
+
+	memset (ptrWr, 0, sizeof(gdouble) * m * n);
+
+	// copy r to after A
+	for (i = 1; i <= n; ++i)
+	{
+		memcpy (ptrWr, ptrRd, sizeof(gdouble) * i);
+
+		ptrWr += m;
+		ptrRd += m;
+	}
+
+	// compute q in ptrA
+	dorgqr_ (&m,
+	         &m,
+	         &n,
+	         ptrA,
+	         &m,
+	         tau,
+	         work,
+	         &lwork,
+	         &info);
+
+	cdn_stack_set_output_ptr (stack, tau);
+}
 #endif
 
+/* slinsolve_factorize factorizes a matrix A into LᵀDL. It computes the lower
+ * unit triangular matrix L and the diagonal matrix D in place in the matrix
+ * A. L is a list of indices describing the kinematic tree from which the
+ * sparsity of A is induced.
+ */
 static void
 slinsolve_factorize (gdouble *A,
                      gdouble *L,
@@ -1049,35 +1639,38 @@ slinsolve_factorize (gdouble *A,
 {
 	gint k;
 
-	// First perform LTDL factorization of A exploiting sparsity
 	for (k = n - 1; k >= 0; --k)
 	{
 		gint i = (gint)L[k];
+		gint kk = k * (n + 1);
 
 		while (i >= 0)
 		{
-			gint nr;
-			gint nir;
-			gint idx1;
-			gint idx2;
 			gint j;
 			gdouble a;
+			gint ki;
 
-			nr = k * n;
-			idx1 = nr + i;
-			idx2 = nr + k;
+			ki = k + i * n;
 
-			a = A[idx1] / A[idx2];
+			// a = A_{ki} / A_{kk}
+			a = A[ki] / A[kk];
+
 			j = i;
-			nir = i * n;
 
 			while (j >= 0)
 			{
-				A[nir + j] -= a * A[nr + j];
+				gint jn = j * n;
+				gint ij = i + jn;
+				gint kj = k + jn;
+
+				// A_{ij} = A_{ij} - a A_{kj}
+				A[ij] -= a * A[kj];
+
 				j = (gint)L[j];
 			}
 
-			A[idx1] = a;
+			// H_{ki} = a
+			A[ki] = a;
 			i = (gint)L[i];
 		}
 	}
@@ -1087,51 +1680,62 @@ static void
 slinsolve_backsubs (gdouble *ptrA,
                     gdouble *ptrB,
                     gdouble *ptrL,
-                    gint     n,
-                    gint     numc,
-                    gint     idx)
+                    gint     n)
 {
 	gint i;
-	gint diagidx;
+	gint diag;
 
-	diagidx = 0;
+	diag = n * n - 1;
 
-	// First solve for b = L^-T b
+	// First solve for b = D^-1 L^-T b
+	// see Sparce Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
-		gint iidx;
 		gint j;
 
 		j = (gint)ptrL[i];
-		iidx = i * n;
 
 		while (j >= 0)
 		{
-			ptrB[j] -= ptrA[iidx + j] * ptrB[i];
+			gint ij = i + j * n;
+
+			// x_j = x_j - L_{ij} x_i
+			ptrB[j] -= ptrA[ij] * ptrB[i];
 			j = (gint)ptrL[j];
 		}
+
+		// Apply D-1 from the diagonal elements if ptrA
+		ptrB[i] /= ptrA[diag];
+		diag -= n + 1;
 	}
 
 	// Then finally solve for L^-1 b
+	// see Sparce Factorization Algorithms, page 115
 	for (i = 0; i < n; ++i)
 	{
-		gint iidx;
 		gint j;
 
 		j = (gint)ptrL[i];
-		iidx = i * n;
-
-		ptrB[i] /= ptrA[diagidx];
-		diagidx += n + 1;
 
 		while (j >= 0)
 		{
-			ptrB[i] -= ptrA[iidx + j] * ptrB[j];
+			gint ij = i + j * n;
+
+			// x_i = x_i - L_{ij} x_j
+			ptrB[i] -= ptrA[ij] * ptrB[j];
 			j = (gint)ptrL[j];
 		}
 	}
 }
 
+/*
+ * op_slinsolve is a specialized form of solving a linear system of equations
+ * representing the system H(q)q'' = C given a specific kinematic chain. The
+ * chain can be used to more efficiently solve the system since DOFs which are
+ * not in the same chain do not have corresponding terms in H. This is a
+ * straightforward implementation from the algorithm given in
+ * "Rigid body dynamics algorithms - Featherstone, 2008".
+ */
 static void
 op_slinsolve (CdnStack           *stack,
               CdnStackArgs const *argdim,
@@ -1146,9 +1750,9 @@ op_slinsolve (CdnStack           *stack,
 	gint i;
 	gint n;
 
-	numa = cdn_stack_arg_size (argdim->args);
-	numl = cdn_stack_arg_size (argdim->args + 1);
-	numb = cdn_stack_arg_size (argdim->args + 2);
+	numa = cdn_stack_arg_size (&argdim->args[0]);
+	numl = cdn_stack_arg_size (&argdim->args[1]);
+	numb = cdn_stack_arg_size (&argdim->args[2]);
 
 	ptrA = cdn_stack_output_ptr (stack) - numa;
 	ptrL = ptrA - numl;
@@ -1159,14 +1763,15 @@ op_slinsolve (CdnStack           *stack,
 	// Factorized A in place using LTDL factorization
 	slinsolve_factorize (ptrA, ptrL, n);
 
+	// Then backsubstitute
 	for (i = 0; i < argdim->args[2].columns; ++i)
 	{
 		slinsolve_backsubs (ptrA,
 		                    ptrB,
 		                    ptrL,
-		                    n,
-		                    argdim->args[2].columns,
-		                    i);
+		                    n);
+
+		ptrB += n;
 	}
 
 	// Finally pop lambda and A
@@ -1178,16 +1783,8 @@ op_size (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gint r;
-	gint c;
-
-	r = argdim->args[0].rows;
-	c = argdim->args[0].columns;
-
-	cdn_stack_popn (stack, r * c);
-
-	cdn_stack_push (stack, r);
-	cdn_stack_push (stack, c);
+	// This will never be executed because it's compiled as a
+	// kind of macro
 }
 
 static void
@@ -1195,21 +1792,17 @@ op_length (CdnStack           *stack,
            CdnStackArgs const *argdim,
            gpointer            userdata)
 {
-	gint n;
-
-	n = cdn_stack_arg_size (argdim->args);
-
-	cdn_stack_popn (stack, n);
-	cdn_stack_push (stack, n);
+	// This will never be executed because it's compiled as a
+	// kind of macro
 }
 
 static void
-op_hcat (CdnStack           *stack,
+op_vcat (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gint c1;
-	gint c2;
+	gint r1;
+	gint r2;
 	gint s1;
 	gint s2;
 	gint i;
@@ -1217,42 +1810,43 @@ op_hcat (CdnStack           *stack,
 	gdouble *ptr2;
 	gdouble *ptr;
 
-	// Horizontally cat two matrices together
-	if (argdim->args[0].rows == 1)
+	// Vertically cat two matrices together
+	if (argdim->args[0].columns == 1)
 	{
 		return;
 	}
 
-	c1 = argdim->args[1].columns;
-	c2 = argdim->args[0].columns;
+	r1 = argdim->args[1].rows;
+	r2 = argdim->args[0].rows;
 
-	s1 = sizeof (gdouble) * c1;
-	s2 = sizeof (gdouble) * c2;
+	s1 = sizeof (gdouble) * r1;
+	s2 = sizeof (gdouble) * r2;
 
 	ptr = cdn_stack_output_ptr (stack);
-	ptr2 = ptr - argdim->args[0].rows * c2;
-	ptr1 = ptr2 - argdim->args[1].rows * c1;
 
-	for (i = 0; i < argdim->args[0].rows; ++i)
+	ptr2 = ptr - cdn_stack_arg_size (&argdim->args[0]);
+	ptr1 = ptr2 - cdn_stack_arg_size (&argdim->args[1]);
+
+	for (i = 0; i < argdim->args[0].columns; ++i)
 	{
 		memcpy (ptr, ptr1, s1);
 
-		ptr1 += c1;
-		ptr += c1;
+		ptr1 += r1;
+		ptr += r1;
 
 		memcpy (ptr, ptr2, s2);
 
-		ptr2 += c2;
-		ptr += c2;
+		ptr2 += r2;
+		ptr += r2;
 	}
 
 	ptr = cdn_stack_output_ptr (stack);
 
-	memcpy (ptr - argdim->args[0].rows * c2 - argdim->args[1].rows * c1,
+	memcpy (ptr - argdim->args[0].columns * r2 - argdim->args[1].columns * r1,
 	        ptr,
 	        sizeof (gdouble) *
-	        argdim->args[0].rows *
-	        (argdim->args[0].columns + argdim->args[1].columns));
+	        argdim->args[0].columns *
+	        (argdim->args[0].rows + argdim->args[1].rows));
 }
 
 static void
@@ -1274,47 +1868,180 @@ op_eye (CdnStack           *stack,
 }
 
 static void
-op_block (CdnStack           *stack,
-          CdnStackArgs const *argdim,
-          gpointer            userdata)
+op_diag (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
 {
-	gdouble *ptr;
-	gint r;
-	gint c;
-	gint numr;
-	gint numc;
-	gdouble *ptrA;
-	gdouble *ptrR;
-	gdouble *ptrC;
-	gint i;
-	gint n;
+	gdouble *ptrM;
 
-	ptr = cdn_stack_output_ptr (stack);
+	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
 
-	numr = argdim->args[1].columns;
-	numc = argdim->args[0].columns;
-
-	ptrC = ptr - numc;
-	ptrR = ptrC - numr;
-	ptrA = ptrR - cdn_stack_arg_size (argdim->args + 2);
-
-	i = 0;
-	n = numr * numc;
-
-	for (r = 0; r < numr; ++r)
+	if (argdim->args[0].rows == 1 || argdim->args[0].columns == 1)
 	{
-		gint ridx = (gint)ptrR[r] * argdim->args[2].columns;
+		// Create diagonal matrix
+		gdouble *ptrRet = cdn_stack_output_ptr (stack);
+		gint n = cdn_stack_arg_size (&argdim->args[0]);
+		gint nd;
+		gint idiag = 0;
+		gint i;
 
-		for (c = 0; c < numc; ++c)
+		nd = sizeof(gdouble) * n * n;
+
+		// Clear result
+		memset (ptrRet, 0, nd);
+
+		// Set diagonal
+		for (i = 0; i < n; ++i)
 		{
-			gint cidx = (gint)ptrC[c];
+			ptrRet[idiag] = ptrM[i];
+			idiag += n + 1;
+		}
 
-			ptr[i] = ptrA[ridx + cidx];
+		// Copy back result
+		memmove (ptrM, ptrRet, nd);
+		cdn_stack_set_output_ptr (stack, ptrM + n * n);
+	}
+	else
+	{
+		// Select diagonal from matrix
+		gint n = argdim->args[0].rows;
+		gint i;
+		gint idiag = 0;
+
+		for (i = 0; i < n; ++i)
+		{
+			ptrM[i] = ptrM[idiag];
+			idiag += n + 1;
+		}
+
+		cdn_stack_set_output_ptr (stack, ptrM + n);
+	}
+}
+
+static void
+op_tril (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gdouble *ptrM;
+	gint c;
+	gint n;
+	gint rows;
+
+	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+
+	rows = argdim->args[0].rows;
+	n = argdim->args[0].columns;
+
+	// set zeros for upper triangle
+	for (c = 1; c < n; ++c)
+	{
+		ptrM += rows;
+		memset (ptrM, 0, sizeof (gdouble) * (c > rows ? rows : c));
+	}
+}
+
+static void
+op_triu (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gdouble *ptrM;
+	gint c;
+	gint n;
+	gint rows;
+
+	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+
+	// Skip first element
+	++ptrM;
+
+	rows = argdim->args[0].rows;
+	n = argdim->args[0].columns;
+
+	// set zeros for lower triangle
+	for (c = 1; c <= n && c < rows; ++c)
+	{
+		memset (ptrM, 0, sizeof (gdouble) * (rows - c));
+		ptrM += rows + 1;
+	}
+}
+
+static void
+op_csum (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gint c;
+	gdouble *A;
+	gdouble *ptr;
+	gdouble *outptr;
+
+	if (argdim->args[0].columns == 1)
+	{
+		return;
+	}
+
+	A = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+	ptr = A + argdim->args[0].rows;
+	outptr = ptr;
+
+	for (c = 1; c < argdim->args[0].columns; ++c)
+	{
+		gint r;
+
+		for (r = 0; r < argdim->args[0].rows; ++r)
+		{
+			A[r] += *ptr++;
 		}
 	}
 
-	memmove (ptrA, ptr, sizeof (gdouble) * n);
-	cdn_stack_set_output_ptr (stack, ptrA + n);
+	cdn_stack_set_output_ptr (stack, outptr);
+}
+
+static void
+op_rsum (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gint c;
+	gdouble *A;
+	gdouble *wrptr;
+	gdouble *ptr;
+	gdouble *outptr;
+
+	if (argdim->args[0].rows == 1)
+	{
+		return;
+	}
+
+	A = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+	outptr = A + argdim->args[0].columns;
+
+	wrptr = A;
+	ptr = A;
+
+	// Skip first element, it's already in the right location and that's
+	// where the sum starts
+	++ptr;
+
+	for (c = 0; c < argdim->args[0].columns; ++c)
+	{
+		gint r;
+
+		// Skip over first row, it's already in wrptr
+		for (r = 1; r < argdim->args[0].rows; ++r)
+		{
+			*wrptr += *ptr++;
+		}
+
+		++wrptr;
+
+		// Set first item of sum to first row element of column c
+		*wrptr = *ptr++;
+	}
+
+	cdn_stack_set_output_ptr (stack, outptr);
 }
 
 typedef struct
@@ -1381,22 +2108,29 @@ static FunctionEntry function_entries[] = {
 	{"lindex", op_lindex, 3, FALSE},
 	{"transpose", op_transpose, 1, FALSE},
 #ifdef HAVE_LAPACK
-	{"inverse", op_inverse, 1, FALSE},
+	{"inv", op_inverse, 1, FALSE},
+	{"pinv", op_pseudo_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
+	{"qr", op_qr, 1, FALSE},
 #else
-	{"inverse", op_noop, 1, FALSE},
+	{"inv", op_noop, 1, FALSE},
+	{"pinv", op_noop, 1, FALSE},
 	{"linsolve", op_noop, 2, FALSE},
-
+	{"qr", op_noop, 1, FALSE},
 #endif
 	{"slinsolve", op_slinsolve, 3, FALSE},
 	{"sum", op_sum, -1, FALSE},
 	{"product", op_product, -1, FALSE},
 	{"length", op_length, 1, FALSE},
-	{"size", op_size, 1, FALSE},
-	{"hcat", op_hcat, 2, FALSE},
-	{"zeros", op_zeros, 2, FALSE},
+	{"size", op_size, -1, FALSE},
+	{"vcat", op_vcat, 2, FALSE},
+	{"zeros", op_zeros, -1, FALSE},
 	{"eye", op_eye, 1, FALSE},
-	{"block", op_block, 3, FALSE}
+	{"diag", op_diag, 1, FALSE},
+	{"tril", op_tril, 1, FALSE},
+	{"triu", op_triu, 1, FALSE},
+	{"csum", op_csum, 1, FALSE},
+	{"rsum", op_rsum, 1, FALSE},
 };
 
 typedef struct
@@ -1660,12 +2394,13 @@ cdn_math_function_is_commutative (CdnMathFunctionType  type,
 				return TRUE;
 			}
 
-			if (argdim->args[1].columns != argdim->args[0].columns)
+			if (argdim->args[1].columns == argdim->args[0].rows)
 			{
-				return TRUE;
+				// Matrix multiplication is not commutative
+				return FALSE;
 			}
 
-			return FALSE;
+			return TRUE;
 		break;
 		default:
 			return TRUE;
@@ -1817,6 +2552,26 @@ sparsity_intersect (CdnStackArg const *arg1,
 	}
 }
 
+static int
+cmp_sparsity (const void *a, const void *b)
+{
+	guint const *aa = (guint const *)a;
+	guint const *bb = (guint const *)b;
+
+	if (*aa < *bb)
+	{
+		return -1;
+	}
+	else if (*aa > *bb)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 static void
 sparsity_transpose (CdnStackArg const *inarg,
                     CdnStackArg       *outarg)
@@ -1839,11 +2594,14 @@ sparsity_transpose (CdnStackArg const *inarg,
 
 		idx = inarg->sparsity[i];
 
-		r = idx / inarg->columns;
-		c = idx % inarg->columns;
+		r = idx / inarg->rows;
+		c = idx % inarg->rows;
 
-		sparsity[i] = c * inarg->columns + r;
+		sparsity[i] = c * inarg->rows + r;
 	}
+
+	// Sort sparsity indices
+	qsort(sparsity, inarg->num_sparse, sizeof(guint), cmp_sparsity);
 
 	cdn_stack_arg_set_sparsity (outarg,
 	                            sparsity,
@@ -1911,7 +2669,7 @@ sparsity_union (CdnStackArg const *arg1,
 	if ((cdn_stack_arg_size (arg1) == 1 &&
 	     (arg1->num_sparse > 0 || arg2->num_sparse == cdn_stack_arg_size (arg2))) ||
 	    (cdn_stack_arg_size (arg2) == 1 &&
-	      (arg2->num_sparse > 0 || arg1->num_sparse == cdn_stack_arg_size (arg1))))
+	     (arg2->num_sparse > 0 || arg1->num_sparse == cdn_stack_arg_size (arg1))))
 	{
 		guint n;
 
@@ -1945,20 +2703,25 @@ sparsity_union (CdnStackArg const *arg1,
 				s2 = arg2->sparsity[i2];
 			}
 
+			if (!outarg->sparsity)
+			{
+				gint num;
+
+				num = MIN (arg1->num_sparse + arg2->num_sparse,
+				           cdn_stack_arg_size (outarg));
+
+				outarg->sparsity = g_new (guint, num);
+				outarg->num_sparse = 0;
+			}
+
 			if (s1 == s2)
 			{
-				if (!outarg->sparsity)
-				{
-					outarg->sparsity = g_new (guint, MIN (arg1->num_sparse + arg2->num_sparse,
-					                                      cdn_stack_arg_size (outarg)));
-				}
-
 				outarg->sparsity[outarg->num_sparse++] = s1;
 
 				++i1;
 				++i2;
 			}
-			else if (s1 == -1 || s1 > s2)
+			else if (s1 == -1 || (s2 != -1 && s1 > s2))
 			{
 				outarg->sparsity[outarg->num_sparse++] = s2;
 				++i2;
@@ -2001,47 +2764,51 @@ sparsity_multiply (CdnStackArg const *arg1,
 	{
 		guchar *s1;
 		guchar *s2;
-		guchar *s1ptr;
 		guint sidx = 0;
 		guint *sparsity;
-		gint r;
+		gint c;
+		guchar *s2ptr;
 
+		// This is matrix multiplication
 		s1 = make_sparse_matrix (arg1);
 		s2 = make_sparse_matrix (arg2);
 
-		s1ptr = s1;
+		s2ptr = s2;
 		sparsity = g_new0 (guint, arg1->rows * arg2->columns);
 
-		for (r = 0; r < arg1->rows; ++r)
+		for (c = 0; c < arg2->dimension.columns; ++c)
 		{
-			guchar *s2ptr;
-			gint c;
+			gint r;
 
-			s2ptr = s2;
-
-			for (c = 0; c < arg2->columns; ++c)
+			for (r = 0; r < arg1->dimension.rows; ++r)
 			{
 				gboolean issparse = TRUE;
 				gint k;
+				guchar *s1ptr;
+
+				// pointer to first element of row in arg1
+				s1ptr = s1 + r;
 
 				for (k = 0; k < arg1->columns; ++k)
 				{
-					if (!s1ptr[k] && !s2ptr[k * arg2->columns])
+					if (!s2ptr[k] && !*s1ptr)
 					{
 						issparse = FALSE;
 						break;
 					}
+
+					// next column in arg1
+					s1ptr += arg1->rows;
 				}
 
 				if (issparse)
 				{
-					sparsity[sidx++] = r * arg2->columns + c;
+					sparsity[sidx++] = r + c * arg1->rows;
 				}
-
-				++s2ptr;
 			}
 
-			s1ptr += arg1->columns;
+			// next column in arg2
+			s2ptr += arg2->rows;
 		}
 
 		cdn_stack_arg_set_sparsity (outarg, sparsity, sidx);
@@ -2056,11 +2823,173 @@ sparsity_multiply (CdnStackArg const *arg1,
 	}
 }
 
+#ifdef HAVE_LAPACK
+static LP_int
+inverse_work_space (CdnDimension const *dim)
+{
+	LP_int n;
+	LP_int *ipiv;
+	LP_int info;
+	LP_double work;
+	LP_int lwork;
+	LP_double *ptr;
+
+	n = dim->rows;
+
+	ptr = g_new0 (LP_double, n * n);
+	ipiv = g_new0 (LP_int, n);
+	lwork = -1;
+
+	dgetri_ (&n, ptr, &n, ipiv, &work, &lwork, &info);
+
+	g_free (ptr);
+	g_free (ipiv);
+
+	return n + (LP_int)work;
+}
+
+static LP_int
+pseudo_inverse_work_space (CdnDimension const *dim)
+{
+	LP_int mindim;
+	LP_int maxdim;
+	LP_int iwork;
+	LP_int m;
+	LP_int n;
+	LP_double rcond = -1;
+	LP_int rank;
+	LP_double wkopt;
+	LP_int lwork = -1;
+	LP_int info;
+	LP_int lb;
+	LP_int *llwork;
+	LP_double *A;
+	LP_double *b;
+	LP_double *s;
+
+	m = dim->rows;
+	n = dim->columns;
+
+	if (m < n)
+	{
+		mindim = m;
+		maxdim = n;
+	}
+	else
+	{
+		mindim = n;
+		maxdim = m;
+	}
+
+	iwork = pseudo_inverse_iwork (dim);
+	lb = maxdim;
+
+	A = g_new0 (LP_double, m * n);
+	b = g_new0 (LP_double, lb * lb);
+	s = g_new0 (LP_double, mindim);
+	llwork = g_new0 (LP_int, iwork);
+
+	// query workspace
+	dgelsd_ (&m,
+	         &n,
+	         &lb,
+	         A,
+	         &m,
+	         b,
+	         &lb,
+	         s,
+	         &rcond,
+	         &rank,
+	         &wkopt,
+	         &lwork,
+	         llwork,
+	         &info);
+
+	g_free (A);
+	g_free (b);
+	g_free (s);
+	g_free (llwork);
+
+	// size for b (lb-by-lb), s (mindim) and work (lwork * 2)
+	return lb * lb + mindim + (LP_int)wkopt + iwork;
+}
+
+static LP_int
+linsolve_work_space (CdnDimension const *dim)
+{
+	LP_int n;
+	LP_int lda;
+	LP_double *A;
+	LP_int *ipiv;
+	LP_double work;
+	LP_int lwork = -1;
+	LP_int info;
+
+	ipiv = g_new0 (LP_int, dim->rows);
+	A = g_new0 (LP_double, cdn_dimension_size (dim));
+
+	n = dim->rows;
+	lda = dim->rows;
+
+	// for pivoting
+	dgetri_ (&n,
+	         A,
+	         &lda,
+	         ipiv,
+	         &work,
+	         &lwork,
+	         &info);
+
+	g_free (A);
+	g_free (ipiv);
+
+	return (LP_int)work + dim->rows;
+}
+
+static LP_int
+qr_work_space (CdnDimension const *dim)
+{
+	LP_int m;
+	LP_int n;
+	LP_double work;
+	LP_double *A;
+	LP_double *tau;
+	LP_int lwork = -1;
+	LP_int info;
+	LP_int mindim;
+
+	m = dim->rows;
+	n = dim->columns;
+
+	mindim = m < n ? m : n;
+
+	A = g_new0 (LP_double, cdn_dimension_size (dim));
+	tau = g_new0 (LP_double, mindim);
+
+	dgeqrf_ (&m,
+	         &n,
+	         A,
+	         &m,
+	         tau,
+	         &work,
+	         &lwork,
+	         &info);
+
+	g_free (A);
+	g_free (tau);
+
+	// space for tau and work
+	return mindim + (LP_int)work + dim->rows * dim->rows;
+}
+#endif
+
 void
 cdn_math_compute_sparsity (CdnMathFunctionType  type,
                            CdnStackArgs const  *inargs,
                            CdnStackArg         *outarg)
 {
+	return;
+
 	if (type >= CDN_MATH_FUNCTION_TYPE_NUM)
 	{
 		return;
@@ -2177,7 +3106,6 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_COSH:
 		case CDN_MATH_FUNCTION_TYPE_TANH:
 		case CDN_MATH_FUNCTION_TYPE_SIGN:
-		case CDN_MATH_FUNCTION_TYPE_CSIGN:
 			// Operators with one argument simply copy
 			cdn_stack_arg_copy (outarg, inargs->args);
 		break;
@@ -2197,6 +3125,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_AND:
 		case CDN_MATH_FUNCTION_TYPE_POW:
 		case CDN_MATH_FUNCTION_TYPE_ATAN2:
+		case CDN_MATH_FUNCTION_TYPE_CSIGN:
 			// Math functions with two arguments can operate
 			// elementwise (i.e. both arguments are NxM), or
 			// one argument is 1-by-1 and the other can be NxM
@@ -2204,6 +3133,28 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				// Take second arg size
 				cdn_stack_arg_copy (outarg, inargs->args + 1);
+			}
+			else if ((inargs->args[0].columns == 1 || inargs->args[1].columns == 1) &&
+			         inargs->args[0].rows == inargs->args[1].rows &&
+			         inargs->args[0].rows != 1)
+			{
+				// column wise
+				outarg->rows = inargs->args[0].rows;
+
+				outarg->columns = inargs->args[0].columns == 1 ?
+				                  inargs->args[1].columns :
+				                  inargs->args[0].columns;
+			}
+			else if ((inargs->args[0].rows == 1 || inargs->args[1].rows == 1) &&
+			         inargs->args[0].columns == inargs->args[1].columns &&
+			         inargs->args[0].columns != 1)
+			{
+				// row wise
+				outarg->columns = inargs->args[0].columns;
+
+				outarg->rows = inargs->args[0].rows == 1 ?
+				               inargs->args[1].rows :
+				               inargs->args[0].rows;
 			}
 			else if (cdn_stack_arg_size (inargs->args + 1) != 1 &&
 			         cdn_stack_arg_size (inargs->args) != cdn_stack_arg_size (inargs->args + 1))
@@ -2222,6 +3173,14 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				// Take first arg size
 				cdn_stack_arg_copy (outarg, inargs->args);
 			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_CSUM:
+			outarg->rows = inargs->args[0].rows;
+			outarg->columns = 1;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_RSUM:
+			outarg->columns = inargs->args[0].columns;
+			outarg->rows = 1;
 		break;
 		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
 			if (cdn_stack_arg_size (inargs->args) == 1)
@@ -2254,7 +3213,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "Cannot multiply matrices of size (%d, %d) and (%d, %d)",
 				             inargs->args[1].rows, inargs->args[1].columns,
-				             inargs->args[0].rows, inargs->args[1].columns);
+				             inargs->args[0].rows, inargs->args[0].columns);
 
 				return FALSE;
 			}
@@ -2282,52 +3241,96 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_MAX:
 		case CDN_MATH_FUNCTION_TYPE_SUM:
 		case CDN_MATH_FUNCTION_TYPE_PRODUCT:
-		case CDN_MATH_FUNCTION_TYPE_HYPOT:
 		case CDN_MATH_FUNCTION_TYPE_SQSUM:
-			outarg->rows = 1;
-			outarg->columns = 1;
+		case CDN_MATH_FUNCTION_TYPE_HYPOT:
+			if (inargs->num > 2)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Function only accepts one matrix or two arguments with equal dimensions");
+
+				return FALSE;
+			}
+
+			if (inargs->num == 2)
+			{
+				if (cdn_stack_arg_size (inargs->args) == 1)
+				{
+					// Take second arg size
+					cdn_stack_arg_copy (outarg, inargs->args + 1);
+				}
+				else if (cdn_stack_arg_size (inargs->args + 1) == 1)
+				{
+					// Take first arg size
+					cdn_stack_arg_copy (outarg, inargs->args);
+				}
+				else if (cdn_stack_arg_size (inargs->args) !=
+				         cdn_stack_arg_size (inargs->args + 1))
+				{
+					g_set_error (error,
+					             CDN_COMPILE_ERROR_TYPE,
+					             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+					             "Dimensions of arguments must be the same (got (%d, %d) and (%d, %d))",
+					              inargs->args[0].rows,
+					              inargs->args[0].columns,
+					              inargs->args[1].rows,
+					              inargs->args[1].columns);
+
+					return FALSE;
+				}
+				else
+				{
+					cdn_stack_arg_copy (outarg, inargs->args);
+				}
+			}
+			else
+			{
+				outarg->rows = 1;
+				outarg->columns = 1;
+			}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_LERP:
 		case CDN_MATH_FUNCTION_TYPE_CLIP:
 		case CDN_MATH_FUNCTION_TYPE_CYCLE:
-			if (inargs->args[1].rows != inargs->args[2].rows ||
-			    inargs->args[1].columns != inargs->args[2].columns)
-			{
-				g_set_error (error,
-				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Can only use on arguments with the same dimensions (got (%d, %d) and (%d, %d))",
-				             inargs->args[2].rows, inargs->args[2].columns,
-				             inargs->args[1].rows, inargs->args[1].columns);
+		{
+			CdnDimension thesize = CDN_DIMENSION(1, 1);
+			gint prevarg = 0;
+			gint i;
 
-				return FALSE;
-			}
-			else if (cdn_stack_arg_size (inargs->args) == 1)
+			for (i = 0; i < 3; ++i)
 			{
-				cdn_stack_arg_copy (outarg, inargs->args + 1);
-			}
-			else if (inargs->args[1].rows == 1 && inargs->args[0].rows == 1)
-			{
-				outarg->rows = inargs->args[0].columns;
-				outarg->columns = inargs->args[1].columns;
-			}
-			else if (inargs->args[1].columns == 1 && inargs->args[0].columns == 1)
-			{
-				outarg->rows = inargs->args[1].rows;
-				outarg->columns = inargs->args[0].rows;
-			}
-			else
-			{
-				g_set_error (error,
-				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Invalid dimensions of arguments (got (%d, %d) and (%d, %d) and (%d, %d))",
-				             inargs->args[2].rows, inargs->args[2].columns,
-				             inargs->args[1].rows, inargs->args[1].columns,
-				             inargs->args[0].rows, inargs->args[0].columns);
+				gint argsize = cdn_stack_arg_size (inargs->args + i);
 
-				return FALSE;
+				if (argsize == 1)
+				{
+					continue;
+				}
+
+				if (cdn_dimension_size (&thesize) == 1 || cdn_dimension_size (&thesize) == argsize)
+				{
+					thesize = inargs->args[i].dimension;
+					prevarg = i;
+				}
+				else
+				{
+					g_set_error (error,
+					             CDN_COMPILE_ERROR_TYPE,
+					             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+					             "Incompatible dimension for arguments %d and %d (got %d-by-%d and %d-by-%d)",
+					             3 - i,
+					             3 - prevarg,
+					             inargs->args[i].rows,
+					             inargs->args[i].columns,
+					             inargs->args[prevarg].rows,
+					             inargs->args[prevarg].columns);
+
+					return FALSE;
+				}
 			}
+
+			cdn_stack_arg_copy (outarg, inargs->args + prevarg);
+		}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_INDEX:
 			if (inargs->num == 3)
@@ -2339,9 +3342,19 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				a1 = (cdn_stack_arg_size (inargs->args + 2) == 1);
 				a2 = (cdn_stack_arg_size (inargs->args + 1) == 1);
 
-				if (!a1 && !a2 &&
-				    (inargs->args[1].rows != inargs->args[2].rows ||
-				     inargs->args[1].columns != inargs->args[2].columns))
+				if (inargs->args[2].columns == 1 &&
+				    inargs->args[1].rows == 1)
+				{
+					// row-x-column indexing
+					outarg->rows = inargs->args[2].rows;
+					outarg->columns = inargs->args[1].columns;
+
+					// reserve space for result
+					*extra_space = outarg->rows * outarg->columns;
+				}
+				else if (!a1 && !a2 &&
+				         (inargs->args[1].rows != inargs->args[2].rows ||
+				         inargs->args[1].columns != inargs->args[2].columns))
 				{
 					g_set_error (error,
 					             CDN_COMPILE_ERROR_TYPE,
@@ -2354,9 +3367,11 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 
 					return FALSE;
 				}
-
-				outarg->rows = a1 ? inargs->args[1].rows : inargs->args[2].rows;
-				outarg->columns = a1 ? inargs->args[1].columns : inargs->args[2].columns;
+				else
+				{
+					outarg->rows = a1 ? inargs->args[1].rows : inargs->args[2].rows;
+					outarg->columns = a1 ? inargs->args[1].columns : inargs->args[2].columns;
+				}
 			}
 			else
 			{
@@ -2421,20 +3436,27 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			outarg->rows = inargs->args[0].columns;
 			outarg->columns = inargs->args[0].rows;
 		break;
+#ifdef HAVE_LAPACK
 		case CDN_MATH_FUNCTION_TYPE_INVERSE:
 			if (inargs->args->rows != inargs->args->columns)
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Cannot invert a non square matrix (%d, %d)",
+				             "Cannot invert a non square matrix (%d, %d) using `inv', use `pinv' instead'",
 				             inargs->args->rows, inargs->args->columns);
 
 				return FALSE;
 			}
 
 			cdn_stack_arg_copy (outarg, inargs->args);
-			*extra_space = inargs->args[0].rows;
+			*extra_space = inverse_work_space (&inargs->args[0].dimension);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_PSEUDO_INVERSE:
+			outarg->rows = inargs->args[0].columns;
+			outarg->columns = inargs->args[0].rows;
+
+			*extra_space = pseudo_inverse_work_space (&inargs->args[0].dimension);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_LINSOLVE:
 			// A x = B with A the second arg and B the first
@@ -2463,8 +3485,9 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			cdn_stack_arg_copy (outarg, inargs->args + 1);
 
 			// Need extra space to store the pivoting coefficients
-			*extra_space = inargs->args[0].rows;
+			*extra_space = linsolve_work_space (&inargs->args[0].dimension);
 		break;
+#endif
 		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
 			// A x = B, λ
 			// with order of arguments: B, λ, A
@@ -2522,39 +3545,61 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			outarg->rows = 1;
 			outarg->columns = 2;
 		break;
-		case CDN_MATH_FUNCTION_TYPE_HCAT:
-			if (inargs->args[0].rows != inargs->args[1].rows)
-			{
-				g_set_error (error,
-				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Cannot concat %d rows with %d rows",
-				             inargs->args[0].rows, inargs->args[0].columns);
-
-				return FALSE;
-			}
-
-			outarg->rows = inargs->args[0].rows;
-			outarg->columns = inargs->args[0].columns + inargs->args[1].columns;
-
-			*extra_space = cdn_stack_arg_size (outarg);
+		case CDN_MATH_FUNCTION_TYPE_TRIL:
+		case CDN_MATH_FUNCTION_TYPE_TRIU:
+			cdn_stack_arg_copy (outarg, inargs->args);
 		break;
-		case CDN_MATH_FUNCTION_TYPE_BLOCK:
-			if (inargs->args[0].rows != 1 || inargs->args[1].rows != 1 ||
-			    inargs->args[0].columns != inargs->args[1].columns)
+		case CDN_MATH_FUNCTION_TYPE_QR:
+			outarg->rows = inargs->args[0].rows;
+			outarg->columns = inargs->args[0].rows + inargs->args[0].columns;
+
+			*extra_space = qr_work_space (&inargs->args[0].dimension);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_DIAG:
+			if (inargs->args[0].rows == 1 ||
+			    inargs->args[0].columns == 1)
+			{
+				gint n = cdn_stack_arg_size (&inargs->args[0]);
+
+				outarg->rows = n;
+				outarg->columns = n;
+
+				*extra_space = n * n;
+			}
+			else if (inargs->args[0].rows != inargs->args[0].columns)
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "The row and column indices for the block function must be 1-by-N but got %d-by-%d rows and %d-by-%d columns",
-				             inargs->args[1].rows, inargs->args[1].columns,
-				             inargs->args[0].rows, inargs->args[0].columns);
+				             "Expected a square matrix but got %d-by-%d",
+				             inargs->args[0].rows,
+				             inargs->args[0].columns);
+
+				return FALSE;
+			}
+			else
+			{
+				outarg->rows = inargs->args[0].rows;
+				outarg->columns = 1;
+			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_VCAT:
+			if (inargs->args[0].columns != inargs->args[1].columns)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Cannot concat %d column%s with %d column%s",
+				             inargs->args[1].columns,
+				             inargs->args[1].columns == 1 ? "" : "s",
+				             inargs->args[0].columns,
+				             inargs->args[0].columns == 1 ? "" : "s");
 
 				return FALSE;
 			}
 
-			outarg->rows = inargs->args[1].columns;
-			outarg->columns = inargs->args[0].columns;
+			outarg->rows = inargs->args[1].rows + inargs->args[0].rows;
+			outarg->columns = inargs->args[1].columns;
 
 			*extra_space = cdn_stack_arg_size (outarg);
 		break;

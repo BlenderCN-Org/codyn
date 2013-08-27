@@ -1,0 +1,60 @@
+require "findbodies.cdn"
+require "model.cdn"
+
+## The model jacobian node contains the body to base jacobians of all the bodies
+node "jacobian"
+{
+    J = "zeros(6, @numdof)"
+
+    Jcom0 = "zeros(6, @numdof)"
+    Jcom = "Spatial.Translation(model.com) ∙ Jcom0"
+}
+
+node | <body>:@bodies | sort | parent
+{
+    edge "jacobian_@body" from "@body" to "jacobian"
+    {
+        # Transmit jacobian columns corresponding to this DOF into J
+        defines { j = "$(@body[!] + 1)"}
+
+        "J[[0;1;2;3;4;5], [{@bodydofidx[@j]:+$(@bodydof[@j] - 1)||@0\,@1}]]" <= "bodyJacobian"
+        "Jcom0[[0;1;2;3;4;5], [{@bodydofidx[@j]:+$(@bodydof[@j] - 1)||@0\,@1}]]" <= "bodyJacobianCom ∙ m / model.totalMass"
+    }
+}
+
+node | <body>:@bodies | sort
+     | if (
+               recurse(children)
+             | has-template(physics.jacobian)
+             | <jacobian>:name
+          )
+{
+    J0 = "zeros(6, @numdof)"
+
+    interface
+    {
+        "@[jacobian]J" = J in @jacobian
+        "@[jacobian]Location" = location in @jacobian
+        "@[jacobian]LocationInBase" = locationInBase in @jacobian
+    }
+
+    # Select system node
+    node | first | self | parent
+    {
+        edge "jacobian_in_@body" from jacobian to @body
+        {
+            defines
+            {
+                parents = "@bodychain[$(@body[!] + 1)]"
+                parentsrev = "{@parents||@1\,@0}"
+                parentsdofex = "{@parentsrev|@bodydofex[$(@0 + 1)]}"
+            }
+
+            # Fill in jacobian columns for the kinematic subtree from this body up
+            # to the base
+            "J0[[0;1;2;3;4;5], [{@parentsdofex||@0\,@1}]]" <= "J[[0;1;2;3;4;5], [@1]]"
+        }
+    }
+}
+
+# vi:ts=4:et

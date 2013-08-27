@@ -3,13 +3,8 @@ SUBDIRS = library
 mimedir = $(datadir)/mime/packages
 mime_DATA = cdn.xml
 
-if ENABLE_GEDIT3
-lang3dir = $(datadir)/gtksourceview-3.0/language-specs
-lang3_DATA = cdn.lang
-else
-lang2dir = $(datadir)/gtksourceview-2.0/language-specs
-lang2_DATA = cdn.lang
-endif
+langdir = $(datadir)/gtksourceview-3.0/language-specs
+lang_DATA = cdn.lang
 
 latexdir = $(datadir)/texmf/tex/latex/cdn
 latex_DATA = codyn.sty cdn-listings.tex

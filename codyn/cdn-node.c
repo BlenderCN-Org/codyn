@@ -30,13 +30,39 @@
 #include "cdn-layoutable.h"
 #include "cdn-io.h"
 
+#define CDN_NODE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_NODE, CdnNodePrivate))
+
 /**
- * SECTION:cdn-node
- * @short_description: Group object nodeing many objects together
+ * CdnNode:
  *
- * The #CdnNode is a special #CdnObject that contains many objects as children.
- * This can be used make sub-networks that can be easily instantiated,
- * providing some common functionality.
+ * Base node class.
+ *
+ * The #CdnNode class is the basic variable container class in a network. It
+ * derives from #CdnObject (as all network objects do). Please see #CdnObject
+ * for useful API about getting, setting and finding variables, as those functions
+ * are defined for all #CdnObject.
+ *
+ * Apart from variables, a node may contain other nodes which can be used to
+ * compose reusable subsystems. Such child nodes can be added using
+ * #cdn_node_add and removed using #cdn_node_remove. To find child nodes,
+ * use #cdn_node_find_object or #cdn_node_find_objects (these use selectors), or
+ * #cdn_node_get_child to simply get a child by its identifier.
+ *
+ * It's often convenient to expose a set of variables from child nodes. Child
+ * nodes can not be directly accessed external to the node. To allow access to
+ * child node variables, each node can configure such a variable interface using
+ * its #CdnVariableInterface instance (see #cdn_node_get_variable_interface).
+ * The variable interface basically allows you to map a virtual node variable
+ * to a child node variable.
+ *
+ * Each node has a so-called self edge (see #cdn_node_get_self_edge). The self
+ * edge is used to define the equations on variables in the node which only
+ * use variables from the node itself. Although its functionally equivalent
+ * (and certainly allowed) to define an external edge which simply goes from the
+ * node to itself, it's often much more convenient to use the self edge. For
+ * example, the prime shorthand notation in the codyn format (x' = "(1 - x)")
+ * defines the given differential equation in the self edge of the containing
+ * node.
  *
  * <refsect2 id="CdnNode-COPY">
  * <title>CdnNode Copy Semantics</title>
@@ -44,8 +70,6 @@
  * recursively copied as well.
  * </refsect2>
  */
-
-#define CDN_NODE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_NODE, CdnNodePrivate))
 
 enum
 {
@@ -66,9 +90,19 @@ struct _CdnNodePrivate
 	GSList *edges;
 	GSList *actors;
 	CdnEdge *self_edge;
+
+	gchar *state;
+	gchar *initial_state;
 };
 
 G_DEFINE_TYPE (CdnNode, cdn_node, CDN_TYPE_OBJECT)
+
+enum
+{
+	PROP_0,
+	PROP_STATE,
+	PROP_INITIAL_STATE
+};
 
 enum
 {
@@ -124,6 +158,9 @@ cdn_node_finalize (GObject *object)
 
 	g_slist_free (node->priv->edges);
 	g_slist_free (node->priv->actors);
+
+	g_free (node->priv->initial_state);
+	g_free (node->priv->state);
 
 	G_OBJECT_CLASS (cdn_node_parent_class)->finalize (object);
 }
@@ -552,6 +589,7 @@ cdn_node_dispose (GObject *object)
 
 	g_slist_free (copy);
 	g_slist_free (node->priv->edges);
+
 	node->priv->edges = NULL;
 
 	if (node->priv->self_edge)
@@ -744,6 +782,11 @@ cdn_node_cdn_reset (CdnObject *object)
 	cdn_node_foreach (node,
 	                   (GFunc)cdn_object_reset,
 	                   NULL);
+
+	g_free (node->priv->state);
+	node->priv->state = g_strdup (node->priv->initial_state);
+
+	g_object_notify (G_OBJECT (object), "state");
 }
 
 static void
@@ -764,6 +807,14 @@ cdn_node_cdn_foreach_expression (CdnObject                *object,
 	for (item = node->priv->children; item; item = g_slist_next (item))
 	{
 		cdn_object_foreach_expression (item->data, func, userdata);
+	}
+
+	// And the self edge!
+	if (node->priv->self_edge)
+	{
+		cdn_object_foreach_expression (CDN_OBJECT (node->priv->self_edge),
+		                               func,
+		                               userdata);
 	}
 }
 
@@ -1051,6 +1102,18 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 		children = g_slist_next (children);
 	}
 
+	if (source->priv->state)
+	{
+		g_free (node->priv->state);
+		node->priv->state = g_strdup (source->priv->state);
+	}
+
+	if (source->priv->initial_state)
+	{
+		g_free (node->priv->initial_state);
+		node->priv->initial_state = g_strdup (source->priv->initial_state);
+	}
+
 	/* Apply interfaces from template */
 	source_iface = cdn_node_get_variable_interface (source);
 
@@ -1136,6 +1199,12 @@ cdn_node_cdn_copy (CdnObject *object,
 		g->priv->edges = g_slist_prepend (g->priv->edges,
 		                                  sl);
 	}
+
+	g_free (g->priv->state);
+	g->priv->state = g_strdup (CDN_NODE (source)->priv->state);
+
+	g_free (g->priv->initial_state);
+	g->priv->initial_state = g_strdup (CDN_NODE (source)->priv->initial_state);
 }
 
 static gchar *
@@ -1264,8 +1333,8 @@ register_object (CdnNode  *node,
 
 static gboolean
 cdn_node_add_impl (CdnNode   *node,
-                    CdnObject  *object,
-                    GError    **error)
+                   CdnObject  *object,
+                   GError    **error)
 {
 	CdnObject *other;
 
@@ -1401,7 +1470,7 @@ cdn_node_remove_impl (CdnNode   *node,
 		return FALSE;
 	}
 
-	node->priv->children = g_slist_remove_link (node->priv->children,
+	node->priv->children = g_slist_delete_link (node->priv->children,
 	                                            item);
 
 	remove_object (node, object);
@@ -1418,10 +1487,19 @@ cdn_node_cdn_clear (CdnObject *object)
 
 	for (child = children; child; child = g_slist_next (child))
 	{
+		cdn_object_clear (CDN_OBJECT (child->data));
 		cdn_node_remove (node, child->data, NULL);
 	}
 
 	g_slist_free (children);
+
+	if (node->priv->self_edge)
+	{
+		cdn_object_clear (CDN_OBJECT (node->priv->self_edge));
+
+		g_object_unref (node->priv->self_edge);
+		node->priv->self_edge = NULL;
+	}
 
 	CDN_OBJECT_CLASS (cdn_node_parent_class)->clear (object);
 }
@@ -1495,12 +1573,62 @@ cdn_node_cdn_taint (CdnObject *object)
 }
 
 static void
+cdn_node_set_property (GObject      *object,
+                       guint         prop_id,
+                       const GValue *value,
+                       GParamSpec   *pspec)
+{
+	CdnNode *self = CDN_NODE (object);
+
+	switch (prop_id)
+	{
+		case PROP_STATE:
+			g_free (self->priv->state);
+			self->priv->state = g_value_dup_string (value);
+			break;
+		case PROP_INITIAL_STATE:
+			g_free (self->priv->initial_state);
+			self->priv->initial_state = g_value_dup_string (value);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cdn_node_get_property (GObject    *object,
+                       guint       prop_id,
+                       GValue     *value,
+                       GParamSpec *pspec)
+{
+	CdnNode *self = CDN_NODE (object);
+
+	switch (prop_id)
+	{
+		case PROP_STATE:
+			g_value_set_string (value, self->priv->state);
+			break;
+		case PROP_INITIAL_STATE:
+			g_value_set_string (value, self->priv->initial_state);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 cdn_node_class_init (CdnNodeClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	CdnObjectClass *cdn_class = CDN_OBJECT_CLASS (klass);
 
 	object_class->finalize = cdn_node_finalize;
+
+	object_class->get_property = cdn_node_get_property;
+	object_class->set_property = cdn_node_set_property;
+
 	object_class->dispose = cdn_node_dispose;
 
 	cdn_class->get_variable = cdn_node_cdn_get_property;
@@ -1611,6 +1739,35 @@ cdn_node_class_init (CdnNodeClass *klass)
 		              2,
 		              CDN_TYPE_OBJECT,
 		              G_TYPE_POINTER);
+
+	/**
+	 * CdnNode:state:
+	 *
+	 * The current node state. Do not write to this property while the
+	 * network is running (use #cdn_integrator_state_set_state instead).
+	 */
+	g_object_class_install_property (object_class,
+	                                 PROP_STATE,
+	                                 g_param_spec_string ("state",
+	                                                      "State",
+	                                                      "State",
+	                                                      NULL,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * CdnNode:initial-state:
+	 *
+	 * The initial node state.
+	 */
+	g_object_class_install_property (object_class,
+	                                 PROP_INITIAL_STATE,
+	                                 g_param_spec_string ("initial-state",
+	                                                      "Initial State",
+	                                                      "Initial state",
+	                                                      NULL,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -1668,7 +1825,7 @@ cdn_node_init (CdnNode *self)
  *
  **/
 CdnNode *
-cdn_node_new (gchar const *id)
+cdn_node_new (const gchar *id)
 {
 	return g_object_new (CDN_TYPE_NODE,
 	                     "id", id,
@@ -1796,7 +1953,7 @@ cdn_node_get_child (CdnNode    *node,
  *
  * Find objects by specifying a selector. For example, if there is
  * another node "g" containing a state "s", you can use
- * cdn_node_find_object (node, "g.s") to get the object.
+ * #cdn_node_find_object (node, "g.s") to get the object.
  *
  * Returns: (transfer container) (element-type CdnObject): A #CdnObject
  *
@@ -1849,7 +2006,7 @@ cdn_node_find_objects (CdnNode     *node,
  *
  * Find object by specifying a selector. For example, if there is
  * another node "g" containing a node "s", you can use
- * cdn_node_find_object (node, "g.s") to get the object.
+ * #cdn_node_find_object (node, "g.s") to get the object.
  *
  * Returns: (transfer none): A #CdnObject
  *
@@ -1883,7 +2040,7 @@ cdn_node_find_object (CdnNode    *node,
  *
  * Find variables by specifying a selector. For example, if there is
  * another node "g" containing a node "s" with variable "x", you can use
- * cdn_node_find_variables (node, "g.s.x") to remove the variable.
+ * #cdn_node_find_variables (node, "g.s.x") to remove the variable.
  *
  * Returns: (transfer container) (element-type CdnVariable): A list of #CdnVariable
  *
@@ -1935,7 +2092,7 @@ cdn_node_find_variables (CdnNode    *node,
  *
  * Find a variable by specifying a selector. For example, if there is
  * another node "g" containing a node "s" with a variable "x", you can use
- * cdn_node_find_variable (node, "g.s.x") to get the variable.
+ * #cdn_node_find_variable (node, "g.s.x") to get the variable.
  *
  * Returns: (transfer none): A #CdnVariable
  *
@@ -2071,8 +2228,8 @@ _cdn_node_unlink (CdnNode *node,
 		return;
 	}
 
-	node->priv->edges = g_slist_remove_link (node->priv->edges,
-	                                           item);
+	node->priv->edges = g_slist_delete_link (node->priv->edges,
+	                                         item);
 
 	g_slist_free (node->priv->actors);
 	node->priv->actors = NULL;
@@ -2145,6 +2302,17 @@ cdn_node_get_edges (CdnNode *node)
 	return node->priv->edges;
 }
 
+/**
+ * cdn_node_has_self_edge:
+ * @node: a #CdnNode.
+ *
+ * Get whether the node currently has a self edge. The node self edge is only
+ * created when needed (this happens automatically when using
+ * #cdn_node_get_self_edge, which therefore cannot be used to check for the
+ * existence of the self edge).
+ *
+ * Returns: %TRUE if the node has a self edge, %FALSE otherwise.
+ */
 gboolean
 cdn_node_has_self_edge (CdnNode *node)
 {
@@ -2153,14 +2321,13 @@ cdn_node_has_self_edge (CdnNode *node)
 	return node->priv->self_edge != NULL;
 }
 
-
 /**
  * cdn_node_get_self_edge:
  * @node: A #CdnNode
  *
  * Get the self edge of this node. Note that the self edge will be automatically
  * created if it does not exist yet. When this is undesired, use
- * @cdn_node_has_self_edge first.
+ * #cdn_node_has_self_edge first.
  *
  * Returns: (transfer none): A #CdnEdge
  *
@@ -2181,4 +2348,83 @@ cdn_node_get_self_edge (CdnNode *node)
 	}
 
 	return node->priv->self_edge;
+}
+
+/**
+ * cdn_node_get_state:
+ * @node: a #CdnNode.
+ *
+ * Get the current state of the node.
+ *
+ * Returns: the current state.
+ */
+const gchar *
+cdn_node_get_state (CdnNode *node)
+{
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
+
+	return node->priv->state;
+}
+
+/**
+ * cdn_node_set_state:
+ * @node: a #CdnNode.
+ * @state: the new state.
+ *
+ * Set the current state of the node. Note that you should not try to call this
+ * yourself when the network is running since it will not have the desired
+ * effect (it's used internally to keep track of the state of the node). To
+ * programatically change the state of a node while the network is running, use
+ * #cdn_integrator_state_set_state.
+ *
+ */
+void
+cdn_node_set_state (CdnNode     *node,
+                    const gchar *state)
+{
+	g_return_if_fail (CDN_IS_NODE (node));
+
+	g_free (node->priv->state);
+	node->priv->state = g_strdup (state);
+
+	g_object_notify (G_OBJECT (node), "state");
+}
+
+/**
+ * cdn_node_set_initial_state:
+ * @node: a #CdnNode.
+ * @state: the initial state.
+ *
+ * Set the initial state of the node.
+ *
+ */
+void
+cdn_node_set_initial_state (CdnNode     *node,
+                            const gchar *state)
+{
+	g_return_if_fail (CDN_IS_NODE (node));
+
+	g_free (node->priv->initial_state);
+	node->priv->initial_state = g_strdup (state);
+
+	if (node->priv->state == NULL)
+	{
+		node->priv->state = g_strdup (state);
+	}
+
+	g_object_notify (G_OBJECT (node), "initial-state");
+}
+
+/**
+ * cdn_node_get_initial_state:
+ * @node: a #CdnNode.
+ *
+ * Get the initial state of the node.
+ *
+ * Returns: the initial state.
+ */
+const gchar *
+cdn_node_get_initial_state (CdnNode *node)
+{
+	return node->priv->initial_state;
 }

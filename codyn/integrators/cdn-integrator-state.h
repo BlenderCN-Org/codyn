@@ -40,6 +40,16 @@ typedef struct _CdnIntegratorState        CdnIntegratorState;
 typedef struct _CdnIntegratorStateClass   CdnIntegratorStateClass;
 typedef struct _CdnIntegratorStatePrivate CdnIntegratorStatePrivate;
 
+/**
+ * CdnIntegratorState:
+ *
+ * The integrator state.
+ *
+ * The integrator state stores information on which variables need to be
+ * integrated and how, based on a root object. It automatically tracks changes
+ * in the root object and recalculates the variables that need to be
+ * integrated.
+ */
 struct _CdnIntegratorState
 {
 	/*< private >*/
@@ -61,11 +71,14 @@ CdnObject          *cdn_integrator_state_get_object              (CdnIntegratorS
 
 const GSList       *cdn_integrator_state_integrated_variables    (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_direct_variables        (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_discrete_variables      (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_all_variables           (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_integrated_edge_actions (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_direct_edge_actions     (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_discrete_edge_actions   (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_phase_integrated_edge_actions (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_phase_direct_edge_actions     (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_phase_discrete_edge_actions   (CdnIntegratorState *state);
 
 const GSList       *cdn_integrator_state_io                      (CdnIntegratorState *state);
 
@@ -81,10 +94,12 @@ const GSList       *cdn_integrator_state_operators               (CdnIntegratorS
 
 void                cdn_integrator_state_update                  (CdnIntegratorState *state);
 
-void                cdn_integrator_state_set_phase               (CdnIntegratorState *state,
-                                                                  gchar const        *phase);
+void                cdn_integrator_state_set_state               (CdnIntegratorState  *state,
+                                                                  CdnNode             *node,
+                                                                  gchar const         *st,
+                                                                  GSList             **events_added,
+                                                                  GSList             **events_removed);
 
-gchar const        *cdn_integrator_state_get_phase               (CdnIntegratorState *state);
 
 G_END_DECLS
 

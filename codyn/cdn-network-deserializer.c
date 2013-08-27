@@ -42,13 +42,6 @@
 #include "cdn-network-parser-utils.h"
 #include "cdn-layoutable.h"
 
-/**
- * SECTION:cdn-network-deserializer
- * @short_description: XML to Network deserializer
- *
- * Use this to deserialize an XML description of a network to a #CdnNetwork.
- *
- */
 #define CDN_NETWORK_DESERIALIZER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_NETWORK_DESERIALIZER, CdnNetworkDeserializerPrivate))
 
 struct _CdnNetworkDeserializerPrivate
@@ -1266,7 +1259,8 @@ parse_polynomial (CdnNetworkDeserializer  *deserializer,
 
 static gboolean
 parse_actions (CdnNetworkDeserializer *deserializer,
-               GList                  *nodes)
+               GList                  *nodes,
+               gpointer                data)
 {
 	GList *item;
 	CdnEdge *link = CDN_EDGE (deserializer->priv->object);
@@ -1729,7 +1723,8 @@ template_error_message (CdnNetworkDeserializer *deserializer,
 
 static gboolean
 parse_network (CdnNetworkDeserializer *deserializer,
-               GList                  *nodes)
+               GList                  *nodes,
+               gpointer                data)
 {
 	GList *item;
 	gboolean ret = TRUE;
@@ -1904,7 +1899,8 @@ parse_instances (CdnNetworkDeserializer *deserializer)
 
 static gboolean
 parse_network_config (CdnNetworkDeserializer *deserializer,
-                      GList                  *nodes)
+                      GList                  *nodes,
+                      gpointer                data)
 {
 	if (!nodes)
 	{

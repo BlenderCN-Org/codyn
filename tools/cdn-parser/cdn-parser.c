@@ -255,6 +255,7 @@ parse_network (gchar const *args[], gint argc)
 		gchar *prefix;
 		gchar *lstr;
 		gchar *dash;
+		GFile *file;
 
 		g_printerr ("Failed to parse: %s\n\n", error->message);
 
@@ -262,17 +263,36 @@ parse_network (gchar const *args[], gint argc)
 		                                       &lineno,
 		                                       NULL,
 		                                       &cstart,
-		                                       &cend);
+		                                       &cend,
+		                                       &file);
 
 		line = cdn_parser_context_get_line_at (context, lineno);
 
-		lstr = g_strdup_printf ("%d.%d", lineno, cstart);
+		if (file)
+		{
+			gchar *fbase;
+
+			fbase = g_file_get_basename (file);
+
+			lstr = g_strdup_printf ("%s:%d.%d", fbase, lineno, cstart);
+
+			g_free (fbase);
+			g_object_unref (file);
+		}
+		else
+		{
+			lstr = g_strdup_printf ("%d.%d", lineno, cstart);
+		}
 
 		g_printerr ("(%s%s%s) %s%s%s\n", color_bold, lstr, color_off, color_blue, line, color_off);
 		prefix = g_strnfill (strlen (lstr) + 2 + cstart, ' ');
 		dash = g_strnfill (MAX (0, cend - cstart - 1), '-');
 
 		g_printerr ("%s%s^%s%s%s%s%s\n", prefix, color_red, color_yellow, dash, color_red, *dash ? "^" : "", color_off);
+
+		g_free (lstr);
+		g_free (dash);
+		g_free (prefix);
 
 		ret = FALSE;
 	}
@@ -332,7 +352,9 @@ main (int argc, char *argv[])
 	GError *error = NULL;
 	gboolean ret;
 
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
+#endif
 
 	setlocale (LC_ALL, "");
 

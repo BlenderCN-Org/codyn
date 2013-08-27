@@ -1,0 +1,38 @@
+require "transform.cdn"
+
+templates
+{
+    node "physics"
+    {
+        ## Node containing useful transformation matrices. This node can be
+        ## inherited from to add various transformation matrices.
+        node "transformations"
+        {
+            # World transformations.
+
+            ## World homogeneous 4x4 transformation matrix to transfer
+            ## coordinates from the body frame to the world frame.
+            worldMatrix = "Spatial.ToTransform4x4(baseToLocalTransform)"
+
+            ## World 3x3 rotation matrix.
+            worldOrientation = "Transform.RotationPart(worldMatrix)"
+
+            ## World 3x1 location vector.
+            worldLocation = "Transform.TranslationPart(worldMatrix)"
+
+            # Local total transformation.
+
+            ## Local homogeneous 4x4 transformation matrix to transfer
+            ## coordinates from the body frame to the parent frame.
+            localMatrix = "Spatial.ToTransform4x4(Spatial.Inverse(transform))"
+
+            ## Local 3x3 rotation matrix.
+            localOrientation = "Transform.RotationPart(localMatrix)"
+
+            ## Local 3x1 location vector.
+            localLocation = "Transform.TranslationPart(localMatrix)"
+        }
+    }
+}
+
+# vi:ex:ts=4:et

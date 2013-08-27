@@ -37,6 +37,30 @@
 
 #define CDN_VARIABLE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_VARIABLE, CdnVariablePrivate))
 
+/**
+ * CdnVariable:
+ *
+ * Variable.
+ *
+ * A #CdnVariable represents a single variable in an object. A variable has
+ * a name and an mathematical expression describing its value.
+ *
+ * Variables can be constrained using a secondary equation which is evaluated
+ * just after the variable expression has been evaluated. This is useful for
+ * example to constrain a value within certain boundaries (use the clip() function)
+ * or to keep a variable in a certain circular domain such as [0, 2pi]
+ * (use the cycle() function). See #cdn_variable_set_constraint.
+ *
+ * Each variable has a set of flags which changes its behavior.
+ *
+ *  * integrated: specifies whether edges by default integrate on the variable.
+ *  * in: specifies that a variable can be externally changed (for rawc).
+ *  * out: specifies that a variable can be externall observed (for rawc).
+ *  * once: specifies that a variable is only ever evaluated once and never updates after.
+ *  * function_argument: used internally to mark a variable as a function argument.
+ *  * inout: convenience flag composed of in and out.
+ */
+
 /* signals */
 enum
 {
@@ -55,7 +79,7 @@ struct _CdnVariablePrivate
 	CdnExpression *constraint;
 	CdnVariableFlags flags;
 
-	gdouble *update;
+	CdnMatrix update;
 	CdnObject *object;
 
 	CdnVariable *diff_of;
@@ -98,15 +122,6 @@ enum
 	PROP_MODIFIED,
 	PROP_ANNOTATION
 };
-
-/**
- * SECTION:cdn-variable
- * @short_description: Property container
- *
- * A #CdnVariable is a container for a specific variable in an object. It
- * consists of a name and a mathematical expression describing its contents.
- *
- */
 
 static void
 cdn_variable_use (CdnUsable *usable)
@@ -218,7 +233,6 @@ set_constraint (CdnVariable   *variable,
 	if (expression)
 	{
 		variable->priv->constraint = g_object_ref_sink (expression);
-		cdn_expression_set_has_cache (variable->priv->constraint, FALSE);
 	}
 
 	if (!variable->priv->disposing &&
@@ -254,6 +268,9 @@ set_expression (CdnVariable   *variable,
 			g_object_unref (expression);
 		}
 
+		cdn_modifiable_set_modified (CDN_MODIFIABLE (variable->priv->expression),
+		                             TRUE);
+
 		if (notify)
 		{
 			g_object_notify (G_OBJECT (variable), "modified");
@@ -264,6 +281,9 @@ set_expression (CdnVariable   *variable,
 
 	if (variable->priv->expression)
 	{
+		_cdn_expression_transfer_dependencies (variable->priv->expression,
+		                                       expression);
+
 		g_signal_handler_disconnect (variable->priv->expression,
 		                             variable->priv->expression_proxy_id);
 
@@ -304,7 +324,7 @@ cdn_variable_finalize (GObject *object)
 
 	g_free (variable->priv->name);
 	g_free (variable->priv->annotation);
-	g_free (variable->priv->update);
+	cdn_matrix_destroy (&variable->priv->update);
 
 	G_OBJECT_CLASS (cdn_variable_parent_class)->finalize (object);
 }
@@ -323,8 +343,14 @@ set_diff_of (CdnVariable *variable,
 	{
 		if (variable->priv->diff_of->priv->diff_for == variable)
 		{
+			g_object_remove_weak_pointer (G_OBJECT (variable),
+			                              (gpointer *)&variable->priv->diff_of->priv->diff_for);
+
 			variable->priv->diff_of->priv->diff_for = NULL;
 		}
+
+		g_object_remove_weak_pointer (G_OBJECT (variable->priv->diff_of),
+		                              (gpointer *)&variable->priv->diff_of);
 
 		variable->priv->diff_of = NULL;
 	}
@@ -332,7 +358,17 @@ set_diff_of (CdnVariable *variable,
 	if (diff_of)
 	{
 		variable->priv->diff_of = diff_of;
+
+		if (diff_of->priv->diff_for)
+		{
+			g_object_remove_weak_pointer (G_OBJECT (diff_of->priv->diff_for),
+			                              (gpointer *)&diff_of->priv->diff_for);
+		}
+
 		diff_of->priv->diff_for = variable;
+
+		g_object_add_weak_pointer (G_OBJECT (diff_of), (gpointer *)&variable->priv->diff_of);
+		g_object_add_weak_pointer (G_OBJECT (variable), (gpointer *)&diff_of->priv->diff_for);
 	}
 }
 
@@ -358,10 +394,10 @@ set_flags (CdnVariable      *variable,
 {
 	if (flags != variable->priv->flags)
 	{
-		gboolean wasonce = variable->priv->flags & CDN_VARIABLE_FLAG_ONCE;
+		gboolean wasonce = variable->priv->flags & (CDN_VARIABLE_FLAG_ONCE | CDN_VARIABLE_FLAG_IN);
 		variable->priv->flags = flags;
 
-		if (flags & CDN_VARIABLE_FLAG_ONCE)
+		if (flags & (CDN_VARIABLE_FLAG_ONCE | CDN_VARIABLE_FLAG_IN))
 		{
 			if (!wasonce)
 			{
@@ -562,9 +598,9 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	                                                      G_PARAM_READWRITE));
 
 	/**
-	 * CdnVariable:expression:
+	 * CdnVariable:constraint:
 	 *
-	 * The variable expression
+	 * The variable constraint expression
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -648,6 +684,9 @@ cdn_variable_init (CdnVariable *self)
 {
 	self->priv = CDN_VARIABLE_GET_PRIVATE (self);
 
+	self->priv->update.dimension.rows = 1;
+	self->priv->update.dimension.columns = 1;
+
 	self->priv->modified = FALSE;
 }
 
@@ -714,47 +753,19 @@ cdn_variable_set_value (CdnVariable  *variable,
 }
 
 /**
- * cdn_variable_set_values: (skip):
+ * cdn_variable_set_values:
  * @variable: the #CdnVariable
  * @values: the new value
- * @dim: the dimension
  *
  * Change the value to a specific number.
  *
  **/
 void
-cdn_variable_set_values (CdnVariable        *variable,
-                         gdouble const      *values,
-                         CdnDimension const *dim)
+cdn_variable_set_values (CdnVariable     *variable,
+                         CdnMatrix const *values)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_set_values (variable->priv->expression,
-	                           values,
-	                           dim);
-}
-
-/**
- * cdn_variable_set_values_flat:
- * @variable: the #CdnVariable
- * @values: (array length=numvals): the new value
- * @numvals: the length of @values
- * @dim: the dimension
- *
- * Change variable value.
- *
- **/
-void
-cdn_variable_set_values_flat (CdnVariable        *variable,
-                              gdouble const      *values,
-                              gint                numvals,
-                              CdnDimension const *dim)
-{
-	g_return_if_fail (cdn_dimension_size (dim) == numvals);
-
-	/* Omit type check to increase speed */
-	cdn_expression_set_values (variable->priv->expression,
-	                           values,
-	                           dim);
+	cdn_expression_set_values (variable->priv->expression, values);
 }
 
 /**
@@ -797,20 +808,18 @@ cdn_variable_get_value (CdnVariable *variable)
 }
 
 /**
- * cdn_variable_get_values: (skip)
+ * cdn_variable_get_values:
  * @variable: a #CdnVariable.
- * @dim: (out): return value for the dimension
  *
  * Get the value of the variable.
  *
- * Returns: the value of the variable.
+ * Returns: (transfer none): the value of the variable.
  *
  **/
-gdouble const *
-cdn_variable_get_values (CdnVariable  *variable,
-                         CdnDimension *dim)
+CdnMatrix const *
+cdn_variable_get_values (CdnVariable *variable)
 {
-	gdouble const *ret = NULL;
+	CdnMatrix const *ret = NULL;
 
 	if (variable->priv->expression)
 	{
@@ -818,8 +827,7 @@ cdn_variable_get_values (CdnVariable  *variable,
 		{
 			variable->priv->in_constraint = TRUE;
 
-			ret = cdn_expression_evaluate_values (variable->priv->constraint,
-			                                      dim);
+			ret = cdn_expression_evaluate_values (variable->priv->constraint);
 
 			variable->priv->in_constraint = FALSE;
 		}
@@ -835,48 +843,8 @@ cdn_variable_get_values (CdnVariable  *variable,
 				g_free (s);
 			}
 
-			ret = cdn_expression_evaluate_values (variable->priv->expression,
-			                                      dim);
+			ret = cdn_expression_evaluate_values (variable->priv->expression);
 		}
-	}
-	else
-	{
-		if (dim)
-		{
-			dim->rows = 0;
-			dim->columns = 0;
-		}
-	}
-
-	return ret;
-}
-
-/**
- * cdn_variable_get_values_flat:
- * @variable: a #CdnVariable.
- * @num: (out caller-allocates): return value for the number of elements in the return value.
- *
- * Get the value of a variable as a flat array. This is mostly useful for
- * bindings because it's difficult to bind #cdn_variable_get_values with
- * gobject introspection.
- *
- * Returns: (array length=num): the variable value.
- *
- **/
-gdouble const *
-cdn_variable_get_values_flat (CdnVariable *variable,
-                              gint        *num)
-{
-	CdnDimension dim;
-	gdouble const *ret;
-
-	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
-
-	ret = cdn_variable_get_values (variable, &dim);
-
-	if (num)
-	{
-		*num = cdn_dimension_size (&dim);
 	}
 
 	return ret;
@@ -1026,50 +994,6 @@ cdn_variable_set_name (CdnVariable *variable,
 }
 
 /**
- * cdn_variable_get_integrated:
- * @variable: a #CdnVariable
- *
- * Get whether the variable should be integrated during evaluation or not. This
- * is a convenience function that simply checks if the
- * CDN_VARIABLE_FLAG_INTEGRATED flag is set.
- *
- * Returns: %TRUE if the variable will be integrated, %FALSE otherwise
- *
- **/
-gboolean
-cdn_variable_get_integrated (CdnVariable *variable)
-{
-	/* Omit type check to increase speed */
-	return variable->priv->flags & CDN_VARIABLE_FLAG_INTEGRATED;
-}
-
-/**
- * cdn_variable_set_integrated:
- * @variable: a #CdnVariable
- * @integrated: integrate the variable
- *
- * Set whether the variable should be integrated during evaluation or not. This
- * is a convenience function that simply sets or unsets the
- * CDN_VARIABLE_FLAG_INTEGRATED flag.
- *
- **/
-void
-cdn_variable_set_integrated (CdnVariable  *variable,
-                             gboolean      integrated)
-{
-	g_return_if_fail (CDN_IS_VARIABLE (variable));
-
-	if (integrated)
-	{
-		cdn_variable_add_flags (variable, CDN_VARIABLE_FLAG_INTEGRATED);
-	}
-	else
-	{
-		cdn_variable_remove_flags (variable, CDN_VARIABLE_FLAG_INTEGRATED);
-	}
-}
-
-/**
  * cdn_variable_reset:
  * @variable: A #CdnVariable
  *
@@ -1082,7 +1006,8 @@ cdn_variable_reset (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
 	cdn_expression_set_once (variable->priv->expression,
-	                         (variable->priv->flags & CDN_VARIABLE_FLAG_ONCE) != 0);
+	                         (variable->priv->flags & (CDN_VARIABLE_FLAG_ONCE |
+	                                                   CDN_VARIABLE_FLAG_IN)) != 0);
 }
 
 /**
@@ -1177,82 +1102,28 @@ cdn_variable_remove_flags (CdnVariable      *variable,
 	set_flags (variable, variable->priv->flags & ~flags, TRUE);
 }
 
-/**
- * cdn_variable_set_update:
- * @variable: A #CdnVariable
- * @values: The update values
- * 
- * Set the update value of the variable. The update value is used to store the
- * result of differential equations on the variable/ You normally do not need
- * to use this function.
- *
- **/
-void
-cdn_variable_set_update (CdnVariable   *variable,
-                         gdouble const *values)
-{
-	CdnDimension dim;
-
-	cdn_expression_get_dimension (variable->priv->expression,
-	                              &dim);
-
-	/* Omit type check to increase speed */
-	memcpy (variable->priv->update,
-	        values,
-	        sizeof (gdouble) * cdn_dimension_size (&dim));
-}
-
 void
 cdn_variable_clear_update (CdnVariable *variable)
 {
-	CdnDimension dim;
-
-	cdn_expression_get_dimension (variable->priv->expression, &dim);
-
-	memset (variable->priv->update,
-	        0,
-	        sizeof (gdouble) * cdn_dimension_size (&dim));
-}
-
-void
-cdn_variable_set_update_value (CdnVariable        *variable,
-                               gdouble             value,
-                               CdnDimension const *dim)
-{
-	if (dim->columns < 0)
-	{
-		variable->priv->update[dim->rows] = value;
-	}
-	else
-	{
-		CdnDimension edim;
-
-		cdn_expression_get_dimension (variable->priv->expression,
-		                              &edim);
-
-		variable->priv->update[dim->rows * edim.columns + dim->columns] = value;
-	}
+	cdn_matrix_clear (&variable->priv->update);
 }
 
 /**
  * cdn_variable_get_update:
  * @variable: A #CdnVariable
- * @dim: (out): return value for the dimension
  *
  * Get the update value of a variable. The update value is used to store the
  * result of differential equations on the variable. You normally do not need
  * to use this function.
  *
- * Returns: The update value
+ * Returns: (transfer none): The update value
  *
  **/
-gdouble *
-cdn_variable_get_update (CdnVariable  *variable,
-                         CdnDimension *dim)
+CdnMatrix *
+cdn_variable_get_update (CdnVariable  *variable)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_get_dimension (variable->priv->expression, dim);
-	return variable->priv->update;
+	return &variable->priv->update;
 }
 
 /**
@@ -1535,22 +1406,7 @@ cdn_variable_copy (CdnVariable *variable)
 	                        cdn_expression_copy (variable->priv->expression),
 	                        variable->priv->flags);
 
-	if (variable->priv->update)
-	{
-		CdnDimension dim;
-
-		if (cdn_expression_get_dimension (variable->priv->expression,
-		                                  &dim))
-		{
-			gint num = cdn_dimension_size (&dim);
-
-			ret->priv->update = g_new0 (gdouble, num);
-
-			memcpy (ret->priv->update,
-			        variable->priv->update,
-			        sizeof (gdouble) * num);
-		}
-	}
+	cdn_matrix_copy (&ret->priv->update, &variable->priv->update);
 
 	cdn_modifiable_set_modified (CDN_MODIFIABLE (ret),
 	                             variable->priv->modified);
@@ -1621,7 +1477,7 @@ variable_get_actions (CdnNode    *o,
  *
  * Get the actions acting on this variable.
  *
- * Returns: (element-type CdnEdgeAction) (transfer full): A #GSList of #CdnEdgeAction
+ * Returns: (element-type CdnEdgeAction) (transfer container): A #GSList of #CdnEdgeAction
  *
  **/
 GSList *
@@ -1633,7 +1489,7 @@ cdn_variable_get_actions (CdnVariable *variable)
 
 	obj = cdn_variable_get_object (variable);
 
-	if (!CDN_IS_NODE (obj))
+	if (obj == NULL || !CDN_IS_NODE (obj))
 	{
 		return NULL;
 	}
@@ -1641,6 +1497,51 @@ cdn_variable_get_actions (CdnVariable *variable)
 	return g_slist_reverse (variable_get_actions (CDN_NODE (cdn_variable_get_object (variable)),
 	                                              variable,
 	                                              NULL));
+}
+
+gboolean
+cdn_variable_has_actions (CdnVariable *variable)
+{
+	CdnNode *obj;
+
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
+
+	obj = (CdnNode *)cdn_variable_get_object (variable);
+
+	if (obj == NULL || !CDN_IS_NODE (obj))
+	{
+		return FALSE;
+	}
+
+	while (obj)
+	{
+		GSList const *l;
+
+		l = cdn_node_get_edges (obj);
+
+		while (l)
+		{
+			GSList const *actions;
+
+			actions = cdn_edge_get_actions (l->data);
+
+			while (actions)
+			{
+				if (cdn_edge_action_get_target_variable (actions->data) == variable)
+				{
+					return TRUE;
+				}
+
+				actions = g_slist_next (actions);
+			}
+
+			l = g_slist_next (l);
+		}
+
+		obj = cdn_object_get_parent (CDN_OBJECT (obj));
+	}
+
+	return FALSE;
 }
 
 void
@@ -1704,7 +1605,7 @@ cdn_variable_compile (CdnVariable       *variable,
 		ret = cdn_expression_compile (variable->priv->expression, context, error);
 		g_object_unref (context);
 	}
-	else if (variable->priv->update)
+	else if (variable->priv->update.values)
 	{
 		return TRUE;
 	}
@@ -1717,11 +1618,11 @@ cdn_variable_compile (CdnVariable       *variable,
 	{
 		CdnDimension dim;
 
-		cdn_expression_get_dimension (variable->priv->expression,
-		                              &dim);
+		cdn_expression_get_dimension (variable->priv->expression, &dim);
 
-		g_free (variable->priv->update);
-		variable->priv->update = g_new0 (gdouble, cdn_dimension_size (&dim));
+		cdn_matrix_set (&variable->priv->update,
+		                NULL,
+		                &dim);
 	}
 	else
 	{
@@ -1734,4 +1635,13 @@ cdn_variable_compile (CdnVariable       *variable,
 	}
 
 	return ret;
+}
+
+gboolean
+cdn_variable_has_flag (CdnVariable      *variable,
+                       CdnVariableFlags  flags)
+{
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
+
+	return (variable->priv->flags & flags) != 0;
 }

@@ -39,6 +39,15 @@ typedef struct _CdnIntegratorPredictCorrect	        CdnIntegratorPredictCorrect;
 typedef struct _CdnIntegratorPredictCorrectClass    CdnIntegratorPredictCorrectClass;
 typedef struct _CdnIntegratorPredictCorrectPrivate  CdnIntegratorPredictCorrectPrivate;
 
+/**
+ * CdnIntegratorPredictCorrect:
+ *
+ * Prediction Correction integrator.
+ *
+ * The prediction correction integrator is a #CdnIntegrator subclass
+ * implementing a prediction correction integration scheme. It supports multiple
+ * orders of prediction and correction.
+ */
 struct _CdnIntegratorPredictCorrect
 {
 	/*< private >*/

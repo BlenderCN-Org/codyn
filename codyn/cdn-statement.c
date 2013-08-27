@@ -22,12 +22,6 @@
 
 #include "cdn-statement.h"
 
-/**
- * SECTION:cdn-statement
- * @short_description: Interface for keeping track statements
- *
- **/
-
 G_DEFINE_INTERFACE (CdnStatement, cdn_statement, G_TYPE_OBJECT);
 
 /* Default implementation */

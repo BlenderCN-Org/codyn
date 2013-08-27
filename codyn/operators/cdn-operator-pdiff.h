@@ -41,6 +41,15 @@ typedef struct _CdnOperatorPDiff		CdnOperatorPDiff;
 typedef struct _CdnOperatorPDiffClass	CdnOperatorPDiffClass;
 typedef struct _CdnOperatorPDiffPrivate	CdnOperatorPDiffPrivate;
 
+/**
+ * CdnOperatorPDiff:
+ *
+ * Math operator for diff evaluation of an expression.
+ *
+ * The #CdnOperatorPDiff is a special operator that can be used in
+ * mathematical expressions ('delay'). When evaluated, it will return the
+ * diff value of its argument (which can be an arbitrary expression).
+ */
 struct _CdnOperatorPDiff
 {
 	/*< private >*/

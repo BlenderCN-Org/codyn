@@ -40,6 +40,16 @@ typedef struct _CdnFunctionPolynomial			CdnFunctionPolynomial;
 typedef struct _CdnFunctionPolynomialClass		CdnFunctionPolynomialClass;
 typedef struct _CdnFunctionPolynomialPrivate	CdnFunctionPolynomialPrivate;
 
+/**
+ * CdnFunctionPolynomial:
+ *
+ * Custom user defined piecewise polynomial.
+ *
+ * This class provides a specialized custom user function which defines
+ * and evaluates piecewise polynomials. The piece polynomials can be
+ * specified in terms of the interval in which they are evaluated and
+ * the polynomial coefficients.
+ */
 struct _CdnFunctionPolynomial
 {
 	/*< private >*/

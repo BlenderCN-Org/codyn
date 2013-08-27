@@ -27,6 +27,13 @@
 
 G_BEGIN_DECLS
 
+/**
+ * CdnStack:
+ *
+ * Simple stack.
+ *
+ * Very simple/efficient stack implementation for double numbers.
+ */
 typedef struct _CdnStack CdnStack;
 
 #ifdef __GI_SCANNER__
@@ -167,6 +174,8 @@ void      cdn_stack_arg_copy           (CdnStackArg       *ret,
 void      cdn_stack_arg_destroy        (CdnStackArg       *arg);
 
 guint     cdn_stack_arg_size              (CdnStackArg const *arg);
+void      cdn_stack_arg_get_dimension     (CdnStackArg const *arg,
+                                           CdnDimension      *dim);
 
 gboolean  cdn_stack_arg_is_sparse (CdnStackArg const *arg,
                                    guint              idx);

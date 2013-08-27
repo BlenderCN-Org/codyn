@@ -4,55 +4,37 @@ templates
 
     node "oscillator"
     {
-        [proxy]
-        node "node"
-        {
-            ## r node variable of Hopf oscillator
-            r = 1 | integrated
+        ## r node variable of Hopf oscillator
+        ṙ = "γ ∙ (μ - r2) ∙ r"
+        r = 0
 
-            ## theta node variable of Hopf oscillator
-            theta = 0 | integrated
+        ## theta node variable of Hopf oscillator
+        φ̇ = "ω"
 
+        ## Desired amplitude
+        ## Unused if you define mu directly.
+        target_amplitude = 1
 
-            ## Desired amplitude
-            ## Unused if you define mu directly.
-            target_amplitude = 1
+        ## Desired frequency
+        target_frequency = 1
 
-            ## Desired frequency
-            target_frequency = 1
+        ## Desired μ. Controls the Hopf bifurcation.
+        ## With positive μ, the dynamical system will oscillate with amplitude
+        ## √(μ). With negative μ, the system will have a stable fix point at
+        ## r = 0.
+        μ = "target_amplitude²"
 
+        ## Gain on amplitude
+        γ = 1
 
-            ## Instantaneous amplitude
-            amplitude = "r"
+        ## Angular frequency
+        ω = "2 ∙ π ∙ target_frequency"
 
+        ## Amplitude squared
+        r2 = "r²"
 
-            ## Desired mu
-            ## Controlls the Hopf bifurcation.
-            ## With positive mu, the dynamical system will oscillate with amplitude sqrt(mu). 
-            ## With negative mu, the system will have a stable fix point at r = 0.
-            mu = "target_amplitude * target_amplitude"
-
-
-            ## Gain on amplitude
-            gamma = 1
-
-
-            ## Angular frequency
-            omega = "2 * pi * target_frequency"
-
-            ## Amplitude squared
-            r2 = "r * r"
-
-
-            ## Output variable
-            output = "r * cos(theta)"
-        }
-
-        edge "integrate" on "node"
-        {
-            r <= "gamma * (mu - r2) * r"
-            theta <= "omega"
-        }
+        ## Output variable
+        χ = "r ∙ cos(φ)"
     }
 }
 

@@ -29,24 +29,6 @@
 #include "cdn-phaseable.h"
 #include "cdn-function.h"
 
-/**
- * SECTION:cdn-edge
- * @short_description: Information transfer link
- *
- * A #CdnEdge is a connection between two #CdnNode. The link defines actions
- * which consist of a target property in the object output which the link is
- * connected, and an expression by which this target property needs output be
- * updated.
- *
- * <refsect2 id="CdnEdge-COPY">
- * <title>CdnEdge Copy Semantics</title>
- * When a link is copied with #cdn_object_copy, the link actions are also
- * copied. However, the link #CdnEdge:input and #CdnEdge:output properties are
- * <emphasis>NOT</emphasis> copied, so that you are free output attach it output
- * two new objects.
- * </refsect2>
- */
-
 #define CDN_EDGE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CDN_TYPE_EDGE, CdnEdgePrivate))
 
 enum
@@ -1204,7 +1186,8 @@ cdn_edge_add_action (CdnEdge       *link,
 	                                       target,
 	                                       index);
 
-	if (orig != NULL)
+	if (orig != NULL && cdn_phaseable_equal (CDN_PHASEABLE (orig),
+	                                         CDN_PHASEABLE (action)))
 	{
 		cdn_edge_action_set_equation (orig,
 		                              cdn_edge_action_get_equation (action));
@@ -1364,27 +1347,14 @@ cdn_edge_get_action (CdnEdge     *link,
 	                                       NULL);
 }
 
-/**
- * cdn_edge_get_action_with_index:
- * @link: A #CdnEdge
- * @target: The action target
- * @index: A #CdnExpression
- *
- * Get the action for a target with a specific index.
- *
- * Returns: (transfer none): A #CdnEdgeAction
- *
- **/
-CdnEdgeAction *
-cdn_edge_get_action_with_index (CdnEdge       *link,
-                                gchar const   *target,
-                                CdnExpression *index)
+static CdnEdgeAction *
+edge_get_action_intern (CdnEdge       *edge,
+                        gchar const   *target,
+                        CdnExpression *index,
+                        GSList const  *phases,
+                        gboolean       compare_phases)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
-	g_return_val_if_fail (target != NULL, NULL);
-	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
-
-	GSList *actions = link->priv->actions;
+	GSList *actions = edge->priv->actions;
 
 	while (actions)
 	{
@@ -1410,10 +1380,94 @@ cdn_edge_get_action_with_index (CdnEdge       *link,
 			continue;
 		}
 
+		if (compare_phases)
+		{
+			GHashTable *table;
+			GSList const *item;
+			gint num = 0;
+
+			table = cdn_phaseable_get_phase_table (CDN_PHASEABLE (action));
+
+			if ((!table || g_hash_table_size (table) == 0))
+			{
+				if (!phases)
+				{
+					return action;
+				}
+				else
+				{
+					continue;
+				}
+			}
+
+			for (item = phases; item; item = g_slist_next (item))
+			{
+				if (!g_hash_table_lookup (table, item->data))
+				{
+					continue;
+				}
+
+				++num;
+			}
+
+			if (num != g_hash_table_size (table))
+			{
+				continue;
+			}
+		}
+
 		return action;
 	}
 
 	return NULL;
+}
+
+/**
+ * cdn_edge_get_action_with_index:
+ * @link: A #CdnEdge
+ * @target: The action target
+ * @index: A #CdnExpression
+ *
+ * Get the action for a target with a specific index.
+ *
+ * Returns: (transfer none): A #CdnEdgeAction
+ *
+ **/
+CdnEdgeAction *
+cdn_edge_get_action_with_index (CdnEdge       *link,
+                                gchar const   *target,
+                                CdnExpression *index)
+{
+	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (target != NULL, NULL);
+	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
+
+	return edge_get_action_intern (link, target, index, NULL, FALSE);
+}
+
+/**
+ * cdn_edge_get_action_with_index_and_phases:
+ * @edge: A #CdnEdge
+ * @target: The action target
+ * @index: A #CdnExpression
+ * @phases: (element-type utf8) (transfer none): a list of phases
+ *
+ * Get the action for a target with a specific index and set of phases.
+ *
+ * Returns: (transfer none): A #CdnEdgeAction
+ *
+ **/
+CdnEdgeAction *
+cdn_edge_get_action_with_index_and_phases (CdnEdge       *edge,
+                                           gchar const   *target,
+                                           CdnExpression *index,
+                                           GSList const  *phases)
+{
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
+	g_return_val_if_fail (target != NULL, NULL);
+	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
+
+	return edge_get_action_intern (edge, target, index, phases, TRUE);
 }
 
 /**

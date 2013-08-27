@@ -31,9 +31,9 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 %}
 
-%token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
+%token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT T_KEY_DISCRETE
 
-%token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_INPUT T_KEY_OUTPUT T_KEY_INPUTS T_KEY_OUTPUTS T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_REQUIRE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_NOT T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_INPUT_NAME T_KEY_OUTPUT_NAME T_KEY_PHASE T_KEY_EVENT T_KEY_TERMINATE T_KEY_ANY T_KEY_SET T_KEY_RECURSE T_KEY_IO T_KEY_WITHIN T_KEY_IFSTR T_KEY_NOTSTR T_KEY_APPEND_CONTEXT T_KEY_LINK_LIBRARY T_KEY_APPLIED_TEMPLATES T_KEY_REDUCE
+%token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_INPUT T_KEY_OUTPUT T_KEY_INPUTS T_KEY_OUTPUTS T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_REQUIRE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_NOT T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_INPUT_NAME T_KEY_OUTPUT_NAME T_KEY_STATE T_KEY_EVENT T_KEY_TERMINATE T_KEY_ANY T_KEY_SET T_KEY_RECURSE T_KEY_IO T_KEY_WITHIN T_KEY_IFSTR T_KEY_NOTSTR T_KEY_APPEND_CONTEXT T_KEY_LINK_LIBRARY T_KEY_APPLIED_TEMPLATES T_KEY_REDUCE T_KEY_SORT T_KEY_INITIAL_STATE
 
 %token <id> T_DOUBLE
 %token <id> T_INTEGER
@@ -130,7 +130,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <list> selector_pseudo_mixargs_args
 %type <list> selector_pseudo_mixargs_args_rev
 
-%type <string> phase
+%type <string> state
 
 %type <string> identifier_or_string
 %type <string> identifier_or_string_item
@@ -155,6 +155,14 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <array> multi_identifier_or_string
 %type <string> multi_identifier_or_string_value
 
+%type <string> simple_index
+%type <string> simple_index_contents
+%type <string> variable_with_index
+
+%type <array> multi_variable_or_string_contents
+%type <array> multi_variable_or_string
+%type <string> multi_variable_or_string_value
+
 %type <string> constraint
 
 %type <list> edge_attributes
@@ -169,7 +177,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 %type <list> selector_pseudo_reduce_args
 
-%type <object> define_value
+%type <array> define_value
 
 %type <list> edge_connect
 %type <list> edge_connect_fast
@@ -235,13 +243,13 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 %start choose_parser
 
-%expect 6
+%expect 5
 
 %%
 
 choose_parser
 	:
-	| T_START_DOCUMENT document_contents
+	| T_START_DOCUMENT document_contents eof
 	| T_START_SELECTOR selector_parse eof
 	| T_START_NODE node_contents
 	| T_START_EDGE edge_contents
@@ -423,12 +431,14 @@ when
 	;
 
 define_value
-	: value_as_string		{ $$ = $1; }
-	| selector_non_ambiguous	{ $$ = $1; }
+	: multi_value_as_string		{ $$ = $1; }
+	| selector_non_ambiguous	{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1);
+	                                }
 	;
 
 define_item
-	: identifier_or_string
+	: multi_identifier_or_string
 	  assign_optional_env
 	  define_value			{ cdn_parser_context_define (context,
 					                             $1,
@@ -582,9 +592,9 @@ edge_connect
 	| edge_connect_fast		{ $$ = $1; }
 	;
 
-phase
+state
 	:				{ $$ = NULL; }
-	| T_KEY_PHASE value_as_string	{ $$ = $2; }
+	| T_KEY_STATE value_as_string	{ $$ = $2; }
 	;
 
 edge
@@ -592,7 +602,7 @@ edge
 	  T_KEY_EDGE
 	  identifier_or_string
 	  edge_connect
-	  phase
+	  state
 	  templated
 	  '{'	 			{ cdn_parser_context_push_edge (context,
 	                                                                $3,
@@ -605,7 +615,7 @@ edge
 	| edge_attributes
 	  T_KEY_EDGE
 	  edge_connect_fast
-	  phase
+	  state
 	  templated
 	  '{'				{ cdn_parser_context_push_edge (context,
 	                                                                NULL,
@@ -617,7 +627,7 @@ edge
 	  '}'				{ cdn_parser_context_pop (context); errb }
 	| edge_attributes
 	  T_KEY_EDGE
-	  phase
+	  state
 	  templated
 	  '{'				{ cdn_parser_context_push_edge (context,
 	                                                                NULL,
@@ -678,13 +688,6 @@ function_argument_implicit
 					{ $$ = $2; }
 	;
 
-function_helper
-	:
-	| '{'
-	  object_contents
-	  '}'
-	;
-
 function_custom
 	: identifier_or_string
 	  '('
@@ -696,8 +699,8 @@ function_custom
 	                                                                    $1,
 	                                                                    g_slist_concat ($3, $5),
 	                                                                    $7,
-	                                                                    $6); errb }
-	  function_helper	        { cdn_parser_context_pop (context); errb }
+	                                                                    $6); errb;
+	                                  cdn_parser_context_pop (context); errb }
 	;
 
 function
@@ -819,6 +822,12 @@ node_item_general
 	| delete
 	| delete_context
 	| templates
+	| initial_state
+	;
+
+initial_state
+	: T_KEY_INITIAL_STATE
+	  multi_value_as_string			{ cdn_parser_context_set_node_state (context, $2); }
 	;
 
 node_item_general_no_variable_set
@@ -835,11 +844,12 @@ node_item_general_no_variable_set
 	| delete
 	| delete_context
 	| templates
+	| initial_state
 	;
 
 io_setting
 	: debug
-	| value_as_string '=' value_as_string
+	| multi_value_as_string '=' multi_value_as_string
 		{ cdn_parser_context_set_io_setting (context, $1, $3); errb }
 	;
 
@@ -1026,6 +1036,11 @@ multi_identifier_or_string
 	  ']'				{ $$ = $2; }
 	;
 
+variable_with_index
+	: identifier_or_string			{ $$ = $1; }
+	| identifier_or_string simple_index	{ cdn_embedded_string_add_string ($1, $2);
+	                                          $$ = $1; }
+
 assign_optional
 	: '='				{ $$ = FALSE; }
 	| '?' '='			{ $$ = TRUE; }
@@ -1063,20 +1078,78 @@ constraint
 	                                                cdn_embedded_string_add_text ($$, ")"); }
 	;
 
+simple_index_separator
+	: ','
+	| ';'
+	| ':'
+	;
+
+simple_index_contents
+	: value_as_string				{ $$ = $1; }
+	| simple_index_contents
+	  simple_index_separator
+	  value_as_string				{ cdn_embedded_string_add_text ($1, ", ");
+	                                                  cdn_embedded_string_add_string ($1, $3);
+	                                                  $$ = $1; }
+	;
+
+simple_index
+	: '['
+	   simple_index_contents
+	  ']'						{ cdn_embedded_string_prepend_text ($2, "[");
+	                                                  cdn_embedded_string_add_text ($2, "]");
+	                                                  $$ = $2; }
+	| '['
+	  '['
+	  simple_index_contents
+	  ']'
+	  ','
+	  '['
+	  simple_index_contents
+	  ']'						{ cdn_embedded_string_prepend_text ($3, "[[");
+	                                                  cdn_embedded_string_add_text ($3, "], [");
+	                                                  cdn_embedded_string_add_string ($3, $7);
+	                                                  cdn_embedded_string_add_text ($3, "]]");
+	                                                  $$ = $3; }
+	;
+
+multi_variable_or_string_value
+	:				{ $$ = NULL; }
+	| variable_with_index		{ $$ = $1; }
+	;
+
+multi_variable_or_string_contents
+	: multi_variable_or_string_value	{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                          g_ptr_array_add ($$, $1); }
+	| multi_variable_or_string_contents
+	  ','
+	  multi_variable_or_string_value	{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_variable_or_string
+	: variable_with_index		{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	  multi_variable_or_string_contents
+	  ']'				{ $$ = $2; }
+	;
+
 variable_no_set
-	: multi_identifier_or_string
+	: multi_variable_or_string
 	  assign_optional
 	  multi_value_as_string
 	  variable_flags
 	  constraint
+	  state
 					{ cdn_parser_context_add_variable (context,
 					                                   $1,
 					                                   $3,
 					                                   $4.add,
 					                                   $4.remove,
 					                                   $2,
-					                                   $5); errb }
-	| multi_identifier_or_string
+					                                   $5,
+					                                   $6); errb }
+	| multi_variable_or_string
 	  variable_flags_strict
 					{ cdn_parser_context_add_variable (context,
 					                                   $1	,
@@ -1084,6 +1157,7 @@ variable_no_set
 					                                   $2.add,
 					                                   $2.remove,
 					                                   FALSE,
+					                                   NULL,
 					                                   NULL); errb }
 	;
 
@@ -1134,18 +1208,19 @@ variable_flag
 	| T_KEY_OUT			{ $$ = CDN_VARIABLE_FLAG_OUT; }
 	| T_KEY_INTEGRATED		{ $$ = CDN_VARIABLE_FLAG_INTEGRATED; }
 	| T_KEY_ONCE			{ $$ = CDN_VARIABLE_FLAG_ONCE; }
+	| T_KEY_DISCRETE		{ $$ = CDN_VARIABLE_FLAG_DISCRETE; }
 	;
 
 action
-	: multi_identifier_or_string
+	: multi_variable_or_string
 	  '+' '='
 	  multi_value_as_string
-	  phase
+	  state
 					{ cdn_parser_context_add_action (context, $1, $4, $5, TRUE); errb }
-	| multi_identifier_or_string
+	| multi_variable_or_string
 	  '<' '='
 	  multi_value_as_string
-	  phase
+	  state
 					{ cdn_parser_context_add_action (context, $1, $4, $5, FALSE); errb }
 	;
 
@@ -1220,7 +1295,7 @@ selector_define_context
 	: '<'
 	  T_IDENTIFIER
 	  '>'
-	  ':'				{ $$ = g_strdup ($2); }
+	  ':'				{ $$ = g_strdup ($2); g_free ($2); }
 	;
 
 selector_identifier
@@ -1266,6 +1341,7 @@ selector_pseudo_simple_key_real
 	| T_KEY_OUTPUTS				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_OUTPUTS; }
 	| T_KEY_INPUT_NAME			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_INPUT_NAME; }
 	| T_KEY_OUTPUT_NAME			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_OUTPUT_NAME; }
+	| T_KEY_SORT				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_SORT; }
 	;
 
 selector_pseudo_simple_key
@@ -1488,15 +1564,15 @@ repeated_prime
 	;
 
 identifier
-	: T_IDENTIFIER			{ $$ = cdn_embedded_string_new_from_string ($1); }
+	: T_IDENTIFIER			{ $$ = cdn_embedded_string_new_from_string ($1); g_free ($1); }
 	;
 
 double
-	: T_DOUBLE			{ $$ = cdn_embedded_string_new_from_string ($1); }
+	: T_DOUBLE			{ $$ = cdn_embedded_string_new_from_string ($1); g_free ($1); }
 	;
 
 integer
-	: T_INTEGER			{ $$ = cdn_embedded_string_new_from_string ($1); }
+	: T_INTEGER			{ $$ = cdn_embedded_string_new_from_string ($1); g_free ($1); }
 	;
 
 number
@@ -1514,7 +1590,7 @@ value_as_string
 	;
 
 multi_value_as_string_value
-	:				{ $$ = NULL; }
+	:				{ $$ = cdn_embedded_string_new_from_string (""); }
 	| value_as_string		{ $$ = $1; }
 	;
 
@@ -1540,7 +1616,7 @@ string_item
 	| indirection_inside
 	| reduce_inside
 	| map_inside
-	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); }
+	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); g_free ($1); }
 	| '{'				{ cdn_embedded_string_push_brace (cdn_parser_context_peek_string (context)); }
 	| '}'				{ cdn_embedded_string_pop_brace (cdn_parser_context_peek_string (context)); }
 	;
@@ -1607,9 +1683,9 @@ indirection_embedding
 
 indirection_contents
 	: T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context),
-	                                                                $1); }
+	                                                                $1); g_free ($1); }
 	| T_STRING 			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context),
-	                                                                $1); }
+	                                                                $1); g_free ($1); }
 	  indirection_embedding
 	| indirection_embedding
 	;
@@ -1636,7 +1712,7 @@ equation_item
 	                                                            CDN_EMBEDDED_STRING_NODE_INDIRECTION,
 	                                                            0);
 	                                  cdn_embedded_string_add_text (cdn_parser_context_peek_string (context),
-	                                                                $1);
+	                                                                $1); g_free ($1);
 	                                  cdn_embedded_string_pop (cdn_parser_context_peek_string (context)); }
 	;
 
@@ -1685,7 +1761,7 @@ map_item
 	: equation_inside
 	| condition_inside
 	| indirection_inside
-	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); }
+	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); g_free ($1); }
 	;
 
 map_contents
@@ -1705,7 +1781,7 @@ reduce_item
 	: equation_inside
 	| condition_inside
 	| indirection_inside
-	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); }
+	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); g_free ($1); }
 	;
 
 reduce_contents

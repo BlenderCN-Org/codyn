@@ -27,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <codyn/cdn-cfile-stream.h>
+#include <json-glib/json-glib.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -59,9 +60,9 @@ static GOptionEntry entries[] = {
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors,
 	 "Do not use colors in the output", NULL},
 	{"line", 'l', 0, G_OPTION_ARG_INT, &context_line,
-	 "Only report contexts on a particular line", "LINE"},
+	 "Report contexts on a particular line (starting at 1)", "LINE"},
 	{"column", 'c', 0, G_OPTION_ARG_INT, &context_column,
-	 "Only report contexts on a particular column (requires --line/-l)", "COL"},
+	 "Only report contexts on a particular column (starting at 1, requires --line/-l)", "COL"},
 	{NULL}
 };
 
@@ -439,97 +440,78 @@ info_free (Info *info)
 	}
 }
 
-#define write_stream_format(stream, format, ...) do {				\
-	gchar *s;								\
-										\
-	s = g_strdup_printf (format, __VA_ARGS__);				\
-	g_data_output_stream_put_string (stream, s, NULL, NULL);		\
-	g_free (s);								\
-} while (0)
-
-#define write_stream(stream, s) write_stream_format (stream, "%s", s)
-#define write_stream_nl(stream, s) write_stream_format (stream, "%s\n", s)
+static void
+write_string_field (JsonBuilder *builder,
+                    gchar const *name,
+                    gchar const *value)
+{
+	json_builder_set_member_name (builder, name);
+	json_builder_add_string_value (builder, value);
+}
 
 static void
-write_cdn_expansion (CdnExpansion      *expansion,
-                     GDataOutputStream *out)
+write_int_field (JsonBuilder *builder,
+                 gchar const *name,
+                 gint64       value)
+{
+	json_builder_set_member_name (builder, name);
+	json_builder_add_int_value (builder, value);
+}
+
+static void
+write_cdn_expansion (CdnExpansion *expansion,
+                     JsonBuilder  *builder)
 {
 	gint i;
 
-	write_stream (out, "[");
+	json_builder_begin_array (builder);
 
 	for (i = 0; i < cdn_expansion_num (expansion); ++i)
 	{
-		gchar *value_esc;
+		json_builder_begin_object (builder);
 
-		if (i != 0)
-		{
-			write_stream (out, ", ");
-		}
+		write_string_field (builder,
+		                    "value",
+		                    cdn_expansion_get (expansion, i));
 
-		value_esc = g_strescape (cdn_expansion_get (expansion, i), NULL);
+		write_int_field (builder,
+		                 "index",
+		                 cdn_expansion_get_index (expansion, i));
 
-		write_stream_format (out,
-		                     "{\"value\": \"%s\", \"index\": %d}",
-		                     value_esc,
-		                     cdn_expansion_get_index (expansion, i));
-
-		g_free (value_esc);
+		json_builder_end_object (builder);
 	}
 
-	write_stream (out, "]");
-}
-
-typedef struct
-{
-	gboolean first;
-	GDataOutputStream *out;
-} ForeachInfo;
-
-static void
-foreach_define (gchar const        *name,
-                CdnExpansion       *value,
-                ForeachInfo        *info)
-{
-	gchar *name_esc;
-
-	name_esc = g_strescape (name, NULL);
-
-	if (!info->first)
-	{
-		write_stream_nl (info->out, ",");
-	}
-	else
-	{
-		info->first = FALSE;
-	}
-
-	write_stream_format (info->out,
-	                     "                {\"key\": \"%s\", \"value\": ",
-	                     name_esc);
-
-	write_cdn_expansion (value, info->out);
-
-	write_stream (info->out, "}");
-
-	g_free (name_esc);
+	json_builder_end_array (builder);
 }
 
 static void
-write_cdn_selection (CdnSelection      *selection,
-                     GDataOutputStream *out)
+foreach_define (gchar const  *name,
+                CdnExpansion *value,
+                JsonBuilder  *builder)
+{
+	json_builder_begin_object (builder);
+
+	write_string_field (builder, "key", name);
+
+	json_builder_set_member_name (builder, "value");
+	write_cdn_expansion (value, builder);
+
+	json_builder_end_object (builder);
+}
+
+static void
+write_cdn_selection (CdnSelection *selection,
+                     JsonBuilder  *builder)
 {
 	gpointer obj;
 	gchar const *name = "";
 	gchar const *typename = "";
 	GSList *expansions;
-	gchar *name_esc;
 	CdnExpansionContext *ctx;
-	ForeachInfo info = {0,};
 
 	obj = cdn_selection_get_object (selection);
 
-	write_stream_nl (out, "\n            {");
+	json_builder_begin_object (builder);
 
 	if (CDN_IS_OBJECT (obj))
 	{
@@ -571,125 +553,95 @@ write_cdn_selection (CdnSelection      *selection,
 		typename = "action";
 	}
 
-	name_esc = g_strescape (name, NULL);
+	write_string_field (builder, "name", name);
+	write_string_field (builder, "typename", typename);
 
-	write_stream_format (out, "              \"name\": \"%s\",\n", name_esc);
-	g_free (name_esc);
-
-	name_esc = g_strescape (typename, NULL);
-	write_stream_format (out, "              \"typename\": \"%s\",\n", name_esc);
-
-	write_stream_nl (out, "              \"expansions\": [");
-
-	g_free (name_esc);
+	json_builder_set_member_name (builder, "expansions");
+	json_builder_begin_array (builder);
 
 	ctx = cdn_selection_get_context (selection);
 	expansions = cdn_expansion_context_get_expansions (ctx);
 
 	while (expansions)
 	{
-		write_stream (out, "                ");
-		write_cdn_expansion (expansions->data, out);
-
-		if (expansions->next)
-		{
-			write_stream_nl (out, ",");
-		}
-		else
-		{
-			write_stream_nl (out, "");
-		}
-
+		write_cdn_expansion (expansions->data, builder);
 		expansions = g_slist_delete_link (expansions,
 		                                  expansions);
 	}
 
-	write_stream_nl (out, "              ],");
-	write_stream_nl (out, "              \"defines\": [");
+	json_builder_end_array (builder);
 
-	info.out = out;
-	info.first = TRUE;
+	json_builder_set_member_name (builder, "defines");
+	json_builder_begin_array (builder);
 
 	cdn_expansion_context_foreach_define (ctx,
 	                                      (GHFunc)foreach_define,
-	                                      &info);
+	                                      builder);
 
-	write_stream_nl (out, "\n              ]");
+	json_builder_end_array (builder);
 
-	write_stream (out, "            }");
+	json_builder_end_object (builder);
 }
 
 static void
-write_selection (Selection         *selection,
-                 GDataOutputStream *out)
+write_selection (Selection   *selection,
+                 JsonBuilder *builder)
 {
 	GSList *item;
 
-	write_stream_nl (out, "\n        {");
-	write_stream (out, "          \"in\": [");
+	json_builder_begin_object (builder);
+
+	json_builder_set_member_name (builder, "in");
+	json_builder_begin_array (builder);
 
 	for (item = selection->in; item; item = g_slist_next (item))
 	{
-		if (item != selection->in)
-		{
-			write_stream (out, ",");
-		}
-
-		write_cdn_selection (item->data, out);
+		write_cdn_selection (item->data, builder);
 	}
 
-	write_stream_nl (out, "\n          ],");
-	write_stream (out, "          \"out\": [");
+	json_builder_end_array (builder);
+
+	json_builder_set_member_name (builder, "out");
+	json_builder_begin_array (builder);
 
 	for (item = selection->out; item; item = g_slist_next (item))
 	{
-		if (item != selection->out)
-		{
-			write_stream (out, ",");
-		}
-
-		write_cdn_selection (item->data, out);
+		write_cdn_selection (item->data, builder);
 	}
 
-	write_stream_nl (out, "\n          ]");
-	write_stream (out, "        }");
+	json_builder_end_array (builder);
+	json_builder_end_object (builder);
 }
 
 static void
-write_context (Context           *context,
-               GDataOutputStream *out)
+write_context (Context     *context,
+               JsonBuilder *builder)
 {
 	gchar *filename;
 	GSList *item;
-	gchar *filename_esc;
 
-	write_stream_nl (out, "\n    {");
+	json_builder_begin_object (builder);
 
 	filename = context->file ? g_file_get_path (context->file) : g_strdup ("");
-	filename_esc = g_strescape (filename, NULL);
-	g_free (filename);
 
-	write_stream_format (out, "      \"filename\": \"%s\",\n", filename_esc);
-	write_stream_format (out, "      \"line_start\": %d,\n", context->line_start);
-	write_stream_format (out, "      \"line_end\": %d,\n", context->line_end);
-	write_stream_format (out, "      \"column_start\": %d,\n", context->column_start);
-	write_stream_format (out, "      \"column_end\": %d,\n", context->column_end);
-	write_stream (out, "      \"selections\": [");
+	write_string_field (builder, "filename", filename);
+	write_int_field (builder, "line_start", context->line_start);
+	write_int_field (builder, "line_end", context->line_end);
+	write_int_field (builder, "column_start", context->column_start);
+	write_int_field (builder, "column_end", context->column_end);
+
+	json_builder_set_member_name (builder, "selections");
+	json_builder_begin_array (builder);
 
 	for (item = context->selections; item; item = g_slist_next (item))
 	{
-		if (item != context->selections)
-		{
-			write_stream (out, ",");
-		}
-
-		write_selection (item->data, out);
+		write_selection (item->data, builder);
 	}
 
-	write_stream_nl (out, "\n      ]");
-	g_free (filename_esc);
+	json_builder_end_array (builder);
+	json_builder_end_object (builder);
 
-	write_stream (out, "    }");
+	g_free (filename);
 }
 
 static void
@@ -697,33 +649,34 @@ write_contexts (Info          *info,
                 GOutputStream *stream)
 {
 	/* Write out json formatted list of contexts */
-	GDataOutputStream *out;
 	GSList *item;
+	JsonBuilder *builder;
+	JsonGenerator *generator;
 
-	out = g_data_output_stream_new (stream);
+	builder = json_builder_new ();
 
-	write_stream_nl (out, "{");
-	write_stream_nl (out, "  \"status\": \"ok\",");
-	write_stream (out, "  \"data\": [");
+	json_builder_begin_object (builder);
+	json_builder_set_member_name (builder, "status");
+	json_builder_add_string_value (builder, "ok");
+	json_builder_set_member_name (builder, "data");
+	json_builder_begin_array (builder);
 
 	for (item = info->contexts; item; item = g_slist_next (item))
 	{
-		Context *ctx;
-
-		if (item != info->contexts)
-		{
-			write_stream (out, ",");
-		}
-
-		ctx = item->data;
-		write_context (ctx, out);
+		write_context (item->data, builder);
 	}
 
-	write_stream_nl (out, "\n  ]");
+	json_builder_end_array (builder);
+	json_builder_end_object (builder);
 
-	write_stream_nl (out, "}");
+	generator = json_generator_new ();
+	json_generator_set_root (generator,
+	                         json_builder_get_root (builder));
 
-	g_object_unref (out);
+	json_generator_to_stream (generator, stream, NULL, NULL);
+
+	g_object_unref (generator);
+	g_object_unref (builder);
 }
 
 static int
@@ -815,20 +768,23 @@ parse_network (gchar const *args[], gint argc)
 	}
 	else
 	{
-		g_signal_connect (context,
-		                  "context-pushed",
-		                  G_CALLBACK (on_context_pushed),
-		                  &info);
+		if (context_line != -1)
+		{
+			g_signal_connect (context,
+			                  "context-pushed",
+			                  G_CALLBACK (on_context_pushed),
+			                  &info);
 
-		g_signal_connect (context,
-		                  "context-popped",
-		                  G_CALLBACK (on_context_popped),
-		                  &info);
+			g_signal_connect (context,
+			                  "context-popped",
+			                  G_CALLBACK (on_context_popped),
+			                  &info);
 
-		g_signal_connect (context,
-		                  "selector-item-pushed",
-		                  G_CALLBACK (on_selector_item_pushed),
-		                  &info);
+			g_signal_connect (context,
+			                  "selector-item-pushed",
+			                  G_CALLBACK (on_selector_item_pushed),
+			                  &info);
+		}
 
 		info.parser = context;
 
@@ -858,54 +814,69 @@ parse_network (gchar const *args[], gint argc)
 			gint lend;
 			gint cstart;
 			gint cend;
-			gchar *esc;
-			GDataOutputStream *out;
+			JsonBuilder *builder;
+			JsonGenerator *generator;
 
-			out = g_data_output_stream_new (stream);
+			builder = json_builder_new ();
+			json_builder_begin_object (builder);
+			json_builder_set_member_name (builder, "status");
+			json_builder_add_string_value (builder, "error");
+			json_builder_set_member_name (builder, "data");
 
-			write_stream_nl (out, "{");
-			write_stream_nl (out, "  \"status\": \"error\",");
-			write_stream_nl (out, "  \"data\": {");
-
-			esc = g_strescape (error->message, NULL);
-			write_stream_format (out, "    \"message\": \"%s\",\n", esc);
-			g_free (esc);
+			json_builder_begin_object (builder);
+			json_builder_set_member_name (builder, "message");
+			json_builder_add_string_value (builder, error->message);
 
 			cdn_parser_context_get_error_location (context,
 			                                       &lstart,
 			                                       &lend,
 			                                       &cstart,
-			                                       &cend);
+			                                       &cend,
+			                                       NULL);
 
 			file = cdn_parser_context_get_file (context);
 			filename = file ? g_file_get_path (file) : g_strdup ("");
-			esc = g_strescape (filename, NULL);
-			g_free (filename);
 
 			if (file)
 			{
 				g_object_unref (file);
 			}
 
-			write_stream_format (out, "    \"filename\": \"%s\",\n", esc);
-			g_free (esc);
+			json_builder_set_member_name (builder, "filename");
+			json_builder_add_string_value (builder, filename);
+
+			g_free (filename);
 
 			line = cdn_parser_context_get_error_lines (context);
 
-			esc = g_strescape (line, NULL);
+			json_builder_set_member_name (builder, "line");
+			json_builder_add_string_value (builder, line);
+
 			g_free (line);
-			write_stream_format (out, "    \"line\": \"%s\",\n", esc);
-			g_free (esc);
 
-			write_stream_format (out, "    \"line_start\": %d,\n", lstart);
-			write_stream_format (out, "    \"line_end\": %d,\n", lend);
-			write_stream_format (out, "    \"column_start\": %d,\n", cstart);
-			write_stream_format (out, "    \"column_end\": %d\n", cend);
+			json_builder_set_member_name (builder, "line_start");
+			json_builder_add_int_value (builder, lstart);
 
-			write_stream_nl (out, "  }");
-			write_stream_nl (out, "}");
+			json_builder_set_member_name (builder, "line_end");
+			json_builder_add_int_value (builder, lend);
 
-			g_object_unref (out);
+			json_builder_set_member_name (builder, "column_start");
+			json_builder_add_int_value (builder, cstart);
+
+			json_builder_set_member_name (builder, "column_end");
+			json_builder_add_int_value (builder, cend);
+
+			json_builder_end_object (builder);
+			json_builder_end_object (builder);
+
+			generator = json_generator_new ();
+			json_generator_set_root (generator,
+			                         json_builder_get_root (builder));
+
+			json_generator_to_stream (generator, stream, NULL, NULL);
+
+			g_object_unref (generator);
+			g_object_unref (builder);
 
 			ret = FALSE;
 		}
@@ -918,6 +889,7 @@ parse_network (gchar const *args[], gint argc)
 
 	if (stream)
 	{
+		g_output_stream_write_all (stream, "\n", 1, NULL, NULL, NULL);
 		g_object_unref (stream);
 	}
 
@@ -973,7 +945,9 @@ main (int argc, char *argv[])
 	GError *error = NULL;
 	gboolean ret;
 
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
+#endif
 
 	close (STDERR_FILENO);
 

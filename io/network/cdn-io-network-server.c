@@ -20,9 +20,16 @@ struct _CdnIoNetworkServerPrivate
 {
 	GSocket *socket;
 	GSList *clients;
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	GMutex client_mutex;
+	GCond wait_condition;
+#else
 	GMutex *client_mutex;
-	gint wait;
 	GCond *wait_condition;
+#endif
+
+	gint wait;
 	gint num_wait;
 };
 
@@ -47,7 +54,11 @@ on_client_closed (CdnClient          *client,
 {
 	GSList *item;
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&server->priv->client_mutex);
+#else
 	g_mutex_lock (server->priv->client_mutex);
+#endif
 
 	item = g_slist_find (server->priv->clients, client);
 
@@ -60,7 +71,54 @@ on_client_closed (CdnClient          *client,
 			                     item);
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&server->priv->client_mutex);
+#else
 	g_mutex_unlock (server->priv->client_mutex);
+#endif
+}
+
+static CdnClient *
+accept_client (CdnIoNetworkServer *server,
+               GSocket            *cs)
+{
+	CdnClient *client;
+	CdnIoMode mode;
+	gdouble throttle;
+
+	g_object_get (server, "mode", &mode, "throttle", &throttle, NULL);
+
+	client = cdn_client_new (CDN_NODE (server),
+	                         cs,
+	                         NULL,
+	                         mode,
+	                         throttle);
+
+	server->priv->clients = g_slist_prepend (server->priv->clients,
+	                                         client);
+
+	g_signal_connect (client,
+	                  "closed",
+	                  G_CALLBACK (on_client_closed),
+	                  server);
+
+	cdn_client_initialize (client);
+
+	if (server->priv->num_wait > 0)
+	{
+		--server->priv->num_wait;
+
+		if (server->priv->num_wait == 0)
+		{
+#if GLIB_CHECK_VERSION(2, 32, 0)
+			g_cond_signal (&server->priv->wait_condition);
+#else
+			g_cond_signal (server->priv->wait_condition);
+#endif
+		}
+	}
+
+	return client;
 }
 
 static gboolean
@@ -81,39 +139,21 @@ on_accept (GSocket            *socket,
 
 	while ((cs = g_socket_accept (socket, NULL, NULL)))
 	{
-		CdnClient *client;
+#if GLIB_CHECK_VERSION(2, 32, 0)
+		g_mutex_lock (&server->priv->client_mutex);
+#else
+		g_mutex_lock (server->priv->client_mutex);
+#endif
 
-		client = cdn_client_new (CDN_NODE (server),
-		                         cs,
-		                         NULL,
-		                         mode,
-		                         throttle);
+		accept_client (server, cs);
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+		g_mutex_unlock (&server->priv->client_mutex);
+#else
+		g_mutex_unlock (server->priv->client_mutex);
+#endif
 
 		g_object_unref (cs);
-
-		g_mutex_lock (server->priv->client_mutex);
-
-		server->priv->clients = g_slist_prepend (server->priv->clients,
-		                                         client);
-
-		g_signal_connect (client,
-		                  "closed",
-		                  G_CALLBACK (on_client_closed),
-		                  server);
-
-		cdn_client_initialize (client);
-
-		if (server->priv->num_wait > 0)
-		{
-			--server->priv->num_wait;
-
-			if (server->priv->num_wait == 0)
-			{
-				g_cond_signal (server->priv->wait_condition);
-			}
-		}
-
-		g_mutex_unlock (server->priv->client_mutex);
 	}
 
 	return TRUE;
@@ -136,7 +176,8 @@ cdn_io_initialize_impl (CdnIo         *io,
 	g_object_get (server,
 	              "host", &host,
 	              "port", &port,
-	              "protocol", &protocol, NULL);
+	              "protocol", &protocol,
+	              NULL);
 
 #ifdef ENABLE_GIO_UNIX
 	if (host == NULL &&
@@ -197,9 +238,25 @@ cdn_io_initialize_impl (CdnIo         *io,
 #endif
 	if (host != NULL)
 	{
+		GList *resolved;
 		GInetAddress *addr;
 
-		addr = g_inet_address_new_from_string (host);
+		resolved = g_resolver_lookup_by_name (g_resolver_get_default (),
+		                                      host,
+		                                      NULL,
+		                                      error);
+
+		if (!resolved)
+		{
+			g_free (host);
+			return FALSE;
+		}
+
+		addr = resolved->data;
+
+		resolved = g_list_delete_link (resolved, resolved);
+		g_list_foreach (resolved, (GFunc)g_object_unref, NULL);
+		g_list_free (resolved);
 
 		if (addr)
 		{
@@ -251,38 +308,63 @@ cdn_io_initialize_impl (CdnIo         *io,
 
 	g_object_unref (sockaddr);
 
-	if (!g_socket_listen (sock, error))
+	if (protocol != CDN_NETWORK_PROTOCOL_UDP)
 	{
-		g_object_unref (sock);
-		return FALSE;
+		if (!g_socket_listen (sock, error))
+		{
+			g_object_unref (sock);
+			return FALSE;
+		}
+
+		g_socket_set_blocking (sock, FALSE);
+		server->priv->socket = sock;
 	}
 
-	g_socket_set_blocking (sock, FALSE);
-
-	server->priv->socket = sock;
-
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&server->priv->client_mutex);
+#else
 	g_mutex_lock (server->priv->client_mutex);
+#endif
 
-	// Add socket to network thread
-	cdn_network_thread_register (cdn_network_thread_get_default (),
-	                             sock,
-	                             (GSocketSourceFunc)on_accept,
-	                             server,
-	                             NULL);
-
-	if (server->priv->wait > 0)
+	if (protocol != CDN_NETWORK_PROTOCOL_UDP)
 	{
-		server->priv->num_wait = server->priv->wait;
+		// Add socket to network thread
+		cdn_network_thread_register (cdn_network_thread_get_default (),
+		                             sock,
+		                             (GSocketSourceFunc)on_accept,
+		                             server,
+		                             NULL);
 
-		g_cond_wait (server->priv->wait_condition,
-		             server->priv->client_mutex);
+		if (server->priv->wait > 0)
+		{
+			server->priv->num_wait = server->priv->wait;
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+			g_cond_wait (&server->priv->wait_condition,
+			             &server->priv->client_mutex);
+#else
+			g_cond_wait (server->priv->wait_condition,
+			             server->priv->client_mutex);
+#endif
+		}
+		else
+		{
+			server->priv->num_wait = 0;
+		}
 	}
 	else
 	{
+		accept_client (server, sock);
+		g_object_unref (sock);
+
 		server->priv->num_wait = 0;
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&server->priv->client_mutex);
+#else
 	g_mutex_unlock (server->priv->client_mutex);
+#endif
 
 	return TRUE;
 }
@@ -302,7 +384,11 @@ remove_client (CdnClient          *client,
 static void
 do_finalize (CdnIoNetworkServer *server)
 {
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&server->priv->client_mutex);
+#else
 	g_mutex_lock (server->priv->client_mutex);
+#endif
 
 	g_slist_foreach (server->priv->clients, (GFunc)remove_client, server);
 	g_slist_free (server->priv->clients);
@@ -311,7 +397,11 @@ do_finalize (CdnIoNetworkServer *server)
 
 	server->priv->num_wait = 0;
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&server->priv->client_mutex);
+#else
 	g_mutex_unlock (server->priv->client_mutex);
+#endif
 
 	if (server->priv->socket)
 	{
@@ -341,9 +431,19 @@ cdn_io_update_impl (CdnIo         *io,
 
 	server = (CdnIoNetworkServer *)io;
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&server->priv->client_mutex);
+#else
 	g_mutex_lock (server->priv->client_mutex);
+#endif
+
 	clients = g_slist_copy (server->priv->clients);
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&server->priv->client_mutex);
+#else
 	g_mutex_unlock (server->priv->client_mutex);
+#endif
 
 	while (clients)
 	{
@@ -372,8 +472,13 @@ cdn_io_network_server_finalize (GObject *object)
 
 	do_finalize (server);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_clear (&server->priv->client_mutex);
+	g_cond_clear (&server->priv->wait_condition);
+#else
 	g_mutex_free (server->priv->client_mutex);
 	g_cond_free (server->priv->wait_condition);
+#endif
 
 	G_OBJECT_CLASS (cdn_io_network_server_parent_class)->finalize (object);
 }
@@ -452,8 +557,13 @@ cdn_io_network_server_init (CdnIoNetworkServer *self)
 {
 	self->priv = CDN_IO_NETWORK_SERVER_GET_PRIVATE (self);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_init (&self->priv->client_mutex);
+	g_cond_init (&self->priv->wait_condition);
+#else
 	self->priv->client_mutex = g_mutex_new ();
 	self->priv->wait_condition = g_cond_new ();
+#endif
 }
 
 void

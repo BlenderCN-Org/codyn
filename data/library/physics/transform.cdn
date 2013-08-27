@@ -6,6 +6,48 @@ node "Transform"
         R[2, 0], R[2, 1], R[2, 2], t[2];
         0,       0,       0,       1
     ]"
+
+    Rotation(θ) = "RotationX(θ[0]) ∙ RotationY(θ[1]) ∙ RotationZ(θ[2])"
+
+    ## 3-by-3 rotation matrix for rotation around the x-axis.
+    ##   θ: the rotation angle.
+    RotationX(θ) = "[1,  0,      0,      0;
+                     0,  cos(θ), sin(θ), 0;
+                     0, -sin(θ), cos(θ), 0;
+                     0,  0,      0,      1]"
+
+    ## 3-by-3 rotation matrix for rotation around the y-axis.
+    ##   θ: the rotation angle.
+    RotationY(θ) = "[cos(θ), 0, -sin(θ), 0;
+                     0,      1,  0,      0;
+                     sin(θ), 0,  cos(θ), 0;
+                     0,      0,  0,      1]"
+
+    ## 3-by-3 rotation matrix for rotation around the z-axis.
+    ##   θ: the rotation angle.
+    RotationZ(θ) = "[ cos(θ), sin(θ), 0, 0;
+                     -sin(θ), cos(θ), 0, 0;
+                      0,      0,      1, 0;
+                      0,      0,      0, 1]"
+
+    RotationFromAxisAngle_(u, mc, uxs, uys, uzs) = "[
+        1 - mc + u[0]² ∙ mc, u[0] ∙ u[1] ∙ mc -uzs, u[0] ∙ u[2] ∙ mc + uys;
+        u[1] ∙ u[0] ∙ mc + uzs, -mc + 1 + u[1]² ∙ mc, u[1] ∙ u[2] ∙ mc - uxs;
+        u[2] ∙ u[0] ∙ mc - yus, u[2] ∙ u[1] ∙ mc + uxs, 1 - mc + u[2]² ∙ mc
+    ]"
+
+    RotationPart(t) = "t[0:3, 0:3]"
+    TranslationPart(t) = "t[0:3, 3]"
+
+    Translation(t) = "FromRotTrans(eye(3), t)]"
+    Rotation(R) = "FromRotTrans(R, [0; 0; 0])"
+
+    ## 3x3 rotation matrix for rotation around an arbitrary axis.
+    ##   u: the axis around which to rotate.
+    ##   θ: the rotation angle.
+    RotationFromAxisAngle(u, θ) = "RotationFromAxisAngle_(u, 1 - cos(θ), u[2] ∙ sin(θ), u[1] ∙ sin(θ), u[0] ∙ sin(θ))"
+
+    include "layout/line.cdn"
 }
 
 # vi:ex:ts=4:et

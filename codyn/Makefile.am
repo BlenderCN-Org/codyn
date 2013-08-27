@@ -1,6 +1,6 @@
 SUBDIRS = instructions operators integrators tree-algorithms
 
-INCLUDES =				\
+AM_CPPFLAGS =				\
 	-I$(srcdir)			\
 	-I$(top_srcdir)			\
 	$(INTROSPECTION_CFLAGS)		\
@@ -31,6 +31,7 @@ COMMON_SOURCES = 		\
 	cdn-edge.c \
 	cdn-edge-action.c \
 	cdn-math.c \
+	cdn-matrix.c \
 	cdn-mini-object.c \
 	cdn-modifiable.c \
 	cdn-monitor.c \
@@ -100,6 +101,7 @@ INST_H_FILES = \
 	cdn-edge.h \
 	cdn-edge-action.h \
 	cdn-math.h \
+	cdn-matrix.h \
 	cdn-mini-object.h \
 	cdn-modifiable.h \
 	cdn-monitor.h \
@@ -151,6 +153,15 @@ libcodyn_3_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS) $(LAPACK_CFLAGS) $(
 libcodyn_3_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
 
 libcodyn_3_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CODYN_LIBS) $(INTROSPECTION_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) -lm
+
+if ENABLE_OSX_FRAMEWORK
+libcodyn_3_0_la_LDFLAGS += \
+	-Wl,-sub_library -Wl,libgobject-2.0			\
+	-Wl,-sub_library -Wl,libglib-2.0			\
+	-Wl,-sub_library -Wl,libgmodule-2.0			\
+	-Wl,-sub_library -Wl,libgio-2.0
+endif
+
 libcodyn_3_0_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn
 
 libcodyn_3_0_la_SOURCES = $(COMMON_SOURCES)
@@ -281,6 +292,12 @@ gir_DATA = $(INTROSPECTION_GIRS)
 
 typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
+
+extract-keywords: cdn-parser-tokens.l
+	@grep T_KEY cdn-parser-tokens.l  | grep -v onlyselector | sed 's/"\([a-z-]*\)".*/\1/g' | sort
+
+extract-selectors: cdn-parser-tokens.l
+	@grep T_KEY cdn-parser-tokens.l  | grep onlyselector | sed 's/.*"\([a-z-]*\)".*/\1/g' | sort
 
 CLEANFILES +=			\
 	$(gir_DATA)	\

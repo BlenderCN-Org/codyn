@@ -40,6 +40,13 @@ typedef struct _CdnNetworkSerializer		CdnNetworkSerializer;
 typedef struct _CdnNetworkSerializerClass	CdnNetworkSerializerClass;
 typedef struct _CdnNetworkSerializerPrivate	CdnNetworkSerializerPrivate;
 
+/**
+ * CdnNetworkSerializer:
+ *
+ * Network to XML serializer.
+ *
+ * This can be used to serialize a #CdnNetwork to XML.
+ */
 struct _CdnNetworkSerializer
 {
 	/*< private >*/

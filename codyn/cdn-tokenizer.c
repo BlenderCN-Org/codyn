@@ -40,6 +40,7 @@ static OperatorProperties operator_properties[] =
 	// arithmetic operators
 	{0, 0}, // CDN_TOKEN_OPERATOR_TYPE_ARITHMETIC,
 	{7, 1}, // CDN_TOKEN_OPERATOR_TYPE_MULTIPLY,
+	{7, 1}, // CDN_TOKEN_OPERATOR_TYPE_EMULTIPLY,
 	{7, 1}, // CDN_TOKEN_OPERATOR_TYPE_DIVIDE,
 	{7, 1}, // CDN_TOKEN_OPERATOR_TYPE_MODULO,
 	{6, 1}, // CDN_TOKEN_OPERATOR_TYPE_PLUS,
@@ -275,6 +276,10 @@ cdn_tokenizer_parse_operator (gchar const **buffer)
 	else if (c == '!' && n == '=')
 	{
 		type = CDN_TOKEN_OPERATOR_TYPE_NEQUAL;
+	}
+	else if (c == '.' && n == '*')
+	{
+		type = CDN_TOKEN_OPERATOR_TYPE_EMULTIPLY;
 	}
 	else
 	{

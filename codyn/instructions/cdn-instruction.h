@@ -20,9 +20,11 @@ typedef struct _CdnInstructionPrivate	CdnInstructionPrivate;
 
 /**
  * CdnInstruction:
- * @type: the instruction type
  *
- * The base instruction. All other instructions are derived from this.
+ * Mathematical instruction base class.
+ *
+ * The #CdnInstruction class is an abstract base class for all mathematical
+ * instructions in Codyn.
  *
  */
 struct _CdnInstruction

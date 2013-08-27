@@ -3,18 +3,9 @@ layout
     defines
     {
         distance ?= 2
-        per_type ?= 1
     }
 
-    [ifstr($$(@per_type,1,))]
-    {
-        type at $(@[@0+] * @distance), $(@0[?] * @distance)
-    }
-
-    [ifstr($$(@per_type,,1))]
-    {
-        count at $(@0[?] * @distance), 0
-    }
+    self | children at $(@[++@distance]), 0
 }
 
 # vi:ex:ts=4:et

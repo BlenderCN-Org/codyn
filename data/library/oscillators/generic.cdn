@@ -1,203 +1,21 @@
 templates
 {
-    node "functions"
+    edge "polar_coupling_base"
     {
-        functions
-        {
-            XDot(r_dot, theta_dot)(x, y, amplitude) = "amplitude == 0 ? r_dot : r_dot * x / amplitude - theta_dot * y"
-            YDot(r_dot, theta_dot)(x, y, amplitude) = "ampitude == 0 ? r_dot : r_dot * y / amplitude + theta_dot * x"
-
-            RDot(xdot, ydot)(theta) = "x_dot * cos(theta) + y_dot * sin(theta)"
-            ThetaDot(xdot, ydot)(r, theta) = "r == 0 ? 0 : (ydot * cos(theta) - xdot * sin(theta)) / r"
-
-            PhaseCoupling(weight, bias)(input.r, input.theta, output.theta) = "weight * input.r * sin(input.theta - output.theta - bias)"
-        }
-    }
-
-    ## Create properties to store initial conditions for all node variables in the node's children
-    node "initial"
-    {
-        # Get the list of instance properties at apply time
-        # (not the list of this template's properties)
-        after-apply
-        {
-            # Look into all nodes and nodes
-            node objects
-            {
-                # Get all properties that are integrated or marked as representing a node variable
-                [each(if(has-flag(integrated), has-tag("node-like")) | name)]
-                {
-                    # For each 'prop', create 'prop0 = prop' if it doesn't exist, evaluate only once
-                    ## For reading only!
-                    "@[0]0" ?= "@@0" | once
-                }
-            }
-        }
-    }
-
-    ## Generates an interface for all properties of all the node's children
-    ## (edges, nodes and nodes) exposing "object"."property" as object_property.
-    node "interface-children"
-    {
-        after-apply
-        {
-            [each(name . properties | name)]
-            {
-                interface
-                {
-                    "@@0_@0" ?= "@@@0"."@@@0"
-                }
-            }
-        }
-    }
-
-    ## Generates an interface for all properties of all the node's children
-    ## that have a name ending with a number. The number is used to name the interface.
-    ## For example, "neuron3"."x" will be exposed as "x3".
-    node "interface-children-numeric"
-    {
-        when-applied
-        {
-            [each(/.*?([0-9]+)/ . properties | name)]
-            {
-                interface
-                {
-                    "@0@@1" ?= "@@@0"."@@@0"
-                }
-            }
-        }
-    }
-
-    ## Polar properties for Cartesian oscillator
-    node "polar"
-    {
-        node "node"
-        {
-            [tag("node-like")]
-            r = "amplitude"
-
-            [tag("node-like")]
-            theta = "atan2(y, x)"
-        }
-    }
-
-    ## Cartesian properties for polar oscillator
-    node "add-cartesian"
-    {
-        node "node"
-        {
-            [tag("node-like")]
-            x = "r * cos(theta)"
-
-            [tag("node-like")]
-            y = "r * sin(theta)"
-        }
-    }
-
-    ## Polar derivatives
-    node "polar_dot" : "functions"
-    {
-        r_dot = "RDot(x', y')"
-        theta_dot = "ThetaDot(x', y')"
-
-        ## Instantaneous frequency
-        frequency = "Thetadot / (2 * pi)"
-    }
-
-    ## Cartesian derivatives
-    node "cartesian_dot" : "functions"
-    {
-        x_dot = "XDot(r', theta')"
-        y_dot = "YDot(r', theta')"
-    }
-
-    ## Polar input properties for Cartesian oscillator
-    node "polar_input" : "functions"
-    {
-        node "node"
-        {
-            ## r input
-            s_r = 0
-            
-            ## theta input
-            s_theta = 0
-        }
-
-        edge "polar_input" on "node"
-        {
-            x <= "XDot(s_r, s_theta)"
-            y <= "YDdot(s_r, s_theta)"
-        }
-    }
-
-    ## Cartesian input properties for polar oscillator
-    node "cartesian_input" : "functions"
-    {
-        node "node"
-        {
-            ## x input
-            s_x = 0
-            
-            ## y input
-            s_y = 0
-        }
-
-        edge "cartesian_input" on "node"
-        {
-            r <= "R_Dot(s_x, s_y)"
-            theta <= "Theta_dot(s_x, s_y)"
-        }
-    }
-
-    ## This is an 'indirect' template. Apply this to templates that need
-    ## 'functions' in their parent.
-    edge "edge_functions"
-    {
-        when-applied
-        {
-            when-applied
-            {
-                apply "functions" to self | parent
-            }
-        }
-    }
-
-    ## Diffusive phase coupling for polar oscillators
-    edge "polar_phase_coupling" : "edge_functions"
-    {
-        ## Desired phase bias between oscillators (sender_phase - receiver_phase)
-        phase_bias = 0
+        ## Desired phase bias between oscillators (input.φ - output.φ)
+        φ_bias = 0
 
         ## Gain on phase coupling convergence
         weight = 1
 
-        ## Value added by the coupling to the instantaneous angular frequency
-        theta <= "PhaseCoupling(weight, phase_bias)"
-    }
-
-    ## Diffusive phase coupling for Cartesian oscillators
-    ## To use this: 1) the receiver must implement the 'polar' template
-    ##              2) the sender must be polar or implement the 'polar' template
-    edge "cartesian_phase_coupling" : "edge_functions"
-    {
-        ## Desired phase bias between oscillators (sender_phase - receiver_phase)
-        phase_bias = 0
-
-        ## Gain on phase coupling convergence
-        weight = 1
+        ## Additional noise on the coupling
+        noise = 0
 
         ## Value added by the coupling to the instantaneous angular frequency
-        omega_increment = "PhaseCoupling(weight, phase_bias)"
-
-        x <= "-output.y * omega_increment"
-        y <= "output.x * omega_increment"
+        φ_dot = "weight ∙ input.r ∙ sin(input.φ - output.φ - φ_bias)"
     }
 
-    layout
-    {
-        type at @[@0++], $(@0[?] * 5)
-        # type at ($(5 * (@0[?] + 1) * cos(2 * pi * @[@0] / @1)), $(5 * (@0[?] + 1) * sin(2 * pi * @[@0+] / @1)))
-    }
+    include "layout/line.cdn"
 }
 
 # vi:ex:ts=4:et

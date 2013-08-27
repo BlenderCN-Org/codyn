@@ -24,14 +24,6 @@
 
 #include <string.h>
 
-/**
- * SECTION:cdn-compile-error
- * @short_description: Compile error message container
- *
- * Object used to store information on expression compile errors.
- *
- */
-
 #define CDN_COMPILE_ERROR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_COMPILE_ERROR, CdnCompileErrorPrivate))
 
 struct _CdnCompileErrorPrivate
@@ -427,14 +419,9 @@ cdn_compile_error_get_formatted_string (CdnCompileError *error)
 	if (error->priv->object)
 	{
 		fullid = cdn_object_get_full_id (error->priv->object);
+		g_string_append (ret, fullid);
+		g_free (fullid);
 	}
-	else
-	{
-		fullid = NULL;
-	}
-
-	g_string_append (ret, fullid);
-	g_free (fullid);
 
 	g_string_append_c (ret, ']');
 

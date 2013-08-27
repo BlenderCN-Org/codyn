@@ -36,7 +36,6 @@ advance_column (CdnParserContext *context, gint offset)
 	cdn_parser_context_set_line (yyextra, yytext + 1, yylineno);		\
 	cdn_parser_context_set_column (yyextra, 0, 0);				\
 										\
-	cdn_parser_context_remove_record (yyextra, yyleng - 1, 0);		\
 	yyless (1);
 
 #define ECHO
@@ -93,7 +92,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 					cdn_parser_context_set_column (yyextra, 0, 0);
 
 					yyless (0);
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 
@@ -141,8 +139,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 				}
 
 <annotation_start><<EOF>>	{
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
-
 					yy_pop_state (yyscanner);
 					yy_pop_state (yyscanner);
 
@@ -150,7 +146,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 				}
 <annotation_start>.		{
 					yyless (0);
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 					yy_pop_state (yyscanner);
@@ -160,11 +155,12 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 "#"				{
 					yy_push_state (comment, yyscanner);
+					return T_ANNOTATION_START;
 				}
 
 <comment>[^\n]*$		{
 					yy_pop_state (yyscanner);
-					cdn_parser_context_push_annotation (yyextra, NULL);
+					return T_ANNOTATION_END;
 				}
 
 <<EOF>>				{
@@ -194,7 +190,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "in"				return T_KEY_IN;
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
-"functions"			return T_KEY_FUNCTIONS;
+"discrete"			return T_KEY_DISCRETE;
 "interface"			return T_KEY_INTERFACE;
 "polynomial"			return T_KEY_POLYNOMIAL;
 "import"			return T_KEY_IMPORT;
@@ -217,13 +213,14 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "unapply"			return T_KEY_UNAPPLY;
 "with"				return T_KEY_WITH;
 "when"				return T_KEY_WHEN;
-"phase"				return T_KEY_PHASE;
+"state"				return T_KEY_STATE;
 "event"				return T_KEY_EVENT;
 "terminate"			return T_KEY_TERMINATE;
 "any"				return T_KEY_ANY;
 "set"				return T_KEY_SET;
 "io"				return T_KEY_IO;
 "within"			return T_KEY_WITHIN;
+"initial-state"			return T_KEY_INITIAL_STATE;
 
 <INITIAL,onlyselector>"templates"		return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"		return T_KEY_TEMPLATES_ROOT;
@@ -245,7 +242,8 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"imports"			return T_KEY_IMPORTS;
 <INITIAL,onlyselector>"objects"			return T_KEY_OBJECTS;
 <INITIAL,onlyselector>"variables"		return T_KEY_VARIABLES;
-<INITIAL,onlyselector>"actions"			return T_KEY_ACTION;
+<INITIAL,onlyselector>"actions"			return T_KEY_ACTIONS;
+<INITIAL,onlyselector>"functions"		return T_KEY_FUNCTIONS;
 <INITIAL,onlyselector>"not"			return T_KEY_NOT;
 <INITIAL,onlyselector>"if"			return T_KEY_IF;
 <INITIAL,onlyselector>"ifstr"			return T_KEY_IFSTR;
@@ -264,6 +262,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"recurse"			return T_KEY_RECURSE;
 <INITIAL,onlyselector>"append-context"		return T_KEY_APPEND_CONTEXT;
 <INITIAL,onlyselector>"reduce"			return T_KEY_REDUCE;
+<INITIAL,onlyselector>"sort"			return T_KEY_SORT;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
@@ -311,7 +310,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 <indirection_had_some>\n.*	{
 					yyless (0);
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 					return T_INDIRECTION_END;
@@ -321,7 +319,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 					advance_column (yyextra, -yyleng);
 
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 					yyless(0);
 
 					return T_INDIRECTION_END;

@@ -40,6 +40,14 @@ typedef struct _CdnFunctionArgument		CdnFunctionArgument;
 typedef struct _CdnFunctionArgumentClass	CdnFunctionArgumentClass;
 typedef struct _CdnFunctionArgumentPrivate	CdnFunctionArgumentPrivate;
 
+/**
+ * CdnFunctionArgument:
+ *
+ * An argument to a custom defined function.
+ *
+ * A #CdnFunctionArgument contains information on an argument (or parameter)
+ * to a custom defined function.
+ */
 struct _CdnFunctionArgument
 {
 	/*< private >*/

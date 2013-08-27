@@ -108,11 +108,13 @@ typedef enum
 	CDN_SELECTOR_PSEUDO_TYPE_APPEND_CONTEXT,
 	CDN_SELECTOR_PSEUDO_TYPE_APPLIED_TEMPLATES,
 	CDN_SELECTOR_PSEUDO_TYPE_REDUCE,
+	CDN_SELECTOR_PSEUDO_TYPE_SORT,
 	CDN_SELECTOR_PSEUDO_NUM
 } CdnSelectorPseudoType;
 
 struct _CdnSelector
 {
+	/*< private >*/
 	GObject parent;
 
 	CdnSelectorPrivate *priv;
@@ -120,6 +122,7 @@ struct _CdnSelector
 
 struct _CdnSelectorClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 
@@ -136,10 +139,12 @@ GSList const *cdn_selector_get_parts         (CdnSelector            *selector);
 
 CdnSelectorPartType
               cdn_selector_part_type         (CdnSelectorPart        *part);
-gchar const  *cdn_selector_part_identifier   (CdnSelectorPart        *part);
-GRegex       *cdn_selector_part_regex        (CdnSelectorPart        *part);
+
 CdnSelectorPseudoType
               cdn_selector_part_pseudo_type  (CdnSelectorPart        *part);
+
+GSList       *cdn_selector_part_identifier   (CdnSelectorPart        *part);
+GRegex       *cdn_selector_part_regex        (CdnSelectorPart        *part);
 
 gchar        *cdn_selector_as_string         (CdnSelector            *selector);
 
@@ -193,6 +198,8 @@ void          cdn_selector_set_from_set      (CdnSelector            *selector,
 
 void          cdn_selector_set_implicit_children (CdnSelector *selector,
                                                   gboolean     isimplicit);
+
+gboolean      cdn_selector_get_implicit_children (CdnSelector *selector);
 
 G_END_DECLS
 

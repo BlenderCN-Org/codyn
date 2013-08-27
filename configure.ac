@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.3)
+AC_INIT(codyn, 3.4)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
@@ -6,13 +6,24 @@ AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_ARG_ENABLE([debug],
+              AS_HELP_STRING([--enable-debug=[yes/no]],[Enable debug build (default: no)]),
+              [enable_debug=$enableval],
+              [enable_debug=no])
+
+if test "$enable_debug" = "yes"; then
+CFLAGS="-O0 -g $CFLAGS"
+fi
+
+AC_PROG_CC
+
 AC_ISC_POSIX
 AC_STDC_HEADERS
-AC_PROG_CC
-AM_PROG_CC_STDC
+
 AC_HEADER_STDC
 AM_PROG_LEX
 AC_PROG_YACC
+AC_PATH_PROG([ZIP], [zip])
 
 LT_PREREQ([2.2.6])
 LT_INIT(disable-static)
@@ -66,7 +77,7 @@ $2=`(test "x$prefix" = xNONE && prefix="$ac_default_prefix"
      echo "[$]_lcl_receval")`])
 
 # Introspection
-GOBJECT_INTROSPECTION_CHECK([0.10.7])
+GOBJECT_INTROSPECTION_CHECK([1.32])
 
 if test "$found_introspection" = "yes"; then
 	enable_introspection=yes
@@ -89,13 +100,26 @@ dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
 
+checkpkgs="glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0"
+
+if test "$platform_osx" != "yes"; then
+	checkpkgs="$checkpkgs libxml-2.0"
+fi
+
 PKG_CHECK_MODULES(CODYN, [
-	glib-2.0
-	gobject-2.0
-	libxml-2.0
-	gio-2.0
-	gmodule-2.0
+	$checkpkgs
 ])
+
+PKG_CHECK_MODULES(JSON_GLIB, [
+	json-glib-1.0
+], [have_json_glib=yes], [have_json_glib=no])
+
+AM_CONDITIONAL(ENABLE_CONTEXT, test "x$have_json_glib" = "xyes")
+
+if test "$platform_osx" = "yes"; then
+	CODYN_CFLAGS="$CODYN_CFLAGS -I/usr/include/libxml2"
+	CODYN_LIBS="$CODYN_LIBS -lxml2"
+fi
 
 PKG_CHECK_MODULES(GIO_UNIX, [
 	gio-unix-2.0
@@ -109,11 +133,15 @@ PKG_CHECK_MODULES(GLIB26, [
 
 AM_CONDITIONAL(ENABLE_NETWORKING, test "x$have_networking" = "xyes")
 
-CODYN_LIBS="${CODYN_LIBS} ${GIO_UNIX_LIBS}"
-CODYN_CFLAGS="${CODYN_CFLAGS} ${GIO_UNIX_CFLAGS}"
+CODYN_LIBS="${CODYN_LIBS} ${GIO_UNIX_LIBS} ${JSON_GLIB_LIBS}"
+CODYN_CFLAGS="${CODYN_CFLAGS} ${GIO_UNIX_CFLAGS} ${JSON_GLIB_CFLAGS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
-	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
+	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wmissing-declarations"
+
+	if test "$enable_debug" != "yes"; then
+		CODYN_CFLAGS="$CODYN_CFLAGS -Wuninitialized -O2"
+	fi
 fi
 
 AC_SUBST(CODYN_LIBS)
@@ -125,11 +153,20 @@ AC_DEFINE_UNQUOTED([API_VERSION], ["$CODYN_API_VERSION"], [API version])
 
 AC_CHECK_LIB([termcap],
              [tgetent],
-              [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -ltermcap"
-               CDN_CONTEXT_LIBS="$CDN_CONTEXT_LIBS -ltermcap"
-               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"
-               AC_DEFINE_UNQUOTED([ENABLE_TERMCAP], [1], [Termcap support])],
+             [AC_CHECK_HEADER([termcap.h],
+                              [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -ltermcap"
+                               CDN_CONTEXT_LIBS="$CDN_CONTEXT_LIBS -ltermcap"
+                               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"
+                               AC_DEFINE_UNQUOTED([ENABLE_TERMCAP], [1], [Termcap support])],
+                              [])],
              [])
+
+AC_ARG_ENABLE([framework],
+              AS_HELP_STRING([--enable-framework=[yes/no]],[Enable build for OS X framework (default: no)]),
+              [enable_framework=$enableval],
+              [enable_framework=no])
+
+AM_CONDITIONAL(ENABLE_OSX_FRAMEWORK, test "x$enable_framework" = "xyes")
 
 AC_ARG_ENABLE([tar],
               AS_HELP_STRING([--enable-tar=[auto/yes/no]],[Enable tar support (default: auto)]),
@@ -159,8 +196,11 @@ fi
 
 AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
 
+adl_RECURSIVE_EVAL($bindir, EXPANDED_BINDIR)
 adl_RECURSIVE_EVAL($libdir, EXPANDED_LIBDIR)
 adl_RECURSIVE_EVAL($includedir, EXPANDED_INCLUDEDIR)
+
+AC_SUBST(EXPANDED_BINDIR)
 
 AC_ARG_ENABLE([lapack],
 	AS_HELP_STRING([--disable-lapack],[Enable lapack support (default: enabled)]),
@@ -169,12 +209,22 @@ AC_ARG_ENABLE([lapack],
 
 have_lapack=no
 
+if test "x$enable_lapack" != "xno" && test "x$platform_osx" = "xyes"; then
+	AC_MSG_CHECKING([for lapack])
+	AC_MSG_RESULT([using vecLib framework])
+
+	LAPACK_LIBS="-framework vecLib"
+	LAPACK_CFLAGS=""
+
+	have_lapack=vecLib
+fi
+
 dnl
 dnl Check for lapack
 dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 	AC_CHECK_LIB([lapack],
-	             [clapack_dgetri],
+	             [dgelsd_],
 	             [LAPACK_LIBS="-llapack"
 	              have_lapack=yes],
 	             [])
@@ -191,7 +241,7 @@ if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 		AS_UNSET([ac_cv_lib_lapack_clapack_dgetri])
 
 		AC_CHECK_LIB([lapack],
-		             [clapack_dgetri],
+		             [dgelsd_],
 		             [LAPACK_LIBS="-L$dir/atlas -llapack"
 		              have_lapack=yes],
 		             [])
@@ -209,7 +259,7 @@ dnl Check for lapack_atlas, last resort
 dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 	AC_CHECK_LIB([lapack_atlas],
-	             [clapack_dgetri],
+	             [dgelsd_],
 	             [LAPACK_LIBS="-llapack_atlas"
 	              have_lapack=yes],
 	             [])
@@ -246,7 +296,7 @@ elif test "x$enable_lapack" = "xauto" && test "x$have_lapack" = "xno"; then
 	AC_MSG_WARN(could not find lapack library)
 fi
 
-if test "$have_lapack" = "yes"; then
+if test "$have_lapack" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_LAPACK], [1], [Have lapack support])
 fi
 
@@ -393,47 +443,8 @@ AC_SUBST(CDN_IO_WII_CFLAGS)
 
 AM_CONDITIONAL(ENABLE_WII, test "x$enable_wii" = "xyes")
 
-dnl ================================================================
-dnl Check for gedit
-dnl ================================================================
-
-AC_ARG_ENABLE([gedit],
-              AS_HELP_STRING([--enable-gedit=[2/3/no/auto]],[Enable installation of gedit plugin (default: auto)]),
-              [enable_gedit=$enableval],
-              [enable_gedit=auto])
-
-if test "x$enable_gedit" != "xno"; then
-	if test "x$enable_gedit" = "xauto"; then
-		PKG_CHECK_MODULES([GEDIT],
-		                  [gedit >= 3.0],
-		                  [GEDIT_MAJOR_VERSION=3],
-		                  [PKG_CHECK_MODULES([GEDIT],
-		                                     [gedit-2.20 >= 2.0],
-		                                     [GEDIT_MAJOR_VERSION=2],
-		                                     [enable_gedit=no])])
-
-		if test "x$enable_gedit" != "xno"; then
-			enable_gedit="yes"
-		fi
-	else
-		GEDIT_MAJOR_VERSION="$enable_gedit"
-		enable_gedit="yes"
-	fi
-fi
-
-if test "x$enable_gedit" = "xyes"; then
-	if test "x$GEDIT_MAJOR_VERSION" = "x2"; then
-		GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
-	else
-		GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
-	fi
-
-	AC_SUBST(GEDIT_PLUGIN_DIR)
-	AC_SUBST(GEDIT_MAJOR_VERSION)
-fi
-
-AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
-AM_CONDITIONAL(ENABLE_GEDIT3, test "x$GEDIT_MAJOR_VERSION" = "x3")
+GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
+AC_SUBST(GEDIT_PLUGIN_DIR)
 
 IO_LIBTOOL_FLAGS="-module -avoid-version"
 IO_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/io"
@@ -480,6 +491,7 @@ AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
 AC_CONFIG_FILES([
 Makefile
 codyn.pc
+blender/Makefile
 codyn/Makefile
 codyn/cdn-parser.y
 codyn/instructions/Makefile
@@ -489,9 +501,13 @@ codyn/tree-algorithms/Makefile
 data/Makefile
 data/cdn.xml
 data/library/Makefile
+data/library/algorithms/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile
+data/library/physics/algorithms/Makefile
+data/library/physics/lagrange/Makefile
+data/library/physics/direct/Makefile
 io/Makefile
 io/file/Makefile
 io/network/Makefile
@@ -502,6 +518,7 @@ win32/Makefile
 win32/make-zip
 tools/Makefile
 tools/cdn-monitor/Makefile
+tools/cdn-monitor/cdn-monitor-i
 tools/cdn-parser/Makefile
 tools/cdn-render/Makefile
 tools/cdn-context/Makefile
@@ -510,8 +527,6 @@ tools/cdn-compile/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cdncontext/Makefile
-tools/plugins/gedit/cdncontext.plugin
-tools/plugins/gedit/cdncontext.gedit-plugin
 ])
 
 AC_OUTPUT
@@ -524,8 +539,8 @@ Configuration:
 	Source code location:	${srcdir}
 	Compiler:		${CC}
 	GObject Introspection:	$enable_introspection
-	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)
 	cdn-archive:            $have_tar
+	cdn-context:            $have_json_glib
 	network support:        $have_networking
 	wii support:            $enable_wii
 	python support:         $enable_python

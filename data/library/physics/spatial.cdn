@@ -1,32 +1,57 @@
-node "Sp"
+node "Spatial"
 {
     ## Spatial inertia
-    Inertia(com, m, I) = "[
+    Inertia_(m, I, C) = "[
         I + m ∙ C ∙ Cᵀ, m ∙ C;
         m ∙ Cᵀ, [m, 0, 0; 0, m, 0; 0, 0, m]
     ]"
-    {
-        C = "Tilde(com)"
-    }
 
+    Inertia(com, m, I) = "Inertia_(m, I, Tilde(com))"
+
+    ## The tilde matrix of v. The tilde matrix is a matrix version of the
+    ## cross product, in the sense that Tilde(v1) * v2 implements cross(v1, v2).
     Tilde(v) = "[
-        0, -v[2], v[1];
-        v[2], 0, -v[0];
-        -v[1], v[0], 0
+         0,    -v[2],  v[1];
+         v[2],  0,    -v[0];
+        -v[1],  v[0],  0
     ]"
 
-    ## Create a spatial transform from a 3d translation
-    Translate(v) = "[
-         1,    0,     0,    0, 0, 0;
-         0,    1,     0,    0, 0, 0;
-         0,    0,     1,    0, 0, 0;
-         0,    v[2], -v[1], 1, 0, 0;
-        -v[2], 0,     v[0], 0, 1, 0;
-         v[1], -v[0],  0,    0, 0, 1
+    Cross(r, v) = "[
+         r[1, :] ∙ v[2] - r[2, :] ∙ v[1];
+         r[2, :] ∙ v[0] - r[0, :] ∙ v[2];
+         r[0, :] ∙ v[1] - r[1, :] ∙ v[0]
     ]"
 
-    ## Create a spatial transform from a rotation of θ on the X axis
-    RotateX(θ) = "[
+    ## Create a spatial transform from a 3d translation. This implements what
+    ## is referred to in Featherstone by the 'xlt' function, defined as
+    ## xlt(r) = [1, 0; -rx, 1] with rx being the tilde matrix of r.
+    Translation(v) = "[
+         1,        0,        0,       0,    0,    0;
+         0,        1,        0,       0,    0,    0;
+         0,        0,        1,       0,    0,    0;
+         0,        v[2],    -v[1],    1,    0,    0;
+        -v[2],     0,        v[0],    0,    1,    0;
+         v[1],    -v[0],     0,       0,    0,    1
+    ]"
+
+    ## Add a 3d translation to a spatial transformation
+    Translate(v, t) = "[
+        v[0:6, 0] - t[2] * v[0:6, 4] + t[1] * v[0:6, 5],
+        v[0:6, 1] + t[2] * v[0:6, 3] - t[0] * v[0:6, 5],
+        v[0:6, 2] - t[1] * v[0:6, 3] + t[0] * v[0:6, 4],
+        v[0:6, 3:6]
+    ]"
+
+    ## Translate a 6d vector v by a 3d position t. This is a shorthand
+    ## for Spatial.Translation(t) * v
+    TranslateVector(v, t) = "[
+        v[0:3];
+        v[3] +  t[2] * v[1] - t[1] * v[2];
+        v[4] + -t[2] * v[0] + t[0] * v[2];
+        v[5] +  t[1] * v[0] - t[0] * v[1]
+    ]"
+
+    RotationX_(cθ, sθ) = "[
         1,  0,  0,  0,   0, 0;
         0,  cθ, sθ, 0,   0, 0;
         0, -sθ, cθ, 0,   0, 0;
@@ -34,13 +59,11 @@ node "Sp"
         0,  0,  0,  0,  cθ, sθ;
         0,  0,  0,  0, -sθ, cθ
     ]"
-    {
-        cθ = "cos(θ)"
-        sθ = "sin(θ)"
-    }
 
-    ## Create a spatial transform from a rotation of θ on the Z axis
-    RotateZ(θ) = "[
+    ## Create a spatial transform from a rotation of θ on the X axis
+    RotationX(θ) = "RotationX_(cos(θ), sin(θ))"
+
+    RotationZ_(cθ, sθ) = "[
          cθ,  sθ, 0,  0,  0,  0;
         -sθ,  cθ, 0,  0,  0,  0;
          0,   0,  1,  0,  0,  0;
@@ -48,13 +71,11 @@ node "Sp"
          0,   0,  0, -sθ, cθ, 0;
          0,   0,  0,   0, 0,  1
     ]"
-    {
-        cθ = "cos(θ)"
-        sθ = "sin(θ)"
-    }
 
-    ## Create a spatial transform from a rotation of θ on the Y axis
-    RotateY(θ) = "[
+    ## Create a spatial transform from a rotation of θ on the Z axis
+    RotationZ(θ) = "RotationZ_(cos(θ), sin(θ))"
+
+    RotationY_(cθ, sθ) = "[
         cθ, 0, -sθ, 0,  0,  0;
         0,  1,  0,  0,  0,  0;
         sθ, 0,  cθ, 0,  0,  0;
@@ -62,13 +83,12 @@ node "Sp"
         0,  0,  0,  0,  1,  0;
         0,  0,  0,  sθ, 0,  cθ
     ]"
-    {
-        cθ = "cos(θ)"
-        sθ = "sin(θ)"
-    }
+
+    ## Create a spatial transform from a rotation of θ on the Y axis
+    RotationY(θ) = "RotationY_(cos(θ), sin(θ))"
 
     ## Create a spatial transform from a 3d rotation
-    Rotate(R) = "[
+    Rotation(R) = "[
         R[0, 0], R[0, 1], R[0, 2], 0,       0,       0;
         R[1, 0], R[1, 1], R[1, 2], 0,       0,       0;
         R[2, 0], R[2, 1], R[2, 2], 0,       0,       0;
@@ -77,10 +97,24 @@ node "Sp"
         0,       0,       0,       R[2, 0], R[2, 1], R[2, 2]
     ]"
 
-    Quaternion(q) = "Sp.Rotate(2 ∙ [
-        0.5 - q[2]^2 - q[3]^2,	   q[1] ∙ q[2] + q[3] ∙ q[0], q[1] ∙ q[3] - q[2] ∙ q[0];
-        q[1] ∙ q[2] - q[3] ∙ q[0], 0.5 - q[1]^2 - q[3]^2,	  q[2] ∙ q[3] + q[1] ∙ q[0];
-        q[1] ∙ q[3] + q[2] ∙ q[0], q[2] ∙ q[3] - q[1] ∙ q[0], 0.5 - q[1]^2 - q[2]^2
+    FromAxisAngle_(axis, cθ, sθ) = "Spatial.Rotation(
+        [cθ + axis[0]² ∙ (1 - cθ),
+        axis[0] ∙ axis[1] ∙ (1 - cθ) - axis[2] ∙ sθ,
+        axis[0] ∙ axis[2] ∙ (1 - cθ) + axis[1] ∙ sθ;
+        axis[1] ∙ axis[0] ∙ (1 - cθ) + axis[2] ∙ sθ,
+        cθ + axis[1]² ∙ (1 - cθ),
+        axis[1] ∙ axis[2] ∙ (1 - cθ) - axis[0] ∙ sθ;
+        axis[2] ∙ axis[0] ∙ (1 - cθ) - axis[1] ∙ sθ,
+        axis[2] ∙ axis[1] ∙ (1 - cθ) + axis[0] ∙ sθ,
+        cθ + axis[2]² ∙ (1 - cθ)
+    ])"
+
+    FromAxisAngle(axis, θ) = "FromAxisAngle_(axis, cos(θ), sin(θ))"
+
+    Quaternion(q) = "Spatial.Rotation(2 ∙ [
+        q[0]^2 + q[1]^2 - 0.5,	       q[1] ∙ q[2] + q[3] ∙ q[0],     q[1] ∙ q[3] - q[2] ∙ q[0];
+        q[1] ∙ q[2] - q[3] ∙ q[0],     q[0]^2 + q[2]^2 - 0.5,	      q[2] ∙ q[3] + q[1] ∙ q[0];
+        q[1] ∙ q[3] + q[2] ∙ q[0],     q[2] ∙ q[3] - q[1] ∙ q[0],     q[0]^2 + q[3]^2 - 0.5
     ])"
 
     ## Create a spatial transform from a 3d rotation and translation
@@ -93,29 +127,25 @@ node "Sp"
          p[1],   -p[0],     0,       R[2, 0], R[2, 1], R[2, 2]
     ]"
 
-    ## Obtain a 3d position from a spatial transform.
-    Translation3(sp) = "[
-        sp[5, 1];
-        sp[3, 2];
-        sp[4, 0]
+    ## Obtain a 3d position from a spatial transform. Extracts r from -(-Erx * E')
+    Translation3(sp) = "-[
+        sp[4, 0] * sp[2, 0] + sp[4, 1] * sp[2, 1] + sp[4, 2] * sp[2, 2];
+        sp[5, 0] * sp[0, 0] + sp[5, 1] * sp[0, 1] + sp[5, 2] * sp[0, 2];
+        sp[3, 0] * sp[1, 0] + sp[3, 1] * sp[1, 1] + sp[3, 2] * sp[1, 2]
     ]"
 
     ## Obtain a 3d rotation from a spatial transform. Note that this is simply
     ## the upper 3x3 block of the transform.
-    Rotation3(sp) = "[
-        sp[0, 0], sp[0, 1], sp[0, 2];
-        sp[1, 0], sp[1, 1], sp[1, 2];
-        sp[2, 0], sp[2, 1], sp[2, 2]
-    ]"
+    Rotation3(sp) = "sp[0:3, 0:3]"
 
     ## Obtain a 4x4 homogeneous transformation matrix from a spatial
     ## transformation
-    Transform4x4(sp) = "[
-        sp[0, 0], sp[0, 1], sp[0, 2], sp[5, 1];
-        sp[1, 0], sp[1, 1], sp[1, 2], sp[3, 2];
-        sp[2, 0], sp[2, 1], sp[2, 2], sp[4, 0];
+    ToTransform4x4(sp) = "[
+        Rotation3(sp), Translation3(sp);
         0, 0, 0, 1
     ]"
+
+    TransformPoint3(sp, x) = "Rotation3(sp) ∙ x + Translation3(sp)"
 
     ## Create a spatial transform containing the rotation part of the provided
     ## spatial transform
@@ -141,23 +171,33 @@ node "Sp"
 
     ## Spatial motion cross product
     CrossMotion(v) = "[
-         0,    -v[2],  v[1],  0,     0,     0;
-         v[2],  0,    -v[0],  0,     0,     0;
-        -v[1],  v[0],  0,     0,     0,     0;
-         0,    -v[5],  v[4],  0,    -v[2],  v[1];
-         v[5],  0,    -v[3],  v[2],  0,    -v[0];
-        -v[4],  v[3],  0,    -v[1],  v[0],  0
+         0,      -v[2],    v[1],    0,       0,       0;
+         v[2],    0,      -v[0],    0,       0,       0;
+        -v[1],    v[0],    0,       0,       0,       0;
+         0,      -v[5],    v[4],    0,      -v[2],    v[1];
+         v[5],    0,      -v[3],    v[2],    0,      -v[0];
+        -v[4],    v[3],    0,      -v[1],    v[0],    0
     ]"
 
     ## Spatial force cross product (-CrossMotion(v)ᵀ)
-    CrossForce(v) = "[
-         0,    -v[2],  v[1], 0,    -v[5],  v[4];
-         v[2],  0,    -v[0], v[5],  0,    -v[3];
-        -v[1],  v[0],  0,   -v[4],  v[3],  0;
-         0,     0,     0,    0,    -v[2],  v[1];
-         0,     0,     0,    v[2],  0,    -v[0];
-         0,     0,     0,   -v[1],  v[0],  0
+    CrossForce(v) = "transpose(-CrossMotion(v))"
+
+    ForceTransform(v) = "[
+        v[0:3, 0:3], v[3:6, 0:3];
+        zeros(3, 3), v[3:6, 3:6]
     ]"
+
+    TranslateForce(f, p) = "[
+        f[0, :] +                         -p[2, :] * f[4, :] +  p[1, :] * f[5, :];
+        f[1, :] +     p[2, :] * f[3, :] +                      -p[0, :] * f[5, :];
+        f[2, :] +    -p[1, :] * f[3, :] +  p[0, :] * f[4, :];
+        f[3:6, :]
+    ]"
+
+    ## ForcesAtOrigin calculates a resultant force at the origin given a set
+    ## of spatial forces and their corresponding 3d locations. The forces must
+    ## be in the same coordinate frame.
+    ForcesAtOrigin(f, p) = "csum(TranslateForce(f, p))"
 
     # Spatial inverse. The spatial inverse can be computed by transposing
     # each 3x3 block matrix in the spatial 6x6 matrix since each block
@@ -169,6 +209,15 @@ node "Sp"
         v[3, 0], v[4, 0], v[5, 0], v[3, 3], v[4, 3], v[5, 3];
         v[3, 1], v[4, 1], v[5, 1], v[3, 4], v[4, 4], v[5, 4];
         v[3, 2], v[4, 2], v[5, 2], v[3, 5], v[4, 5], v[5, 5]
+    ]"
+
+    XtoV(v) = "0.5 * [
+        v[1, 2] - v[2, 1];
+        v[2, 0] - v[0, 2];
+        v[0, 1] - v[1, 0];
+        v[4, 2] - v[5, 1];
+        v[5, 0] - v[3, 2];
+        v[3, 1] - v[4, 0]
     ]"
 }
 

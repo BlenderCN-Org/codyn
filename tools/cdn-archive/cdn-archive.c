@@ -50,54 +50,11 @@ static gchar const *color_blue = "\e[34m";
 static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
-static GSList *defines = NULL;
-
-static gboolean
-add_define (gchar const  *option_name,
-            gchar const  *value,
-            gpointer      data,
-            GError      **error)
-{
-	defines = g_slist_prepend (defines, g_strdup (value));
-
-	return TRUE;
-}
-
 static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to input.tar.bz2)", "FILE"},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
-	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
 	{NULL}
 };
-
-static void
-add_defines (CdnParserContext *context)
-{
-	GSList *defs;
-	GSList *item;
-
-	defs = g_slist_reverse (defines);
-
-	for (item = defs; item; item = g_slist_next (item))
-	{
-		gchar *s = item->data;
-		gchar **parts = g_strsplit (s, "=", 2);
-
-		if (parts && parts[0] && parts[1])
-		{
-			cdn_parser_context_define (context,
-			                           cdn_embedded_string_new_from_string (parts[0]),
-			                           G_OBJECT (cdn_embedded_string_new_from_string (parts[1])),
-			                           FALSE,
-			                           FALSE);
-		}
-
-		g_strfreev (parts);
-		g_free (s);
-	}
-
-	g_slist_free (defs);
-}
 
 static void
 remove_double_dash (gchar const **args, gint *argc)
@@ -258,8 +215,6 @@ parse_network (gchar const *args[], gint argc)
 	                  G_CALLBACK (on_context_file_used),
 	                  &info);
 
-	add_defines (context);
-
 	cdn_parser_context_push_input (context, file, NULL, FALSE);
 
 	if (cdn_parser_context_parse (context, TRUE, &error))
@@ -351,6 +306,7 @@ parse_network (gchar const *args[], gint argc)
 		gchar *prefix;
 		gchar *lstr;
 		gchar *dash;
+		GFile *file;
 
 		g_printerr ("Failed to parse: %s\n\n", error->message);
 
@@ -358,7 +314,19 @@ parse_network (gchar const *args[], gint argc)
 		                                       &lineno,
 		                                       NULL,
 		                                       &cstart,
-		                                       &cend);
+		                                       &cend,
+		                                       &file);
+
+		if (file)
+		{
+			gchar *fbase;
+
+			fbase = g_file_get_basename (file);
+			g_printerr ("%s:\n", fbase);
+
+			g_free (fbase);
+			g_object_unref (file);
+		}
 
 		line = cdn_parser_context_get_line_at (context, lineno);
 
@@ -433,7 +401,9 @@ main (int argc, char *argv[])
 	GError *error = NULL;
 	gboolean ret;
 
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
+#endif
 
 	setlocale (LC_ALL, "");
 

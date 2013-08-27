@@ -449,6 +449,19 @@ set_args_from_iters (CdnStackArgs          *args,
 }
 
 CdnExpressionTreeIter *
+iter_new_zeros (CdnDimension const *dim)
+{
+	if (cdn_dimension_is_one (dim))
+	{
+		return iter_new_numstr ("0");
+	}
+	else
+	{
+		return iter_new_number_matrix (NULL, dim);
+	}
+}
+
+CdnExpressionTreeIter *
 iter_new_number_matrix (gdouble const      *nums,
                         CdnDimension const *dim)
 {

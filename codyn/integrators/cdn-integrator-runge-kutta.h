@@ -39,6 +39,16 @@ typedef struct _CdnIntegratorRungeKutta			CdnIntegratorRungeKutta;
 typedef struct _CdnIntegratorRungeKuttaClass	CdnIntegratorRungeKuttaClass;
 typedef struct _CdnIntegratorRungeKuttaPrivate	CdnIntegratorRungeKuttaPrivate;
 
+/**
+ * CdnIntegratorRungeKutta:
+ *
+ * Runge-Kutta order 4 integrator.
+ *
+ * The runge kutta integrator is a #CdnIntegrator subclass implementing a
+ * runge-kutta order 4 integration scheme. It is the most accurate integrator
+ * available, but also the slowest. For a good compromise between speed and
+ * accuracy see #CdnIntegratorPredictCorrect.
+ */
 struct _CdnIntegratorRungeKutta
 {
 	/*< private >*/

@@ -91,13 +91,12 @@ static void
 extract_function_dependencies (CdnFunction  *f,
                                GSList      **dependencies)
 {
-	CdnExpression *fe;
+	GSList const *deps = cdn_function_get_dependencies (f);
 
-	fe = cdn_function_get_expression (f);
-
-	if (fe)
+	while (deps)
 	{
-		*dependencies = g_slist_prepend (*dependencies, fe);
+		*dependencies = g_slist_prepend (*dependencies, deps->data);
+		deps = g_slist_next (deps);
 	}
 }
 

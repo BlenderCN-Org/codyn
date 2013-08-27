@@ -41,8 +41,18 @@ typedef struct _CdnCompileContext		CdnCompileContext;
 typedef struct _CdnCompileContextClass		CdnCompileContextClass;
 typedef struct _CdnCompileContextPrivate	CdnCompileContextPrivate;
 
+/**
+ * CdnCompileContext:
+ *
+ * The expression compile context
+ *
+ * The compile context provides information for compiling expressions such
+ * as the available user defined functions and the objects that can be used
+ * to lookup properties used in the expression.
+ */
 struct _CdnCompileContext
 {
+	/*< private >*/
 	GObject parent;
 
 	CdnCompileContextPrivate *priv;
@@ -50,6 +60,7 @@ struct _CdnCompileContext
 
 struct _CdnCompileContextClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 

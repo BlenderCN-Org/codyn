@@ -77,10 +77,11 @@ int
 main (int   argc,
       char *argv[])
 {
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
-	g_test_init (&argc, &argv, NULL);
+#endif
 
-	g_type_init ();
+	g_test_init (&argc, &argv, NULL);
 
 	g_test_add_func ("/variable/once", test_once);
 	g_test_add_func ("/variable/once_reset_cache", test_once_reset_cache);

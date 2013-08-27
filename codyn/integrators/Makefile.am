@@ -1,4 +1,4 @@
-INCLUDES =				\
+AM_CPPFLAGS =				\
 	-I$(srcdir)			\
 	-I$(top_srcdir)			\
 	-I$(top_srcdir)/codyn	\
