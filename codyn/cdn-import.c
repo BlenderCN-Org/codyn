@@ -685,17 +685,22 @@ static void
 import_objects (CdnImport *self,
                 CdnNode  *parent)
 {
-	GSList const *children;
+	GSList *children;
 
-	children = cdn_node_get_children (parent);
+	children = g_slist_copy ((GSList *)cdn_node_get_children (parent));
 
 	while (children)
 	{
+		g_object_ref (children->data);
+
+		cdn_node_remove (parent, children->data, NULL);
 		cdn_node_add (CDN_NODE (self), children->data, NULL);
+
+		g_object_unref (children->data);
 
 		add_imported_object (self, children->data);
 
-		children = g_slist_next (children);
+		children = g_slist_delete_link (children, children);
 	}
 }
 
