@@ -443,42 +443,8 @@ AC_SUBST(CDN_IO_WII_CFLAGS)
 
 AM_CONDITIONAL(ENABLE_WII, test "x$enable_wii" = "xyes")
 
-dnl ================================================================
-dnl Check for gedit
-dnl ================================================================
-
-AC_ARG_ENABLE([gedit],
-              AS_HELP_STRING([--enable-gedit=[yes/no/auto]],[Enable installation of gedit plugin (default: auto)]),
-              [enable_gedit=$enableval],
-              [enable_gedit=auto])
-
-if test "x$enable_gedit" != "xno"; then
-	AC_MSG_CHECKING([gedit])
-
-	PKG_CHECK_MODULES([GEDIT],
-	                  [gedit >= 3.0],
-	                  [has_gedit=yes],
-	                  [has_gedit=no])
-
-	if test "x$has_gedit" = "xno"; then
-		if test "x$enable_gedit" = "xauto"; then
-			enable_gedit="no"
-			AC_MSG_RESULT([gedit 3 not found])
-		else
-			AC_MSG_ERROR([gedit 3 not found])
-		fi
-	else
-		enable_gedit="yes"
-	fi
-fi
-
-if test "x$enable_gedit" = "xyes"; then
-	GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
-
-	AC_SUBST(GEDIT_PLUGIN_DIR)
-fi
-
-AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
+GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
+AC_SUBST(GEDIT_PLUGIN_DIR)
 
 IO_LIBTOOL_FLAGS="-module -avoid-version"
 IO_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/io"
@@ -573,7 +539,6 @@ Configuration:
 	Source code location:	${srcdir}
 	Compiler:		${CC}
 	GObject Introspection:	$enable_introspection
-	gedit plugin:           $enable_gedit
 	cdn-archive:            $have_tar
 	cdn-context:            $have_json_glib
 	network support:        $have_networking
