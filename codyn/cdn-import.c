@@ -774,7 +774,7 @@ import_globals (CdnImport  *self,
 gboolean
 cdn_import_load (CdnImport   *self,
                  CdnNetwork  *network,
-                 CdnNode    *parent,
+                 CdnNode     *parent,
                  GError     **error)
 {
 	gchar const *annotation;
