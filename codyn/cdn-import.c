@@ -732,6 +732,7 @@ auto_import_templates (CdnImport  *self,
 	               NULL);
 
 	add_imported_object (self, auto_import);
+	g_object_unref (auto_import);
 }
 
 static void
