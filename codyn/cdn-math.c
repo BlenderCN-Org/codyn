@@ -813,6 +813,7 @@ matrix_multiply (CdnStack           *stack,
 	gint c;
 	gint wr = 0;
 	gint bc = 0;
+	gint i;
 
 	// Naive implementation
 	for (c = 0; c < argdim->args[0].columns; ++c)
@@ -836,6 +837,7 @@ matrix_multiply (CdnStack           *stack,
 
 		bc += argdim->args[0].rows;
 	}
+}
 #endif
 
 	memmove (ptrA, ptrC, sizeof (gdouble) * numend);
@@ -3487,6 +3489,12 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			// Need extra space to store the pivoting coefficients
 			*extra_space = linsolve_work_space (&inargs->args[0].dimension);
 		break;
+		case CDN_MATH_FUNCTION_TYPE_QR:
+			outarg->rows = inargs->args[0].rows;
+			outarg->columns = inargs->args[0].rows + inargs->args[0].columns;
+
+			*extra_space = qr_work_space (&inargs->args[0].dimension);
+		break;
 #endif
 		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
 			// A x = B, λ
@@ -3548,12 +3556,6 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_TRIL:
 		case CDN_MATH_FUNCTION_TYPE_TRIU:
 			cdn_stack_arg_copy (outarg, inargs->args);
-		break;
-		case CDN_MATH_FUNCTION_TYPE_QR:
-			outarg->rows = inargs->args[0].rows;
-			outarg->columns = inargs->args[0].rows + inargs->args[0].columns;
-
-			*extra_space = qr_work_space (&inargs->args[0].dimension);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_DIAG:
 			if (inargs->args[0].rows == 1 ||
