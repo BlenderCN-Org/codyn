@@ -1,3 +1,10 @@
+codyn (3.4.1-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Fixed binary incompatibility with rawc
+
+ -- Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>  Wed, 28 Aug 2013 17:30:07 +0200
+
 codyn (3.4-1) UNRELEASED; urgency=low
 
   * New upstream release
