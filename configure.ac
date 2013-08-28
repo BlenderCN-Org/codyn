@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.4)
+AC_INIT(codyn, 3.4.1)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
