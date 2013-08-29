@@ -1849,7 +1849,7 @@ parse_all (CdnNetworkDeserializer *deserializer,
 
 	ret = xml_xpath (deserializer,
 	                 root,
-	                 "state | group | link | templates | function | globals | polynomial | import",
+	                 "node | edge | self-edge | templates | function | globals | polynomial | import",
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
 	                 NULL);
