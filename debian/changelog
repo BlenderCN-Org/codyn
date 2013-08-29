@@ -1,3 +1,10 @@
+codyn (3.4.2-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Fix xml deserializer
+
+ -- Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>  Thu, 29 Aug 2013 13:37:35 +0200
+
 codyn (3.4.1-1) UNRELEASED; urgency=low
 
   * New upstream release
