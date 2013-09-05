@@ -15,6 +15,10 @@ EXTRA_DIST = \
 DISTCHECK_CONFIGURE_FLAGS =
 
 MAINTAINERCLEANFILES = 		\
+	$(GITIGNORE_MAINTAINERCLEANFILES_TOPLEVEL) \
+	$(GITIGNORE_MAINTAINERCLEANFILES_MAKEFILE_IN) \
+	$(GITIGNORE_MAINTAINERCLEANFILES_M4_LIBTOOL) \
+	INSTALL			\
 	aclocal.m4		\
 	config.guess		\
 	config.h.in		\
@@ -32,8 +36,7 @@ MAINTAINERCLEANFILES = 		\
 	m4/ltoptions.m4		\
 	m4/ltsugar.m4		\
 	m4/ltversion.m4		\
-	m4/lt~obsolete.m4	\
-	`find "$(srcdir)" -type f -name Makefile.in -print`
+	m4/lt~obsolete.m4
 
 CLEANFILES = 	\
 	$(pkgconfig_DATA)
