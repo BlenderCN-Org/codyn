@@ -1,3 +1,10 @@
+codyn (3.4.3-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Minor fixes in python bindings
+
+ -- Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>  Fri, 06 Sep 2013 21:21:46 +0200
+
 codyn (3.4.2-1) UNRELEASED; urgency=low
 
   * New upstream release
