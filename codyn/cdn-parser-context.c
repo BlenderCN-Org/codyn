@@ -4832,7 +4832,11 @@ cdn_parser_context_define (CdnParserContext  *context,
 }
 
 /**
- * cdn_parser_context_push_input: (skip)
+ * cdn_parser_context_push_input:
+ * @context the parser context.
+ * @file the file.
+ * @stream the input stream.
+ * @isonce whether only to process it once.
  *
  **/
 void
@@ -4954,7 +4958,11 @@ cdn_parser_context_link_library (CdnParserContext  *context,
 }
 
 /**
- * cdn_parser_context_push_input_from_path: (skip)
+ * cdn_parser_context_push_input_from_path:
+ * @context the context.
+ * @filename the file name.
+ * @only_in_context:
+ * @isonce:
  *
  **/
 void
@@ -5032,7 +5040,10 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 }
 
 /**
- * cdn_parser_context_push_input_from_string: (skip)
+ * cdn_parser_context_push_input_from_string:
+ * @context:
+ * @s:
+ * @only_in_context:
  *
  **/
 void
@@ -5066,7 +5077,8 @@ cdn_parser_context_push_input_from_string (CdnParserContext *context,
 }
 
 /**
- * cdn_parser_context_pop_input: (skip)
+ * cdn_parser_context_pop_input:
+ * @context:
  *
  **/
 void
@@ -5965,6 +5977,17 @@ cdn_parser_context_begin_selector_item (CdnParserContext *context)
 	statement_start (context, ensure_selector (context));
 }
 
+/**
+ * cdn_parser_context_get_error_location:
+ * @context: the context.
+ * @lstart: (out): the line start.
+ * @lstart: (out): the line start.
+ * @lend: (out): the line end.
+ * @cstart: (out): the column start.
+ * @cend: (out): the column end.
+ * @file: (out): the file.
+ *
+ **/
 void
 cdn_parser_context_get_error_location (CdnParserContext  *context,
                                        gint              *lstart,
