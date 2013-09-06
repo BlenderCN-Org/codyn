@@ -18,7 +18,8 @@ Build-Depends: debhelper (>= 7),
                gobject-introspection,
                libgirepository1.0-dev,
                python-gobject-dev,
-               zip
+               zip,
+               libjson-glib-dev
 Standards-Version: 3.9.1
 Section: libs
 Homepage: http://www.codyn.net
