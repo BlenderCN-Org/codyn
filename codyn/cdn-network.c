@@ -1785,7 +1785,7 @@ cdn_network_link_library (CdnNetwork   *network,
  * cdn_network_get_parser_context:
  * @network the #CdnNetwork
  *
- * Returns: (transfer none): the parser context.
+ * Returns: (type CdnParserContext) (transfer none): the parser context.
  */
 CdnParserContext *
 cdn_network_get_parser_context (CdnNetwork *network)
