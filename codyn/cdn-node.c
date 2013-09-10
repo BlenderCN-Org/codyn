@@ -2329,7 +2329,7 @@ cdn_node_has_self_edge (CdnNode *node)
  * created if it does not exist yet. When this is undesired, use
  * #cdn_node_has_self_edge first.
  *
- * Returns: (transfer none): A #CdnEdge
+ * Returns: (transfer none) (type CdnEdge): A #CdnEdge
  *
  **/
 CdnEdge *
