@@ -36,6 +36,14 @@ templates
             baseAccelerationS <= "localToBaseTransform ∙ acceleration"
         }
 
+        edge "loopJointTransformPredecessor"
+        {
+            baseToLocalTransformP <= "output.coordinateTransformP ∙ baseToLocalTransform"
+
+            baseVelocityP <= "localToBaseTransform ∙ velocity"
+            baseAccelerationP <= "localToBaseTransform ∙ acceleration"
+        }
+
         node "rnea"
         {
             ## Force transmitted from the child to the parent, see 'force'. This
@@ -87,6 +95,7 @@ node edges | has-template(physics.joint) | output-name | input-name | parent
 
 # Add close loop forces calculations
 edge edges | has-template(physics.cjoint) | if(output | has-template(physics.body)) : physics.activeLoopJointForceSuccessor {}
+edge edges | has-template(physics.cjoint) | if(input | has-template(physics.body)) : physics.loopJointTransformPredecessor {}
 
 node edges | has-template(physics.cjoint) | if(output | has-template(physics.body)) | output-name | input-name | parent
 {

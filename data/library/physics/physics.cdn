@@ -208,14 +208,11 @@ templates
             activeForceSubspace = "activeForceSubspaceNull"
 
             ## The active loop joint spatial force in successor frame coordinates
-            activeLoopJointForce = "coordinateTransformSᵀ ∙ activeForceSubspace ∙ τ"
+            activeLoopJointForce = "Spatial.MotionToForceInverseTransform(coordinateTransformS) ∙ activeForceSubspace ∙ τ"
         }
 
         edge "cjoint"
         {
-            baseToLocalTransformP <= "output.coordinateTransformP ∙ baseToLocalTransform"
-            baseVelocityP <= "localToBaseTransform ∙ velocity"
-            baseAccelerationP <= "localToBaseTransform ∙ acceleration"
         }
     }
 }
