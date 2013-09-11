@@ -1,0 +1,42 @@
+require "physics/physics.cdn"
+require "physics/cjoints.cdn"
+
+integrator {
+    method = "runge-kutta"
+}
+
+node "system" : physics.system {
+    node "{torso,hip,knee,ankle,exo1,exo2}" : physics.joints.revoluteY {
+        I = "Inertia.Box(m, 0.05, 0.05, 0.4)"
+    }
+
+    node "torso" {
+        com = "[0; 0; -0.25]"
+    }
+
+    node "{hip,knee,ankle}" {
+         tr = "[0; 0; -0.5]"
+        com = "[0; 0; -0.25]"
+    }
+
+    node "{exo1,exo2}" {
+        com = "[0; 0; -0.25]"
+         tr = ["[0; 0; -0.2]", "[0; 0; -0.8]"]
+          q = ["-0.2 * pi", "0.4 * pi"]
+    }
+
+    node "exo3" : physics.cjoints.revoluteY {
+      tr = "[0; 0; -0.2]"
+    }
+
+    edge from "{torso,hip,knee,exo1}" to ["{hip,exo1}", "knee", "ankle", "exo2"] : physics.joint {}
+
+    edge from "exo2" to "exo3" : physics.cjoint {}
+    edge from "exo3" to "knee" : physics.cjoint {}
+
+    include "physics/algorithms/transformations.cdn"
+
+    include "physics/dynamics.cdn"
+}
+
+# vi:ts=4:et
