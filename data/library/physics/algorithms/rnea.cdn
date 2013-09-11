@@ -24,7 +24,7 @@ templates
 
         edge "activeLoopJointForcePredecessor"
         {
-            forceLoopJointActive += "-(output.baseToLocalTransformᵀ ∙
+            forceLoopJointActive += "-(Spatial.MotionToForceTransform(output.baseToLocalTransform) ∙
                                        forceLoopJointActiveInBase)"
         }
 
@@ -59,7 +59,7 @@ templates
             ## External spatial force as a result of a loop closure joint.
             forceLoopJointActive = "zeros(6, 1)"
 
-            forceLoopJointActiveInBase = "localToBaseTransformᵀ ∙ forceLoopJointActive"
+            forceLoopJointActiveInBase = "Spatial.MotionToForceInverseTransform(baseToLocalTransform) ∙ forceLoopJointActive"
 
             ## Force transmitted over the joint. This force is composed of the force
             ## coming from the acceleration and velocity acting on the spatial inertia,
