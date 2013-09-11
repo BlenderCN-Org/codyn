@@ -17,6 +17,17 @@ templates
             forceChild += "transformT ∙ force"
         }
 
+        edge "activeLoopJointForceSuccessor"
+        {
+            forceLoopJointActive += "-activeLoopJointForce"
+        }
+
+        edge "activeLoopJointForcePredecessor"
+        {
+            forceLoopJointActive += "-(output.baseToLocalTransformᵀ ∙
+                                       forceLoopJointActiveInBase)"
+        }
+
         node "rnea"
         {
             ## Force transmitted from the child to the parent, see 'force'. This
@@ -29,11 +40,16 @@ templates
             ## coordinates.
             forceExternal = "zeros(6, 1)"
 
+            ## External spatial force as a result of a loop closure joint.
+            forceLoopJointActive = "zeros(6, 1)"
+
+            forceLoopJointActiveInBase = "localToBaseTransformᵀ ∙ forceLoopJointActive"
+
             ## Force transmitted over the joint. This force is composed of the force
             ## coming from the acceleration and velocity acting on the spatial inertia,
             ## forces transmitted over the joint from the child, and finally external
             ## forces introduced on the body
-            force = "spI ∙ acceleration + Spatial.CrossForce(velocity) ∙ spI ∙ velocity + forceChild - forceExternal"
+            force = "spI ∙ acceleration + Spatial.CrossForce(velocity) ∙ spI ∙ velocity + forceChild - forceExternal + forceLoopJointActive"
 
             ## C matrix row of this body. The C matrix row of this body is the force
             ## transmitted on the joint
@@ -59,6 +75,14 @@ node edges | has-template(physics.joint) | output-name | input-name | parent
 {
     ## Edge transmitting forces from child to parent
     edge "dynamics_@@0_to_@0" from "@@@0" to "@@@0" : physics.dynamics {}
+}
+
+# Add close loop forces calculations
+edge edges | has-template(physics.cjoint) | if(output | has-template(physics.body)) : physics.activeLoopJointForceSuccessor {}
+
+node edges | has-template(physics.cjoint) | if(input | has-template(physics.body)) | input-name | output | outputs | output-name | parent
+{
+    edge "loop_joint_@0_to_@@0" from "@@0" to "@@@@0" : physics.activeLoopJointForcePredecessor {}
 }
 
 # vi:ex:ts=4:et
