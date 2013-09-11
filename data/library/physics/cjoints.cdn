@@ -1,0 +1,94 @@
+require "spatial.cdn"
+require "quaternion.cdn"
+
+templates
+{
+    node "physics" { node "cjoints"
+    {
+        node "revoluteX" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                    0, 0, 0, 0, 0;
+                    1, 0, 0, 0, 0;
+                    0, 1, 0, 0, 0;
+                    0, 0, 1, 0, 0;
+                    0, 0, 0, 1, 0;
+                    0, 0, 0, 0, 1
+                ]"
+
+            activeForceSubspace = "[1; 0; 0; 0; 0; 0]"
+        }
+
+        node "revoluteY" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                    1, 0, 0, 0, 0;
+                    0, 0, 0, 0, 0;
+                    0, 1, 0, 0, 0;
+                    0, 0, 1, 0, 0;
+                    0, 0, 0, 1, 0;
+                    0, 0, 0, 0, 1
+                ]"
+
+            activeForceSubspace = "[0; 1; 0; 0; 0; 0]"
+        }
+
+        node "revoluteZ" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                    1, 0, 0, 0, 0;
+                    0, 1, 0, 0, 0;
+                    0, 0, 0, 0, 0;
+                    0, 0, 1, 0, 0;
+                    0, 0, 0, 1, 0;
+                    0, 0, 0, 0, 1
+                ]"
+
+            activeForceSubspace = "[0; 0; 1; 0; 0; 0]"
+        }
+
+        node "prismaticX" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                    1, 0, 0, 0, 0;
+                    0, 1, 0, 0, 0;
+                    0, 0, 1, 0, 0;
+                    0, 0, 0, 0, 0;
+                    0, 0, 0, 1, 0;
+                    0, 0, 0, 0, 1
+                ]"
+
+            activeForceSubspace = "[0; 0; 0; 1; 0; 0]"
+        }
+
+        node "prismaticY" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                    1, 0, 0, 0, 0;
+                    0, 1, 0, 0, 0;
+                    0, 0, 1, 0, 0;
+                    0, 0, 0, 1, 0;
+                    0, 0, 0, 0, 0;
+                    0, 0, 0, 0, 1
+                ]"
+
+            activeForceSubspace = "[0; 0; 0; 0; 1; 0]"
+        }
+
+        node "prismaticZ" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                    1, 0, 0, 0, 0;
+                    0, 1, 0, 0, 0;
+                    0, 0, 1, 0, 0;
+                    0, 0, 0, 1, 0;
+                    0, 0, 0, 0, 1;
+                    0, 0, 0, 0, 0
+                ]"
+
+            activeForceSubspace = "[0; 0; 0; 0; 0; 1]"
+        }
+    } }
+}
+
+# vi:ex:ts=4:et

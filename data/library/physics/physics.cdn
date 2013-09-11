@@ -69,14 +69,6 @@ templates
                 ## S = ∂v_j / ∂q̇
                 MotionSubspace(q, dq) = "∂[JointVelocity; dq](q, dq)"
 
-                ## The constraint force subspace. This only need to be defined
-                ## when using kinematic loops or when calculating joint
-                ## constraint forces. The constraint force subspace is the
-                ## dual of the motion subspace S. It spans the 6 - N degrees
-                ## of freedom that are subject to constraints.
-                ## Tᵀ ∙ v_j = 0
-                ConstraintForceSubspace(q, dq) = "eye(6)"
-
                 ## Joint bias velocity product term. This term is non zero
                 ## when the motion subspace is not a constant (i.e. depends on
                 ## q).
@@ -184,6 +176,37 @@ templates
             r = "output.jacobianLocationInBase - input.jacobianLocationInBase"
             J = "output.jacobianJ - Spatial.Translation(r) ∙ input.jacobianJ"
         }
+
+        node "cdof{1:6}"
+        {
+            null = "zeros(@@1, 1)"
+
+            constraintForceSubspaceNull = "zeros(6, $(6 - @@1))"
+            activeForceSubspaceNull = "zeros(6, @@1)"
+        }
+
+        node "cbody" : "cdof1"
+        {
+            ## Active joint loop forces
+            τ = "null"
+
+            ## Coordinate translation from closing loop joint frame to its
+            ## successor frame
+            tr = "[0; 0; 0]"
+
+            ## Coordinate transform from closing loop joint frame to its
+            ## successor frame. This defaults to a 3d translation specified in
+            ## the tr variable
+            coordinateTransform = "Spatial.Translation(tr)"
+
+            constraintForceSubspace = "constraintForceSubspaceNull"
+            activeForceSubspace = "activeForceSubspaceNull"
+
+            ## The active loop joint spatial force in successor frame coordinates
+            activeLoopJointForce = "coordinateTransformᵀ ∙ activeForceSubspace ∙ τ"
+        }
+
+        edge "cjoint" {}
     }
 }
 
