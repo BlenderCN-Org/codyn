@@ -1,22 +1,31 @@
 defines
 {
     rootbodies = has-template(physics.body) | not(inputs | has-template(physics.joint))
+
     bodies = | @rootbodies | recurse(outputs | has-template(physics.joint) | output) | name
+    cbodies = has-template(physics.cbody) | name
 
     # Calculate a list of dof for each body
     bodydof = | @bodies | sort
               | if (applied-templates | recurse(applied-templates) | /dof([1-6])/ | last)
               | append-context("@1")
 
+    # Same for closed loop bodies
+    cbodydof = | @cbodies | sort
+               | if (applied-templates | recurse(applied-templates) | /cdof([1-6])/ | last)
+               | append-context("@1")
+
     # Calculate a cumulative sum of the dofs (gives index for each body when
     # dofs are expanded). i.e. @bodydofidx[<bodyidx>] will give the expanded
     # index of that particular body
     bodydofidx = "{@bodydof|@cnt[+@0]}"
+    cbodydofidx = "{@cbodydof|@ccnt[+@0]}"
 
     bodydofex = "{@bodydofidx|@1:+$(@bodydof[$(@1[!] + 1)] - 1)}"
 
     # The total dofs in the system
     numdof = "@{@bodydof||$(@0 + @1)}"
+    cnumdof = "@{@cbodydof||$(@0 + @1)}"
 
     # bodychain will contain for each body, a comma separated list of indices
     # from (and including) the body upwards to the root of the kinematic tree.

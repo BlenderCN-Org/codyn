@@ -191,22 +191,32 @@ templates
             τ = "null"
 
             ## Coordinate translation from closing loop joint frame to its
-            ## successor frame
-            tr = "[0; 0; 0]"
+            ## successor frame/predecessor frame
+            "tr{S,P}" = "[0; 0; 0]"
 
             ## Coordinate transform from closing loop joint frame to its
-            ## successor frame. This defaults to a 3d translation specified in
-            ## the tr variable
-            coordinateTransform = "Spatial.Translation(tr)"
+            ## successor/predecessor frame. This defaults to a 3d translation
+            ## specified in the trS/trP variable
+            "coordinateTransform{S,P}" = "Spatial.Translation(tr@1)"
+
+            "baseToLocalTransform{S,P}" = "eye(6)"
+            "localToBaseTransform{S,P}" = "Spatial.Inverse(baseToLocalTransform@1)"
+
+            "base{Velocity,Acceleration}{S,P}" = "zeros(6, 1)"
 
             constraintForceSubspace = "constraintForceSubspaceNull"
             activeForceSubspace = "activeForceSubspaceNull"
 
             ## The active loop joint spatial force in successor frame coordinates
-            activeLoopJointForce = "coordinateTransformᵀ ∙ activeForceSubspace ∙ τ"
+            activeLoopJointForce = "coordinateTransformSᵀ ∙ activeForceSubspace ∙ τ"
         }
 
-        edge "cjoint" {}
+        edge "cjoint"
+        {
+            baseToLocalTransformP <= "output.coordinateTransformP ∙ baseToLocalTransform"
+            baseVelocityP <= "localToBaseTransform ∙ velocity"
+            baseAccelerationP <= "localToBaseTransform ∙ acceleration"
+        }
     }
 }
 
