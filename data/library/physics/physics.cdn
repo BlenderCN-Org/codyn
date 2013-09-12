@@ -86,6 +86,9 @@ templates
             ## Helper variable to calculate the joint motion subspace
             motionSubspace = "joint.MotionSubspace(q, dq)"
 
+            ## The motion subspace in base coordinates
+            baseMotionSubspace = "localToBaseTransform ∙ motionSubspace"
+
             ## Helper variable to calculate the velocity product term. See
             ## joint.cJ
             cJ = "joint.BiasVelocityProduct(q, dq)"
@@ -209,6 +212,26 @@ templates
 
             ## The active loop joint spatial force in successor frame coordinates
             activeLoopJointForce = "Spatial.MotionToForceInverseTransform(coordinateTransformS) ∙ activeForceSubspace ∙ τ"
+
+            ## The constraint force subspace transformed from loop joint in
+            ## successor frame coordinates to base coordinates
+            baseConstraintForceSubspace = "Spatial.MotionToForceInverseTransform(baseToLocalTransformS) ∙ constraintForceSubspace"
+
+            ## The base constraint force subspace as to be applied to motion
+            ## vectors (inversed)
+            baseConstraintForceMotionSubspace = "Spatial.ForceToMotionInverseTransform(baseConstraintForceSubspace)"
+
+            Tstab = "0.05"
+            kα = "1 / Tstab"
+            kβ = "1 / Tstab"
+
+            # TODO: calculate the delta
+            kδ = "0"
+
+            kstab = "2 ∙ kα ∙ baseConstraintForceMotionSubspace ∙ (baseVelocityS - baseVelocityP) + kβ² ∙ kδ"
+
+            k = "-baseConstraintForceMotionSubspace ∙ (baseAccelerationS - baseAccelerationP +
+                                                       Spatial.CrossMotion(baseVelocityS) ∙ baseVelocityP) - kstab"
         }
 
         edge "cjoint"
