@@ -221,17 +221,24 @@ templates
             ## vectors (inversed)
             baseConstraintForceMotionSubspace = "Spatial.ForceToMotionInverseTransform(baseConstraintForceSubspace)"
 
-            Tstab = "0.05"
-            kα = "1 / Tstab"
-            kβ = "1 / Tstab"
+            # Constraint stabilization
+            node "stabilization"
+            {
+                T = "0.05"
 
-            # TODO: calculate the delta
-            kδ = "0"
+                kα = "1 / T"
+                kβ = "1 / T"
 
-            kstab = "2 ∙ kα ∙ baseConstraintForceMotionSubspace ∙ (baseVelocityS - baseVelocityP) + kβ² ∙ kδ"
+                # TODO: calculate the delta
+                kδ = "0"
+
+                k = "2 ∙ kα ∙ baseConstraintForceMotionSubspace ∙ (baseVelocityS - baseVelocityP) +
+                         kβ² ∙ kδ"
+            }
 
             k = "-baseConstraintForceMotionSubspace ∙ (baseAccelerationS - baseAccelerationP +
-                                                       Spatial.CrossMotion(baseVelocityS) ∙ baseVelocityP) - kstab"
+                                                       Spatial.CrossMotion(baseVelocityS) ∙ baseVelocityP) -
+                 stabilization.k"
         }
 
         edge "cjoint"
