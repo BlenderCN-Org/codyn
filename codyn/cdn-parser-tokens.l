@@ -263,6 +263,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"append-context"		return T_KEY_APPEND_CONTEXT;
 <INITIAL,onlyselector>"reduce"			return T_KEY_REDUCE;
 <INITIAL,onlyselector>"sort"			return T_KEY_SORT;
+<INITIAL,onlyselector>"xor"			return T_KEY_XOR;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;

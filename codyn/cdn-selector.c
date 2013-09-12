@@ -143,7 +143,8 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"append-context",
 	"applied-templates",
 	"reduce",
-	"sort"
+	"sort",
+	"xor"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -2670,6 +2671,122 @@ selector_pseudo_sort (CdnSelector *self,
 	return g_slist_sort (copy_selections (parent), (GCompareFunc)sort_selections);
 }
 
+static GHashTable *
+selections_to_object_hash (GSList *s)
+{
+	GHashTable *objs;
+
+	objs = g_hash_table_new (g_direct_hash,
+	                         g_direct_equal);
+
+	while (s)
+	{
+		g_hash_table_insert (objs,
+		                     cdn_selection_get_object (s->data),
+		                     GINT_TO_POINTER (1));
+
+		s = g_slist_next (s);
+	}
+
+	return objs;
+}
+
+static GSList *
+xor_prepend (GSList     *ret,
+             GSList     *items,
+             GHashTable *others)
+{
+	while (items)
+	{
+		gpointer obj;
+
+		obj = cdn_selection_get_object (items->data);
+
+		if (g_hash_table_lookup (others, obj))
+		{
+			cdn_selection_unref (items->data);
+		}
+		else
+		{
+			ret = g_slist_prepend (ret, items->data);
+		}
+
+		items = g_slist_delete_link (items, items);
+	}
+
+	return ret;
+}
+
+static GSList *
+xor_in_place (GSList *a,
+              GSList *b)
+{
+	// Keep things which are in either a or b, but not in both
+	GSList *ret = NULL;
+	GHashTable *objsa;
+	GHashTable *objsb;
+
+	objsa = selections_to_object_hash (a);
+	objsb = selections_to_object_hash (b);
+
+	ret = xor_prepend (ret, a, objsb);
+	ret = xor_prepend (ret, b, objsa);
+
+	g_hash_table_destroy (objsa);
+	g_hash_table_destroy (objsb);
+
+	return g_slist_reverse (ret);
+}
+
+static GSList *
+selector_pseudo_xor (CdnSelector  *self,
+                     Selector     *selector,
+                     GSList       *parent)
+{
+	GSList *item;
+	GSList *ret;
+
+	if (!parent)
+	{
+		return NULL;
+	}
+
+	ret = NULL;
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		CdnSelector *sel;
+		GSList *sub;
+
+		sel = item->data;
+
+		cdn_selector_set_self (sel, self->priv->self);
+
+		sub = cdn_selector_select_set (sel,
+		                               parent,
+		                               CDN_SELECTOR_TYPE_ANY);
+
+		if (sub == NULL)
+		{
+			g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
+			g_slist_free (ret);
+
+			return NULL;
+		}
+		else if (ret == NULL)
+		{
+			ret = sub;
+		}
+		else
+		{
+			ret = xor_in_place (ret, sub);
+		}
+	}
+
+	return ret;
+}
+
+
 static GSList *
 selector_select_pseudo (CdnSelector *self,
                         Selector    *selector,
@@ -2797,6 +2914,8 @@ selector_select_pseudo (CdnSelector *self,
 			                               parent);
 		case CDN_SELECTOR_PSEUDO_TYPE_SORT:
 			return selector_pseudo_sort (self, selector, parent);
+		case CDN_SELECTOR_PSEUDO_TYPE_XOR:
+			return selector_pseudo_xor (self, selector, parent);
 		default:
 		break;
 	}
