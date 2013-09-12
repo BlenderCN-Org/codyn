@@ -503,7 +503,7 @@ create_column (CdnInputFile  *input,
 	CdnVariable *v;
 	gchar *name;
 
-	if (g_strcmp0 (colname, "t") == 0)
+	if (input->priv->temporal && g_strcmp0 (colname, "t") == 0)
 	{
 		name = g_strdup ("time");
 	}
@@ -740,8 +740,7 @@ extract_columns (CdnInputFile  *input,
 
 		c = g_utf8_get_char (line);
 
-		if (input->priv->temporal &&
-		    !(g_unichar_isdigit (c) || c == '.'))
+		if (!(g_unichar_isdigit (c) || c == '.'))
 		{
 			ret = create_columns (input, line, error);
 			input->priv->num_columns = input->priv->created_columns->len;
