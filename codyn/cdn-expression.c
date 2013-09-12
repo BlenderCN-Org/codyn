@@ -2379,15 +2379,19 @@ parse_function (CdnExpression *expression,
 
 			if (fid == CDN_MATH_FUNCTION_TYPE_LINSOLVE)
 			{
-				// For linsolve, we swap the arguments A and B
-				// because that's the way the linsolve math
+				// For linsolve and sltdl, we swap the arguments
+				// A and B because that's the way the linsolve math
 				// function wants the arguments, but it's less
 				// intuitive to have the user specify them
 				// in that order
 				swap_arguments (expression, context);
 			}
 			else if (fid == CDN_MATH_FUNCTION_TYPE_INDEX ||
-			         fid == CDN_MATH_FUNCTION_TYPE_SLINSOLVE)
+			         fid == CDN_MATH_FUNCTION_TYPE_SLINSOLVE ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_DINV ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_DINV_LINVT ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_LINVT ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_LINV)
 			{
 				// For index, we move the first argument to
 				// the last (i.e. the thing to index)
