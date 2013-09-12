@@ -503,7 +503,7 @@ create_column (CdnInputFile  *input,
 	CdnVariable *v;
 	gchar *name;
 
-	if (g_strcmp0 (colname, "t") == 0)
+	if (input->priv->temporal && g_strcmp0 (colname, "t") == 0)
 	{
 		name = g_strdup ("time");
 	}
