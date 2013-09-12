@@ -740,8 +740,7 @@ extract_columns (CdnInputFile  *input,
 
 		c = g_utf8_get_char (line);
 
-		if (input->priv->temporal &&
-		    !(g_unichar_isdigit (c) || c == '.'))
+		if (!(g_unichar_isdigit (c) || c == '.'))
 		{
 			ret = create_columns (input, line, error);
 			input->priv->num_columns = input->priv->created_columns->len;
