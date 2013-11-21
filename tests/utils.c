@@ -310,28 +310,27 @@ integrate_annotated (CdnNetwork  *network,
 {
 	gchar *a;
 	gchar **parts;
-	gdouble from, step, to;
+	gdouble from = 0, step = 0, to = 0;
 	GSList *ret = NULL;
 	GSList *variables;
 
 	a = cdn_annotatable_get_annotation (CDN_ANNOTATABLE (network));
 	*monitored = FALSE;
 
-	if (!a || !*a)
+	if (a && *a)
 	{
-		g_free (a);
-		return NULL;
+		*monitored = TRUE;
+
+		parts = g_strsplit (a, ":", 3);
+
+		from = g_ascii_strtod (parts[0], NULL);
+		step = g_ascii_strtod (parts[1], NULL);
+		to = g_ascii_strtod (parts[2], NULL);
+
+		g_strfreev (parts);
 	}
 
-	*monitored = TRUE;
-
-	parts = g_strsplit (a, ":", 3);
-
-	from = g_ascii_strtod (parts[0], NULL);
-	step = g_ascii_strtod (parts[1], NULL);
-	to = g_ascii_strtod (parts[2], NULL);
-
-	g_strfreev (parts);
+	g_free (a);
 
 	variables = cdn_node_find_variables (CDN_NODE (network),
 	                                     "recurse(children) | variables");
@@ -343,7 +342,7 @@ integrate_annotated (CdnNetwork  *network,
 
 		va = cdn_annotatable_get_annotation (CDN_ANNOTATABLE (v));
 
-		if (va && g_utf8_strchr (va, -1, '\n') != NULL)
+		if (*monitored && va && g_utf8_strchr (va, -1, '\n') != NULL)
 		{
 			ret = g_slist_prepend (ret, cdn_monitor_new (network, v));
 		}
@@ -363,7 +362,6 @@ integrate_annotated (CdnNetwork  *network,
 	}
 
 	*nonmon = g_slist_reverse (*nonmon);
-
 	return ret;
 }
 
