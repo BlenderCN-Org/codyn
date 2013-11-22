@@ -1774,7 +1774,6 @@ op_sltdl_dinvlinvt (CdnStack           *stack,
 
 static void
 sltdl_dinv_impl (gdouble *ptrLTDL,
-                 gdouble *ptrL,
                  gdouble *ptrB,
                  gint     n)
 {
@@ -1793,6 +1792,9 @@ sltdl_dinv_impl (gdouble *ptrLTDL,
 	}
 }
 
+/* sltdl_dinv computes b = D⁻¹ L⁻ᵀ b, given L and D as computed in LᵀDL by
+   sltdl (i.e. L being the lower unit triangular matrix and D the diagonal).
+ */
 static void
 op_sltdl_dinv (CdnStack           *stack,
                CdnStackArgs const *argdim,
@@ -1800,32 +1802,28 @@ op_sltdl_dinv (CdnStack           *stack,
 {
 	gdouble *ptrLTDL;
 	gdouble *ptrB;
-	gdouble *ptrL;
 	gint numltdl;
-	gint numl;
 	gint numb;
 	gint k;
 	gint n;
 
 	numltdl = cdn_stack_arg_size (&argdim->args[0]);
-	numl = cdn_stack_arg_size (&argdim->args[1]);
-	numb = cdn_stack_arg_size (&argdim->args[2]);
+	numb = cdn_stack_arg_size (&argdim->args[1]);
 
 	ptrLTDL = cdn_stack_output_ptr (stack) - numltdl;
-	ptrL = ptrLTDL - numl;
-	ptrB = ptrL - numb;
+	ptrB = ptrLTDL - numb;
 
 	n = argdim->args[0].rows;
 
-	// Then b = D^-1 L^-T b in place
-	for (k = 0; k < argdim->args[2].columns; ++k)
+	// computes b = D^-1 b in place
+	for (k = 0; k < argdim->args[1].columns; ++k)
 	{
-		sltdl_dinv_impl (ptrLTDL, ptrL, ptrB, n);
+		sltdl_dinv_impl (ptrLTDL, ptrB, n);
 		ptrB += n;
 	}
 
-	// Finally pop lambda and LTDL
-	cdn_stack_popn (stack, numltdl + numl);
+	// Finally pop LTDL
+	cdn_stack_popn (stack, numltdl);
 }
 
 
@@ -2331,7 +2329,7 @@ static FunctionEntry function_entries[] = {
 #endif
 	{"slinsolve", op_slinsolve, 3, FALSE},
 	{"sltdl", op_sltdl, 2, FALSE},
-	{"sltdldinv", op_sltdl_dinv, 3, FALSE},
+	{"sltdldinv", op_sltdl_dinv, 2, FALSE},
 	{"sltdldinvlinvt", op_sltdl_dinvlinvt, 3, FALSE},
 	{"sltdllinvt", op_sltdl_linvt, 3, FALSE},
 	{"sltdllinv", op_sltdl_linv, 3, FALSE},
@@ -3710,8 +3708,33 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			*extra_space = qr_work_space (&inargs->args[0].dimension);
 		break;
 #endif
-		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
 		case CDN_MATH_FUNCTION_TYPE_SLTDL_DINV:
+			// arguments order, B, LTDL
+			if (inargs->args[0].rows != inargs->args[0].columns)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Cannot compute sltdldinv of a system which is not square (%d, %d)",
+				             inargs->args[0].rows, inargs->args[0].columns);
+
+				return FALSE;
+			}
+
+			if (inargs->args[0].rows != inargs->args[1].rows)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Invalid dimensions of B in sltdldinv, expected `%d' rows but got `%d' rows",
+				             inargs->args[0].rows, inargs->args[1].rows);
+
+				return FALSE;
+			}
+
+			cdn_stack_arg_copy (outarg, inargs->args + 1);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
 		case CDN_MATH_FUNCTION_TYPE_SLTDL_DINV_LINVT:
 		case CDN_MATH_FUNCTION_TYPE_SLTDL_LINVT:
 		case CDN_MATH_FUNCTION_TYPE_SLTDL_LINV:
