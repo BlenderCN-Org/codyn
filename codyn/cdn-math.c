@@ -1714,7 +1714,7 @@ sltdl_dinvlinvt_impl (gdouble *ptrLTDL,
 
 	diag = n * n - 1;
 
-	// First solve for b = D^-1 L^-T b
+	// Solve for b = D⁻¹ L⁻ᵀ b
 	// see Sparse Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
@@ -1731,12 +1731,15 @@ sltdl_dinvlinvt_impl (gdouble *ptrLTDL,
 			j = (gint)ptrL[j];
 		}
 
-		// Apply D-1 from the diagonal elements if ptrA
+		// Apply D⁻¹ from the diagonal elements in ptrLTDL
 		ptrB[i] /= ptrLTDL[diag];
 		diag -= n + 1;
 	}
 }
 
+/* sltdl_dinvlinvt computes x = D⁻¹ L⁻ᵀ b, given LᵀDL as computed by sltdl
+ * (i.e. L being the lower unit triangular matrix and D the diagonal).
+ */
 static void
 op_sltdl_dinvlinvt (CdnStack           *stack,
                     CdnStackArgs const *argdim,
@@ -1792,8 +1795,8 @@ sltdl_dinv_impl (gdouble *ptrLTDL,
 	}
 }
 
-/* sltdl_dinv computes b = D⁻¹ L⁻ᵀ b, given L and D as computed in LᵀDL by
-   sltdl (i.e. L being the lower unit triangular matrix and D the diagonal).
+/* sltdl_dinv computes x = D⁻¹ b, given LᵀDL as computed by sltdl (i.e. D
+ * being the diagonal elements of LTDL)
  */
 static void
 op_sltdl_dinv (CdnStack           *stack,
