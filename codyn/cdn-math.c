@@ -1715,7 +1715,7 @@ sltdl_dinvlinvt_impl (gdouble *ptrLTDL,
 	diag = n * n - 1;
 
 	// First solve for b = D^-1 L^-T b
-	// see Sparce Factorization Algorithms, page 115
+	// see Sparse Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
 		gint j;
@@ -1784,7 +1784,7 @@ sltdl_dinv_impl (gdouble *ptrLTDL,
 	diag = n * n - 1;
 
 	// First solve for b = D^-1 b
-	// see Sparce Factorization Algorithms, page 115
+	// see Sparse Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
 		// Apply D-1 from the diagonal elements if ptrA
@@ -1838,7 +1838,7 @@ sltdl_linv_impl (gdouble *ptrLTDL,
 	gint i;
 
 	// Then finally solve for L^-1 b
-	// see Sparce Factorization Algorithms, page 115
+	// see Sparse Factorization Algorithms, page 115
 	for (i = 0; i < n; ++i)
 	{
 		gint j;
@@ -1900,7 +1900,7 @@ sltdl_linvt_impl (gdouble *ptrLTDL,
 	gint i;
 
 	// Then finally solve for L^-T b
-	// see Sparce Factorization Algorithms, page 115
+	// see Sparse Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
 		gint j;
