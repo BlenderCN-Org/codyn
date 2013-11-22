@@ -1912,8 +1912,8 @@ sltdl_linvt_impl (gdouble *ptrLTDL,
 		{
 			gint ij = i + j * n;
 
-			// x_i = x_i - L_{ij} x_j
-			ptrB[j] -= ptrLTDL[ij] * ptrB[j];
+			// x_i = x_i - L_{ij} x_i
+			ptrB[j] -= ptrLTDL[ij] * ptrB[i];
 			j = (gint)ptrL[j];
 		}
 	}
