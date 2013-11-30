@@ -105,7 +105,7 @@ void cdn_parser_lex_destroy (gpointer scanner);
 void cdn_parser_lex_init_extra (gpointer context, gpointer *scanner);
 void cdn_parser_tokens_push_input (gpointer scanner);
 
-int cdn_parser_parse (gpointer context);
+int cdn_parser_parse (CdnParserContext *context);
 
 static void expansion_context_pop (CdnParserContext *context);
 
