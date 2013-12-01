@@ -85,11 +85,11 @@ G_DEFINE_TYPE_WITH_CODE (CdnEdge,
 static gboolean
 cdn_layoutable_supports_location_impl (CdnLayoutable *layoutable)
 {
-	CdnEdge *link;
+	CdnEdge *edge;
 
-	link = CDN_EDGE (layoutable);
+	edge = CDN_EDGE (layoutable);
 
-	return (link->priv->input == NULL || link->priv->output == NULL);
+	return (edge->priv->input == NULL || edge->priv->output == NULL);
 }
 
 static GHashTable *
@@ -162,15 +162,15 @@ cdn_edge_get_property (GObject     *object,
                        GValue      *value,
                        GParamSpec  *pspec)
 {
-	CdnEdge *link = CDN_EDGE (object);
+	CdnEdge *edge = CDN_EDGE (object);
 
 	switch (prop_id)
 	{
 		case PROP_OUTPUT:
-			g_value_set_object (value, link->priv->output);
+			g_value_set_object (value, edge->priv->output);
 		break;
 		case PROP_INPUT:
-			g_value_set_object (value, link->priv->input);
+			g_value_set_object (value, edge->priv->input);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -179,15 +179,15 @@ cdn_edge_get_property (GObject     *object,
 }
 
 static void
-update_action_property (CdnEdge       *link,
+update_action_property (CdnEdge       *edge,
                         CdnEdgeAction *action)
 {
 	gchar const *target = cdn_edge_action_get_target (action);
 	CdnVariable *prop = NULL;
 
-	if (link->priv->output)
+	if (edge->priv->output)
 	{
-		prop = cdn_object_get_variable (CDN_OBJECT (link->priv->output),
+		prop = cdn_object_get_variable (CDN_OBJECT (edge->priv->output),
 		                                target);
 	}
 
@@ -196,102 +196,102 @@ update_action_property (CdnEdge       *link,
 
 
 static void
-resolve_edge_actions (CdnEdge *link)
+resolve_edge_actions (CdnEdge *edge)
 {
 	GSList *item;
-	GSList *copy = g_slist_copy (link->priv->actions);
+	GSList *copy = g_slist_copy (edge->priv->actions);
 
 	for (item = copy; item; item = g_slist_next (item))
 	{
-		update_action_property (link, item->data);
+		update_action_property (edge, item->data);
 	}
 
 	g_slist_free (copy);
 
-	cdn_object_taint (CDN_OBJECT (link));
+	cdn_object_taint (CDN_OBJECT (edge));
 }
 
 static void
-on_variable_added_removed (CdnEdge *link)
+on_variable_added_removed (CdnEdge *edge)
 {
-	resolve_edge_actions (link);
+	resolve_edge_actions (edge);
 }
 
 static void
-set_output (CdnEdge  *link,
+set_output (CdnEdge  *edge,
         CdnNode *target)
 {
-	if (link->priv->output)
+	if (edge->priv->output)
 	{
-		if (link->priv->input != link->priv->output)
+		if (edge->priv->input != edge->priv->output)
 		{
-			_cdn_node_unlink (link->priv->output, link);
+			_cdn_node_unlink (edge->priv->output, edge);
 		}
 
-		g_signal_handler_disconnect (link->priv->output,
-		                             link->priv->ext_signals[EXT_PROPERTY_ADDED]);
+		g_signal_handler_disconnect (edge->priv->output,
+		                             edge->priv->ext_signals[EXT_PROPERTY_ADDED]);
 
-		g_signal_handler_disconnect (link->priv->output,
-		                             link->priv->ext_signals[EXT_PROPERTY_REMOVED]);
+		g_signal_handler_disconnect (edge->priv->output,
+		                             edge->priv->ext_signals[EXT_PROPERTY_REMOVED]);
 
-		g_object_unref (link->priv->output);
+		g_object_unref (edge->priv->output);
 
-		link->priv->output = NULL;
+		edge->priv->output = NULL;
 	}
 
 	if (target)
 	{
-		link->priv->output = g_object_ref (target);
+		edge->priv->output = g_object_ref (target);
 
-		if (link->priv->input != link->priv->output)
+		if (edge->priv->input != edge->priv->output)
 		{
-			_cdn_node_link (target, link);
+			_cdn_node_link (target, edge);
 		}
 
-		link->priv->ext_signals[EXT_PROPERTY_ADDED] =
-			g_signal_connect_swapped (link->priv->output,
+		edge->priv->ext_signals[EXT_PROPERTY_ADDED] =
+			g_signal_connect_swapped (edge->priv->output,
 			                          "variable-added",
 			                          G_CALLBACK (on_variable_added_removed),
-			                          link);
+			                          edge);
 
-		link->priv->ext_signals[EXT_PROPERTY_REMOVED] =
-			g_signal_connect_swapped (link->priv->output,
+		edge->priv->ext_signals[EXT_PROPERTY_REMOVED] =
+			g_signal_connect_swapped (edge->priv->output,
 			                          "variable-removed",
 			                          G_CALLBACK (on_variable_added_removed),
-			                          link);
+			                          edge);
 	}
 
-	resolve_edge_actions (link);
+	resolve_edge_actions (edge);
 
-	cdn_object_taint (CDN_OBJECT (link));
+	cdn_object_taint (CDN_OBJECT (edge));
 }
 
 static void
-set_input (CdnEdge  *link,
+set_input (CdnEdge  *edge,
           CdnNode *target)
 {
-	if (link->priv->input)
+	if (edge->priv->input)
 	{
-		if (link->priv->input != link->priv->output)
+		if (edge->priv->input != edge->priv->output)
 		{
-			_cdn_node_unlink (link->priv->input, link);
+			_cdn_node_unlink (edge->priv->input, edge);
 		}
 
-		g_object_unref (link->priv->input);
-		link->priv->input = NULL;
+		g_object_unref (edge->priv->input);
+		edge->priv->input = NULL;
 	}
 
 	if (target)
 	{
-		link->priv->input = g_object_ref (target);
+		edge->priv->input = g_object_ref (target);
 
-		if (link->priv->input != link->priv->output)
+		if (edge->priv->input != edge->priv->output)
 		{
-			_cdn_node_link (target, link);
+			_cdn_node_link (target, edge);
 		}
 	}
 
-	cdn_object_taint (CDN_OBJECT (link));
+	cdn_object_taint (CDN_OBJECT (edge));
 }
 
 static void
@@ -300,18 +300,18 @@ cdn_edge_set_property (GObject       *object,
                        GValue const  *value,
                        GParamSpec    *pspec)
 {
-	CdnEdge *link = CDN_EDGE (object);
+	CdnEdge *edge = CDN_EDGE (object);
 
 	switch (prop_id)
 	{
 		case PROP_OUTPUT:
 		{
-			set_output (link, g_value_get_object (value));
+			set_output (edge, g_value_get_object (value));
 		}
 		break;
 		case PROP_INPUT:
 		{
-			set_input (link, g_value_get_object (value));
+			set_input (edge, g_value_get_object (value));
 		}
 		break;
 		default:
@@ -321,12 +321,12 @@ cdn_edge_set_property (GObject       *object,
 }
 
 static void
-check_modified_for_template (CdnEdge       *link,
+check_modified_for_template (CdnEdge       *edge,
                              CdnEdgeAction *action)
 {
 	CdnEdge *templ;
 
-	templ = cdn_edge_get_action_template (link,
+	templ = cdn_edge_get_action_template (edge,
 	                                      action,
 	                                      TRUE);
 
@@ -339,9 +339,9 @@ check_modified_for_template (CdnEdge       *link,
 static void
 on_template_action_equation_changed (CdnEdgeAction *action,
                                      GParamSpec    *spec,
-                                     CdnEdge       *link)
+                                     CdnEdge       *edge)
 {
-	CdnEdgeAction *orig = cdn_edge_get_action (link,
+	CdnEdgeAction *orig = cdn_edge_get_action (edge,
 	                                           cdn_edge_action_get_target (action));
 
 	if (!orig)
@@ -354,7 +354,7 @@ on_template_action_equation_changed (CdnEdgeAction *action,
 		return;
 	}
 
-	CdnEdge *templ = cdn_edge_get_action_template (link, orig, FALSE);
+	CdnEdge *templ = cdn_edge_get_action_template (edge, orig, FALSE);
 
 	if (templ == NULL)
 	{
@@ -378,33 +378,33 @@ on_template_action_equation_changed (CdnEdgeAction *action,
 static void
 on_action_target_changed (CdnEdgeAction *action,
                           GParamSpec    *spec,
-                          CdnEdge       *link)
+                          CdnEdge       *edge)
 {
-	update_action_property (link, action);
+	update_action_property (edge, action);
 
-	cdn_object_taint (CDN_OBJECT (link));
+	cdn_object_taint (CDN_OBJECT (edge));
 }
 
 static void
 on_action_equation_changed (CdnEdgeAction *action,
                             GParamSpec    *spec,
-                            CdnEdge       *link)
+                            CdnEdge       *edge)
 {
-	check_modified_for_template (link, action);
+	check_modified_for_template (edge, action);
 
-	cdn_object_taint (CDN_OBJECT (link));
+	cdn_object_taint (CDN_OBJECT (edge));
 }
 
 static void
-on_action_modified (CdnEdge       *link,
+on_action_modified (CdnEdge       *edge,
                     GParamSpec    *spec,
                     CdnEdgeAction *action)
 {
-	check_modified_for_template (link, action);
+	check_modified_for_template (edge, action);
 }
 
 static void
-remove_action (CdnEdge       *link,
+remove_action (CdnEdge       *edge,
                CdnEdgeAction *action)
 {
 	_cdn_edge_action_set_target_variable (action, NULL);
@@ -412,43 +412,43 @@ remove_action (CdnEdge       *link,
 
 	g_signal_handlers_disconnect_by_func (action,
 	                                      on_action_target_changed,
-	                                      link);
+	                                      edge);
 
 	g_signal_handlers_disconnect_by_func (action,
 	                                      on_action_equation_changed,
-	                                      link);
+	                                      edge);
 
 	g_signal_handlers_disconnect_by_func (action,
 	                                      on_action_modified,
-	                                      link);
+	                                      edge);
 }
 
 static void
-disconnect_template_action (CdnEdge       *link,
+disconnect_template_action (CdnEdge       *edge,
                             CdnEdge       *templ,
                             CdnEdgeAction *action)
 {
 	g_signal_handlers_disconnect_by_func (action,
 	                                      on_template_action_equation_changed,
-	                                      link);
+	                                      edge);
 }
 
 static void
 on_template_action_added (CdnEdge       *templ,
                           CdnEdgeAction *action,
-                          CdnEdge       *link)
+                          CdnEdge       *edge)
 {
 	CdnEdgeAction *orig =
-		cdn_edge_get_action (link,
+		cdn_edge_get_action (edge,
 		                     cdn_edge_action_get_target (action));
 
 	if (orig == NULL ||
-	    cdn_edge_get_action_template (link, orig, TRUE))
+	    cdn_edge_get_action_template (edge, orig, TRUE))
 	{
-		if (cdn_edge_add_action (link,
+		if (cdn_edge_add_action (edge,
 		                         cdn_edge_action_copy (action)))
 		{
-			orig = cdn_edge_get_action (link,
+			orig = cdn_edge_get_action (edge,
 			                            cdn_edge_action_get_target (action));
 
 			if (orig)
@@ -465,35 +465,35 @@ on_template_action_added (CdnEdge       *templ,
 	g_signal_connect (action,
 	                  "notify::equation",
 	                  G_CALLBACK (on_template_action_equation_changed),
-	                  link);
+	                  edge);
 }
 
 static void
 on_template_action_removed (CdnEdge       *templ,
                             CdnEdgeAction *action,
-                            CdnEdge       *link)
+                            CdnEdge       *edge)
 {
 	CdnEdgeAction *orig =
-		cdn_edge_get_action (link,
+		cdn_edge_get_action (edge,
 		                     cdn_edge_action_get_target (action));
 
 	if (orig && !cdn_modifiable_get_modified (CDN_MODIFIABLE (orig)) &&
-	    cdn_edge_get_action_template (link, orig, TRUE) == templ)
+	    cdn_edge_get_action_template (edge, orig, TRUE) == templ)
 	{
 		/* Remove the original property as well */
-		cdn_edge_remove_action (link, orig);
+		cdn_edge_remove_action (edge, orig);
 	}
 
-	disconnect_template_action (link, templ, action);
+	disconnect_template_action (edge, templ, action);
 }
 
 static CdnEdge *
-find_template_for_attachments (CdnEdge *link)
+find_template_for_attachments (CdnEdge *edge)
 {
 	GSList const *templates;
 	CdnEdge *ret = NULL;
 
-	templates = cdn_object_get_applied_templates (CDN_OBJECT (link));
+	templates = cdn_object_get_applied_templates (CDN_OBJECT (edge));
 
 	/* Find the last template that has both output and input set */
 	while (templates)
@@ -515,7 +515,7 @@ find_template_for_attachments (CdnEdge *link)
 }
 
 static CdnNode *
-find_in_parent (CdnEdge  *link,
+find_in_parent (CdnEdge  *edge,
                 CdnNode *obj)
 {
 	if (obj == NULL)
@@ -525,7 +525,7 @@ find_in_parent (CdnEdge  *link,
 
 	CdnNode *parent;
 
-	parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (link)));
+	parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (edge)));
 
 	if (parent)
 	{
@@ -550,9 +550,9 @@ find_in_parent (CdnEdge  *link,
 }
 
 static void
-attach_from_template (CdnEdge *link)
+attach_from_template (CdnEdge *edge)
 {
-	CdnEdge *ret = find_template_for_attachments (link);
+	CdnEdge *ret = find_template_for_attachments (edge);
 	CdnNode *input;
 	CdnNode *output;
 
@@ -561,8 +561,8 @@ attach_from_template (CdnEdge *link)
 		return;
 	}
 
-	input = find_in_parent (link, ret->priv->input);
-	output = find_in_parent (link, ret->priv->output);
+	input = find_in_parent (edge, ret->priv->input);
+	output = find_in_parent (edge, ret->priv->output);
 
 	if (input == NULL || output == NULL)
 	{
@@ -570,56 +570,56 @@ attach_from_template (CdnEdge *link)
 	}
 
 	/* Find the corresponding child in the parent */
-	cdn_edge_attach (link, input, output);
+	cdn_edge_attach (edge, input, output);
 }
 
 static void
-on_template_to_changed (CdnEdge    *link,
+on_template_to_changed (CdnEdge    *edge,
                         GParamSpec *spec,
                         CdnEdge    *templ)
 {
-	attach_from_template (link);
+	attach_from_template (edge);
 }
 
 static void
-on_template_from_changed (CdnEdge    *link,
+on_template_from_changed (CdnEdge    *edge,
                           GParamSpec *spec,
                           CdnEdge    *templ)
 {
-	attach_from_template (link);
+	attach_from_template (edge);
 }
 
 static void
-disconnect_template (CdnEdge   *link,
+disconnect_template (CdnEdge   *edge,
                      CdnObject *templ,
                      gboolean   disconnect_actions)
 {
 	if (disconnect_actions && CDN_IS_EDGE (templ))
 	{
-		CdnEdge *templ_link = CDN_EDGE (templ);
+		CdnEdge *templ_edge = CDN_EDGE (templ);
 		GSList *item;
 
-		for (item = templ_link->priv->actions; item; item = g_slist_next (item))
+		for (item = templ_edge->priv->actions; item; item = g_slist_next (item))
 		{
-			disconnect_template_action (link, templ_link, item->data);
+			disconnect_template_action (edge, templ_edge, item->data);
 		}
 	}
 
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_action_added,
-	                                      link);
+	                                      edge);
 
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_action_removed,
-	                                      link);
+	                                      edge);
 
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_to_changed,
-	                                      link);
+	                                      edge);
 
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_from_changed,
-	                                      link);
+	                                      edge);
 }
 
 static void
@@ -637,41 +637,41 @@ on_parent_child_removed (CdnNode  *parent,
 static void
 cdn_edge_dispose (GObject *object)
 {
-	CdnEdge *link = CDN_EDGE (object);
+	CdnEdge *edge = CDN_EDGE (object);
 
-	set_output (link, NULL);
-	set_input (link, NULL);
+	set_output (edge, NULL);
+	set_input (edge, NULL);
 
 	GSList *item;
 
-	for (item = link->priv->actions; item; item = g_slist_next (item))
+	for (item = edge->priv->actions; item; item = g_slist_next (item))
 	{
-		remove_action (link, item->data);
+		remove_action (edge, item->data);
 		g_object_unref (item->data);
 	}
 
-	g_slist_free (link->priv->actions);
-	link->priv->actions = NULL;
+	g_slist_free (edge->priv->actions);
+	edge->priv->actions = NULL;
 
 	GSList const *templates = cdn_object_get_applied_templates (CDN_OBJECT (object));
 
 	while (templates)
 	{
-		disconnect_template (link, templates->data, TRUE);
+		disconnect_template (edge, templates->data, TRUE);
 
 		templates = g_slist_next (templates);
 	}
 
-	if (link->priv->prev_parent != NULL)
+	if (edge->priv->prev_parent != NULL)
 	{
-		g_object_remove_weak_pointer (G_OBJECT (link->priv->prev_parent),
-		                              (gpointer *)&(link->priv->prev_parent));
+		g_object_remove_weak_pointer (G_OBJECT (edge->priv->prev_parent),
+		                              (gpointer *)&(edge->priv->prev_parent));
 
-		g_signal_handlers_disconnect_by_func (link->priv->prev_parent,
+		g_signal_handlers_disconnect_by_func (edge->priv->prev_parent,
 		                                      on_parent_child_removed,
-		                                      link);
+		                                      edge);
 
-		link->priv->prev_parent = NULL;
+		edge->priv->prev_parent = NULL;
 	}
 
 	G_OBJECT_CLASS (cdn_edge_parent_class)->dispose (object);
@@ -722,7 +722,7 @@ cdn_edge_copy_impl (CdnObject *object,
 		CDN_OBJECT_CLASS (cdn_edge_parent_class)->copy (object, source);
 	}
 
-	/* Copy over link actions */
+	/* Copy over edge actions */
 	copy_edge_actions (CDN_EDGE (object), CDN_EDGE (source));
 
 	// Copy phases
@@ -759,9 +759,9 @@ static CdnCompileContext *
 cdn_edge_get_compile_context_impl (CdnObject         *object,
                                    CdnCompileContext *context)
 {
-	CdnEdge *link;
+	CdnEdge *edge;
 
-	link = CDN_EDGE (object);
+	edge = CDN_EDGE (object);
 
 	/* Note: we repeat this logic here input cdn-object because we need
 	   output prepend the 'input' object before the real object... */
@@ -779,9 +779,9 @@ cdn_edge_get_compile_context_impl (CdnObject         *object,
 	}
 
 	cdn_compile_context_prepend_object (context,
-	                                    CDN_OBJECT (link->priv->input));
+	                                    CDN_OBJECT (edge->priv->input));
 
-	prepend_functions (link->priv->input, context);
+	prepend_functions (edge->priv->input, context);
 
 	CDN_OBJECT_CLASS (cdn_edge_parent_class)->get_compile_context (object, context);
 
@@ -793,7 +793,7 @@ cdn_edge_compile_impl (CdnObject         *object,
                        CdnCompileContext *context,
                        CdnCompileError   *error)
 {
-	CdnEdge *link = CDN_EDGE (object);
+	CdnEdge *edge = CDN_EDGE (object);
 
 	if (cdn_object_is_compiled (object))
 	{
@@ -820,7 +820,7 @@ cdn_edge_compile_impl (CdnObject         *object,
 	}
 
 	/* Compile all actions */
-	GSList const *actions = cdn_edge_get_actions (link);
+	GSList const *actions = cdn_edge_get_actions (edge);
 	gboolean ret = TRUE;
 
 	while (actions)
@@ -849,37 +849,37 @@ cdn_edge_equal_impl (CdnObject *first,
 		return FALSE;
 	}
 
-	CdnEdge *link1 = CDN_EDGE (first);
-	CdnEdge *link2 = CDN_EDGE (second);
+	CdnEdge *edge1 = CDN_EDGE (first);
+	CdnEdge *edge2 = CDN_EDGE (second);
 
-	if ((link1->priv->input == NULL && link2->priv->input != NULL) ||
-	    (link2->priv->input == NULL && link1->priv->input != NULL) ||
-	    (link1->priv->output == NULL && link2->priv->output != NULL) ||
-	    (link2->priv->output == NULL && link1->priv->output != NULL))
+	if ((edge1->priv->input == NULL && edge2->priv->input != NULL) ||
+	    (edge2->priv->input == NULL && edge1->priv->input != NULL) ||
+	    (edge1->priv->output == NULL && edge2->priv->output != NULL) ||
+	    (edge2->priv->output == NULL && edge1->priv->output != NULL))
 	{
 		return FALSE;
 	}
 
-	if (link1->priv->input &&
-	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (link1->priv->input)),
-	               cdn_object_get_id (CDN_OBJECT (link2->priv->input))) != 0)
+	if (edge1->priv->input &&
+	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (edge1->priv->input)),
+	               cdn_object_get_id (CDN_OBJECT (edge2->priv->input))) != 0)
 	{
 		return FALSE;
 	}
 
-	if (link1->priv->output &&
-	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (link1->priv->output)),
-	               cdn_object_get_id (CDN_OBJECT (link2->priv->output))) != 0)
+	if (edge1->priv->output &&
+	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (edge1->priv->output)),
+	               cdn_object_get_id (CDN_OBJECT (edge2->priv->output))) != 0)
 	{
 		return FALSE;
 	}
 
-	if (g_slist_length (link1->priv->actions) != g_slist_length (link2->priv->actions))
+	if (g_slist_length (edge1->priv->actions) != g_slist_length (edge2->priv->actions))
 	{
 		return FALSE;
 	}
 
-	GSList const *actions1 = cdn_edge_get_actions (link1);
+	GSList const *actions1 = cdn_edge_get_actions (edge1);
 
 	while (actions1)
 	{
@@ -888,7 +888,7 @@ cdn_edge_equal_impl (CdnObject *first,
 
 		index = cdn_edge_action_get_index (ac1);
 
-		CdnEdgeAction *ac2 = cdn_edge_get_action_with_index (link2,
+		CdnEdgeAction *ac2 = cdn_edge_get_action_with_index (edge2,
 		                                                     cdn_edge_action_get_target (ac1),
 		                                                     index);
 
@@ -911,17 +911,17 @@ cdn_edge_unapply_template_impl (CdnObject  *object,
 	if (CDN_IS_EDGE (templ))
 	{
 		GSList *item;
-		CdnEdge *templ_link = CDN_EDGE (templ);
-		CdnEdge *link = CDN_EDGE (object);
+		CdnEdge *templ_edge = CDN_EDGE (templ);
+		CdnEdge *edge = CDN_EDGE (object);
 
-		for (item = templ_link->priv->actions; item; item = g_slist_next (item))
+		for (item = templ_edge->priv->actions; item; item = g_slist_next (item))
 		{
-			on_template_action_removed (templ_link, item->data, link);
+			on_template_action_removed (templ_edge, item->data, edge);
 		}
 
-		disconnect_template (link, templ, FALSE);
+		disconnect_template (edge, templ, FALSE);
 
-		attach_from_template (link);
+		attach_from_template (edge);
 	}
 
 	/* Chain up */
@@ -929,28 +929,28 @@ cdn_edge_unapply_template_impl (CdnObject  *object,
 }
 
 static void
-connect_template (CdnEdge *link,
+connect_template (CdnEdge *edge,
                   CdnEdge *templ)
 {
 	g_signal_connect (templ,
 	                  "action-added",
 	                  G_CALLBACK (on_template_action_added),
-	                  link);
+	                  edge);
 
 	g_signal_connect (templ,
 	                  "action-removed",
 	                  G_CALLBACK (on_template_action_removed),
-	                  link);
+	                  edge);
 
 	g_signal_connect_swapped (templ,
 	                          "notify::output",
 	                          G_CALLBACK (on_template_to_changed),
-	                          link);
+	                          edge);
 
 	g_signal_connect_swapped (templ,
 	                          "notify::input",
 	                          G_CALLBACK (on_template_from_changed),
-	                          link);
+	                          edge);
 }
 
 static gboolean
@@ -966,30 +966,30 @@ cdn_edge_apply_template_impl (CdnObject  *object,
 
 	if (CDN_IS_EDGE (templ))
 	{
-		CdnEdge *templ_link = CDN_EDGE (templ);
+		CdnEdge *templ_edge = CDN_EDGE (templ);
 		GSList *item;
 
-		for (item = templ_link->priv->actions; item; item = g_slist_next (item))
+		for (item = templ_edge->priv->actions; item; item = g_slist_next (item))
 		{
-			on_template_action_added (templ_link, item->data, CDN_EDGE (object));
+			on_template_action_added (templ_edge, item->data, CDN_EDGE (object));
 		}
 
 		attach_from_template (CDN_EDGE (object));
 
 		connect_template (CDN_EDGE (object),
-		                  templ_link);
+		                  templ_edge);
 	}
 
 	return TRUE;
 }
 
 static void
-action_removed_impl (CdnEdge   *link,
+action_removed_impl (CdnEdge   *edge,
                      CdnEdgeAction *action)
 {
-	link->priv->actions = g_slist_remove (link->priv->actions, action);
+	edge->priv->actions = g_slist_remove (edge->priv->actions, action);
 
-	remove_action (link, action);
+	remove_action (edge, action);
 }
 
 static void
@@ -1019,7 +1019,7 @@ cdn_edge_class_init (CdnEdgeClass *klass)
 	 * @object: a #CdnObject
 	 * @action: the added #CdnEdgeAction
 	 *
-	 * Emitted when a link action is added output the link
+	 * Emitted when a edge action is added output the edge
 	 *
 	 **/
 	signals[ACTION_ADDED] =
@@ -1040,7 +1040,7 @@ cdn_edge_class_init (CdnEdgeClass *klass)
 	 * @object: a #CdnObject
 	 * @action: the removed #CdnEdgeAction
 	 *
-	 * Emitted when a link action is removed input the link
+	 * Emitted when a edge action is removed input the edge
 	 *
 	 **/
 	signals[ACTION_REMOVED] =
@@ -1066,7 +1066,7 @@ cdn_edge_class_init (CdnEdgeClass *klass)
 	                                 PROP_INPUT,
 	                                 g_param_spec_object ("input",
 	                                                      "INPUT",
-	                                                      "The link input object",
+	                                                      "The edge input object",
 	                                                      CDN_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
@@ -1080,7 +1080,7 @@ cdn_edge_class_init (CdnEdgeClass *klass)
 	                                 PROP_OUTPUT,
 	                                 g_param_spec_object ("output",
 	                                                      "OUTPUT",
-	                                                      "The link output object",
+	                                                      "The edge output object",
 	                                                      CDN_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
@@ -1149,10 +1149,10 @@ cdn_edge_new (gchar const *id,
 
 /**
  * cdn_edge_add_action:
- * @link: the #CdnEdge
+ * @edge: the #CdnEdge
  * @action: the #CdnEdgeAction
  *
- * Add a new action output be performed when the link is evaluated during
+ * Add a new action output be performed when the edge is evaluated during
  * simulation. Note that if an action with the same
  * target already exists, the action information is transfered output the existing
  * action instance. This means that the specified @action might not actually
@@ -1161,7 +1161,7 @@ cdn_edge_new (gchar const *id,
  * the above described case, unless you explicitly sink the floating reference.
  *
  * In the case that you can not know whether an action is overriding an
- * existing action in @link, never use @action after a call output
+ * existing action in @edge, never use @action after a call output
  * #cdn_edge_add_action. Instead, retrieve the corresponding action
  * using #cdn_edge_get_action after the call output #cdn_edge_add_action.
  *
@@ -1169,10 +1169,10 @@ cdn_edge_new (gchar const *id,
  *
  **/
 gboolean
-cdn_edge_add_action (CdnEdge       *link,
+cdn_edge_add_action (CdnEdge       *edge,
                      CdnEdgeAction *action)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), FALSE);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), FALSE);
 	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), FALSE);
 
 	gchar const *target;
@@ -1182,7 +1182,7 @@ cdn_edge_add_action (CdnEdge       *link,
 	target = cdn_edge_action_get_target (action);
 	index = cdn_edge_action_get_index (action);
 
-	orig = cdn_edge_get_action_with_index (link,
+	orig = cdn_edge_get_action_with_index (edge,
 	                                       target,
 	                                       index);
 
@@ -1211,58 +1211,58 @@ cdn_edge_add_action (CdnEdge       *link,
 		return TRUE;
 	}
 
-	link->priv->actions = g_slist_append (link->priv->actions,
+	edge->priv->actions = g_slist_append (edge->priv->actions,
 	                                      action);
 
 	g_object_ref_sink (action);
-	update_action_property (link, action);
+	update_action_property (edge, action);
 
 	g_signal_connect (action,
 	                  "notify::target",
 	                  G_CALLBACK (on_action_target_changed),
-	                  link);
+	                  edge);
 
 	g_signal_connect (action,
 	                  "notify::equation",
 	                  G_CALLBACK (on_action_equation_changed),
-	                  link);
+	                  edge);
 
 	g_signal_connect_swapped (action,
 	                          "notify::modified",
 	                          G_CALLBACK (on_action_modified),
-	                          link);
+	                          edge);
 
-	_cdn_edge_action_set_edge (action, link);
+	_cdn_edge_action_set_edge (action, edge);
 
-	cdn_object_taint (CDN_OBJECT (link));
+	cdn_object_taint (CDN_OBJECT (edge));
 
-	g_signal_emit (link, signals[ACTION_ADDED], 0, action);
+	g_signal_emit (edge, signals[ACTION_ADDED], 0, action);
 
 	return TRUE;
 }
 
 /**
  * cdn_edge_remove_action:
- * @link: the #CdnEdge
+ * @edge: the #CdnEdge
  * @action: the #CdnEdgeAction
  *
- * Removes an action input the link.
+ * Removes an action input the edge.
  *
  * Returns: %TRUE if the action was successfully removed
  *
  **/
 gboolean
-cdn_edge_remove_action (CdnEdge       *link,
+cdn_edge_remove_action (CdnEdge       *edge,
                         CdnEdgeAction *action)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), FALSE);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), FALSE);
 	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), FALSE);
 
-	GSList *item = g_slist_find (link->priv->actions, action);
+	GSList *item = g_slist_find (edge->priv->actions, action);
 
 	if (item != NULL)
 	{
-		g_signal_emit (link, signals[ACTION_REMOVED], 0, action);
+		g_signal_emit (edge, signals[ACTION_REMOVED], 0, action);
 		g_object_unref (action);
 
 		return TRUE;
@@ -1275,59 +1275,59 @@ cdn_edge_remove_action (CdnEdge       *link,
 
 /**
  * cdn_edge_get_input:
- * @link: the #CdnEdge
+ * @edge: the #CdnEdge
  *
- * Returns the input #CdnNode of the link
+ * Returns the input #CdnNode of the edge
  *
  * Returns: (transfer none): the input #CdnNode
  *
  **/
 CdnNode *
-cdn_edge_get_input (CdnEdge *link)
+cdn_edge_get_input (CdnEdge *edge)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
 
-	return link->priv->input;
+	return edge->priv->input;
 }
 
 /**
  * cdn_edge_get_output:
- * @link: the #CdnEdge
+ * @edge: the #CdnEdge
  *
- * Returns the output #CdnNode of the link
+ * Returns the output #CdnNode of the edge
  *
  * Returns: (transfer none): the output #CdnNode
  *
  **/
 CdnNode *
-cdn_edge_get_output (CdnEdge *link)
+cdn_edge_get_output (CdnEdge *edge)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
 
-	return link->priv->output;
+	return edge->priv->output;
 }
 
 /**
  * cdn_edge_get_actions:
- * @link: the #CdnEdge
+ * @edge: the #CdnEdge
  *
- * Get link actions
+ * Get edge actions
  *
  * Returns: (element-type CdnEdgeAction) (transfer none): list of #CdnEdgeAction. The list is
- *          owned by the link and should not be freed
+ *          owned by the edge and should not be freed
  *
  **/
 const GSList *
-cdn_edge_get_actions (CdnEdge *link)
+cdn_edge_get_actions (CdnEdge *edge)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
 
-	return link->priv->actions;
+	return edge->priv->actions;
 }
 
 /**
  * cdn_edge_get_action:
- * @link: A #CdnEdge
+ * @edge: A #CdnEdge
  * @target: The target property name
  *
  * Get a #CdnEdgeAction targetting the property @target.
@@ -1336,13 +1336,13 @@ cdn_edge_get_actions (CdnEdge *link)
  *
  **/
 CdnEdgeAction *
-cdn_edge_get_action (CdnEdge     *link,
+cdn_edge_get_action (CdnEdge     *edge,
                      gchar const *target)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
 	g_return_val_if_fail (target != NULL, NULL);
 
-	return cdn_edge_get_action_with_index (link,
+	return cdn_edge_get_action_with_index (edge,
 	                                       target,
 	                                       NULL);
 }
@@ -1424,7 +1424,7 @@ edge_get_action_intern (CdnEdge       *edge,
 
 /**
  * cdn_edge_get_action_with_index:
- * @link: A #CdnEdge
+ * @edge: A #CdnEdge
  * @target: The action target
  * @index: A #CdnExpression
  *
@@ -1434,15 +1434,15 @@ edge_get_action_intern (CdnEdge       *edge,
  *
  **/
 CdnEdgeAction *
-cdn_edge_get_action_with_index (CdnEdge       *link,
+cdn_edge_get_action_with_index (CdnEdge       *edge,
                                 gchar const   *target,
                                 CdnExpression *index)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
 	g_return_val_if_fail (target != NULL, NULL);
 	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
 
-	return edge_get_action_intern (link, target, index, NULL, FALSE);
+	return edge_get_action_intern (edge, target, index, NULL, FALSE);
 }
 
 /**
@@ -1472,34 +1472,34 @@ cdn_edge_get_action_with_index_and_phases (CdnEdge       *edge,
 
 /**
  * cdn_edge_attach:
- * @link: (allow-none): A #CdnEdge
+ * @edge: (allow-none): A #CdnEdge
  * @input: (allow-none): A #CdnNode
  * @output: A #CdnNode
  *
- * Attach @link output the objects @input and @output. This is equivalent output:
+ * Attach @edge output the objects @input and @output. This is equivalent to:
  * <informalexample>
  * <programlisting>
- * g_object_set (link, "input", input, "output", output);
+ * g_object_set (edge, "input", input, "output", output);
  * </programlisting>
  * </informalexample>
  *
  **/
 void
-cdn_edge_attach (CdnEdge   *link,
+cdn_edge_attach (CdnEdge *edge,
                  CdnNode *input,
                  CdnNode *output)
 {
-	g_return_if_fail (CDN_IS_EDGE (link));
+	g_return_if_fail (CDN_IS_EDGE (edge));
 	g_return_if_fail ((input == NULL) == (output == NULL));
 	g_return_if_fail (input == NULL || CDN_IS_OBJECT (input));
 	g_return_if_fail (output == NULL || CDN_IS_OBJECT (output));
 
-	g_object_set (link, "input", input, "output", output, NULL);
+	g_object_set (edge, "input", input, "output", output, NULL);
 }
 
 /**
  * cdn_edge_get_action_template:
- * @link: A #CdnEdge
+ * @edge: A #CdnEdge
  * @action: A #CdnEdgeAction
  * @match_full: How output match the action
  *
@@ -1512,14 +1512,14 @@ cdn_edge_attach (CdnEdge   *link,
  *
  **/
 CdnEdge *
-cdn_edge_get_action_template (CdnEdge       *link,
+cdn_edge_get_action_template (CdnEdge       *edge,
                               CdnEdgeAction *action,
                               gboolean       match_full)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
 	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), NULL);
 
-	GSList *templates = g_slist_copy ((GSList *)cdn_object_get_applied_templates (CDN_OBJECT (link)));
+	GSList *templates = g_slist_copy ((GSList *)cdn_object_get_applied_templates (CDN_OBJECT (edge)));
 	templates = g_slist_reverse (templates);
 	GSList *item;
 
