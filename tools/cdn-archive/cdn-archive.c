@@ -296,6 +296,7 @@ parse_network (gchar const *args[], gint argc)
 		}
 
 		tar_close (tar);
+		ret = TRUE;
 	}
 	else
 	{
