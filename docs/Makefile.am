@@ -1,8 +1,8 @@
 pages = $(shell find pages -name '*.md' | sed 's/ /\\ /g')
 cdnfiles = $(shell find cdn -name '*.cdn' | sed 's/ /\\ /g')
 
-#girfile = $(top_builddir)/codyn/Cdn-3.0.gir
-girfile = Cdn-3.0.gir
+girfile = $(top_builddir)/codyn/Cdn-3.0.gir
+#girfile = Cdn-3.0.gir
 
 tikzfigures = $(wildcard figures/*.tikz)
 pngfigures = $(patsubst %.tikz,%.png,$(tikzfigures))
@@ -24,8 +24,7 @@ serve: html/index.html
 	$(CLDOC) serve html
 
 figures/%.pdf: figures/%.tikz
-	@echo [GEN] $@; \
-	pdflatex -interaction nonstopmode -output-directory figures $< >/dev/null && \
+	$(AM_V_GEN) pdflatex -interaction nonstopmode -output-directory figures $< >/dev/null && \
 	rm -f $(patsubst %.tikz,%.log,$<) && \
 	rm -f $(patsubst %.tikz,%.aux,$<)
 
