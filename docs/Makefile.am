@@ -7,21 +7,42 @@ girfile = $(top_builddir)/codyn/Cdn-3.0.gir
 tikzfigures = $(wildcard figures/*.tikz)
 pngfigures = $(patsubst %.tikz,%.png,$(tikzfigures))
 
-all: html/index.html
+javascript = $(wildcard javascript/*.js)
+javascript_opts = $(addprefix --custom-js=,$(javascript))
+
+css = $(wildcard styles/*.css)
+css_opts = $(addprefix --custom-css=,$(css))
+
+outputloc = html
+
+all: site
+
+site: $(outputloc)/index.html site-figures site-javascript site-styles
+
+site-figures: $(pngfigures)
+	$(AM_V_GEN) mkdir -p $(outputloc)/figures;			\
+	cp -r $(pngfigures) $(outputloc)/figures/
+
+site-javascript:
+	$(AM_V_GEN) mkdir -p $(outputloc)/javascript;			\
+	cp -r $(javascript) $(outputloc)/javascript/
+
+site-styles:
+	$(AM_V_GEN) mkdir -p $(outputloc)/styles;			\
+	cp -r $(css) $(outputloc)/styles/
 
 html/index.html: $(girfile) $(pages) $(cdnfiles) $(pngfigures)
-	$(CLDOC) gir							\
+	$(AM_V_GEN) $(CLDOC) gir					\
 		--category 'API Reference'				\
 		--merge pages						\
 		--merge-filter $(srcdir)/generatecode.py		\
-		--custom-js javascript/hl.js				\
-		--custom-js javascript/app.js				\
-		--custom-css styles/hl.css				\
-		--output html						\
-		$(girfile)
+		$(javascript_opts)					\
+		$(css_opts)						\
+		--output $(outputloc)					\
+		$(girfile);
 
-serve: html/index.html
-	$(CLDOC) serve html
+serve: $(outputloc)/index.html
+	$(CLDOC) serve $(outputloc)
 
 figures/%.pdf: figures/%.tikz
 	$(AM_V_GEN) pdflatex -interaction nonstopmode -output-directory figures $< >/dev/null && \
@@ -29,12 +50,17 @@ figures/%.pdf: figures/%.tikz
 	rm -f $(patsubst %.tikz,%.aux,$<)
 
 figures/%.png: figures/%.pdf
-	@echo [GEN] $@; \
-	convert $< -background white -flatten $@ && \
+	$(AM_V_GEN) convert $< -background white -flatten $@ && \
 	rm -f $<
 
-install-data-hook: html/index.html $(pngfigures)
-	@mkdir -p $(DESTDIR)$(docdir)/html; \
-	cp -r html/index.html html/search.json html/xml $(DESTDIR)$(docdir)/html/; \
-	mkdir -p $(DESTDIR)$(docdir)/html/figures; \
-	cp $(pngfigures) $(DESTDIR)$(docdir)/html/figures/;
+install-data-hook: $(outputloc)/index.html $(pngfigures)
+	@mkdir -p $(DESTDIR)$(docdir)/$(outputloc); \
+	cp -r $(outputloc)/index.html $(outputloc)/search.json $(outputloc)/xml $(DESTDIR)$(docdir)/$(outputloc)/; \
+	mkdir -p $(DESTDIR)$(docdir)/$(outputloc)/figures; \
+	cp $(pngfigures) $(DESTDIR)$(docdir)/$(outputloc)/figures/; \
+	mkdir -p $(DESTDIR)$(docdir)/$(outputloc)/javascript; \
+	cp $(javascript) $(DESTDIR)$(docdir)/$(outputloc)/javascript/; \
+	mkdir -p $(DESTDIR)$(docdir)/$(outputloc)/styles; \
+	cp $(css) $(DESTDIR)$(docdir)/$(outputloc)/styles/;
+
+.PHONY: site site-figures site-javascript site-styles
