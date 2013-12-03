@@ -25,13 +25,10 @@ App.prototype = {
     },
 
     _load_elems: function(elems) {
-        return;
         for (var i = 0; i < elems.length; i++) {
             var e = elems[i];
-            var code = e.innerHTML;
-            e.innerHTML = '';
-
-            console.log(code);
+            var code = e.innerText;
+            e.innerText = '';
 
             var cm = CodeMirror(e, {
                 value: code,
