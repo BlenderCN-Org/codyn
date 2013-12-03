@@ -24,6 +24,30 @@ App.prototype = {
         return document.querySelectorAll('code[class="lang-cdn"]');
     },
 
+    _play_click: function(event, code) {
+        var f = document.createElement('form');
+        f.method = 'post';
+        f.action = 'http://play.codyn.net/d/';
+
+        if (event.ctrlKey)
+        {
+            f.target = "_blank";
+        }
+
+        var tt = document.createElement('textarea');
+        tt.value = code;
+        tt.name = 'document';
+
+        f.appendChild(tt);
+        f.style.display = 'none';
+
+        document.body.appendChild(f);
+        f.submit();
+
+        document.body.removeChild(f);
+        return false;
+    },
+
     _load_elems: function(elems) {
         for (var i = 0; i < elems.length; i++) {
             var e = elems[i];
@@ -35,6 +59,24 @@ App.prototype = {
                 mode: 'codyn',
                 readOnly: true
             });
+
+            var wrapper = cm.display.wrapper;
+            var p = document.createElement('div');
+            var a = document.createElement('a');
+
+            a.href = '#';
+            a.onclick = function (t) {
+                return function(event) {
+                    return t._play_click(event, code);
+                };
+            }(this, code);
+
+            p.className = 'play';
+
+            a.innerHTML = 'Open in playground';
+            p.appendChild(a);
+
+            e.appendChild(p);
         }
     },
 
