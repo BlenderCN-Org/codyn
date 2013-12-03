@@ -72,7 +72,7 @@ CodeMirror.defineMode("codyn", function() {
         return 'number';
       }
 
-      stream.eatWhile(/[\w_-]/);
+      stream.eatWhile(/[\w_-]|[^\x00-\x80]/);
       var cur = stream.current();
 
       if (keywords.propertyIsEnumerable(cur))
@@ -83,7 +83,7 @@ CodeMirror.defineMode("codyn", function() {
       {
         return 'selector';
       }
-      else if (/\w/.test(cur))
+      else if (/[\w_-]|[^\x00-\x80]/.test(cur))
       {
         return 'variable';
       }
