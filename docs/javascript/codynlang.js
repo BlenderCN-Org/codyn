@@ -56,6 +56,16 @@ CodeMirror.defineMode("codyn", function() {
         return 'comment';
       }
 
+      if (ch == '<')
+      {
+        if (stream.eatWhile(/[^>]/))
+        {
+          stream.next();
+        }
+
+        return 'attribute';
+      }
+
       if (/\d/.test(ch))
       {
         stream.eatWhile(/[\w\.]/);

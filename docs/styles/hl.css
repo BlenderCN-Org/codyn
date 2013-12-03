@@ -18,6 +18,10 @@
   color: #268BD2;
 }
 
+.cm-s-default .cm-attribute {
+  color: #CB4B16;
+}
+
 .cm-s-default .cm-error {
   text-decoration: line-through;
   color: #f00;
