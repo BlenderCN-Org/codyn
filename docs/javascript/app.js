@@ -93,7 +93,7 @@ App.prototype = {
 
 var app = new App();
 
-if (typeof(body) != 'undefined' && body.readyState == 'loaded') {
+if (document.body && document.body.readyState == 'loaded') {
     app.load();
 } else {
     window.addEventListener('load', function() {
