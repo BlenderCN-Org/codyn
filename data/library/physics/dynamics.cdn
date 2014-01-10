@@ -44,7 +44,7 @@ node | "dynamics" | if(parent . has-template(physics.cbody))
         KT = "Kᵀ"
 
         Y = "sltdllinvt(ltdl, KT, λ)"
-        YT = "(sltdldinv(ltdl, Y, λ) ∙ Y)ᵀ"
+        YT = "(sltdldinv(ltdl, Y) ∙ Y)ᵀ"
         τc = "τ - C"
         z = "sltdllinvt(ltdl, τc, λ)"
 

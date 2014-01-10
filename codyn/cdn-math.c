@@ -1754,6 +1754,7 @@ op_sltdl_dinvlinvt (CdnStack           *stack,
 	gint k;
 	gint n;
 
+	// args = [LᵀDL, λ, B]
 	numltdl = cdn_stack_arg_size (&argdim->args[0]);
 	numl = cdn_stack_arg_size (&argdim->args[1]);
 	numb = cdn_stack_arg_size (&argdim->args[2]);
@@ -1764,7 +1765,7 @@ op_sltdl_dinvlinvt (CdnStack           *stack,
 
 	n = argdim->args[0].rows;
 
-	// Then b = D^-1 L^-T b in place
+	// Then b = D⁻¹ L⁻ᵀ b in place
 	for (k = 0; k < argdim->args[2].columns; ++k)
 	{
 		sltdl_dinvlinvt_impl (ptrLTDL, ptrL, ptrB, n);
@@ -1785,11 +1786,11 @@ sltdl_dinv_impl (gdouble *ptrLTDL,
 
 	diag = n * n - 1;
 
-	// First solve for b = D^-1 b
+	// First solve for b = D⁻¹ b
 	// see Sparse Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
-		// Apply D-1 from the diagonal elements if ptrA
+		// Apply D⁻¹ from the diagonal elements if ptrA
 		ptrB[i] /= ptrLTDL[diag];
 		diag -= n + 1;
 	}
@@ -1818,7 +1819,7 @@ op_sltdl_dinv (CdnStack           *stack,
 
 	n = argdim->args[0].rows;
 
-	// computes b = D^-1 b in place
+	// computes b = D⁻¹ b in place
 	for (k = 0; k < argdim->args[1].columns; ++k)
 	{
 		sltdl_dinv_impl (ptrLTDL, ptrB, n);
@@ -1838,7 +1839,7 @@ sltdl_linv_impl (gdouble *ptrLTDL,
 {
 	gint i;
 
-	// Then finally solve for L^-1 b
+	// Then finally solve for L⁻¹ b
 	// see Sparse Factorization Algorithms, page 115
 	for (i = 0; i < n; ++i)
 	{
@@ -1881,7 +1882,7 @@ op_sltdl_linv (CdnStack           *stack,
 
 	n = argdim->args[0].rows;
 
-	// Then b = L^-1 b in place
+	// Then b = L⁻¹ b in place
 	for (k = 0; k < argdim->args[2].columns; ++k)
 	{
 		sltdl_linv_impl (ptrLTDL, ptrL, ptrB, n);
@@ -1900,7 +1901,7 @@ sltdl_linvt_impl (gdouble *ptrLTDL,
 {
 	gint i;
 
-	// Then finally solve for L^-T b
+	// Then finally solve for L⁻ᵀ b
 	// see Sparse Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
@@ -1943,7 +1944,7 @@ op_sltdl_linvt (CdnStack           *stack,
 
 	n = argdim->args[0].rows;
 
-	// Then b = L^-T b in place
+	// Then b = L⁻ᵀ b in place
 	for (k = 0; k < argdim->args[2].columns; ++k)
 	{
 		sltdl_linvt_impl(ptrLTDL, ptrL, ptrB, n);
@@ -1980,10 +1981,10 @@ op_slinsolve (CdnStack           *stack,
 	// first compute ltdl in place of A
 	sltdl_impl (ptrA, ptrL, n);
 
-	// then compute b = D^-1 L^-T b
+	// then compute b = D⁻¹ L⁻ᵀ b
 	sltdl_dinvlinvt_impl (ptrA, ptrL, ptrB, n);
 
-	// finally compute b = L^-1 b
+	// finally compute b = L⁻¹ b
 	sltdl_linv_impl (ptrA, ptrL, ptrB, n);
 
 	// Finally pop lambda and LTDL
@@ -3738,11 +3739,14 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			cdn_stack_arg_copy (outarg, inargs->args + 1);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
+			// [A x = B : λ] for x, with: B, λ, A
 		case CDN_MATH_FUNCTION_TYPE_SLTDL_DINV_LINVT:
+			// [x = D⁻¹ L⁻ᵀ B] with: B, λ, LTDL
 		case CDN_MATH_FUNCTION_TYPE_SLTDL_LINVT:
+			// [x = L⁻ᵀ B] with: B, λ, LTDL
 		case CDN_MATH_FUNCTION_TYPE_SLTDL_LINV:
-			// A x = B, λ
-			// with order of arguments: B, λ, A
+			// [x = L⁻¹ B] with: B, λ, LTDL
+
 			if (inargs->args[0].rows != inargs->args[0].columns)
 			{
 				g_set_error (error,
@@ -3787,7 +3791,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				return FALSE;
 			}
 
-			cdn_stack_arg_copy (outarg, inargs->args + 1);
+			cdn_stack_arg_copy (outarg, inargs->args + 2);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_SLTDL:
 			// A = LTDL, λ
