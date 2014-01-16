@@ -194,28 +194,32 @@ templates
             τ = "null"
 
             ## Coordinate translation from closing loop joint frame to its
-            ## successor frame/predecessor frame
-            "tr{S,P}" = "[0; 0; 0]"
+            ## predecessor frame
+            tr = "[0; 0; 0]"
 
             ## Coordinate transform from closing loop joint frame to its
-            ## successor/predecessor frame. This defaults to a 3d translation
-            ## specified in the trS/trP variable
-            "coordinateTransform{S,P}" = "Spatial.Translation(tr@1)"
+            ## predecessor frame. This defaults to a 3d translation
+            ## specified in tr
+            coordinateTransformPred = "Spatial.Translation(tr)"
 
-            "baseToLocalTransform{S,P}" = "eye(6)"
-            "localToBaseTransform{S,P}" = "Spatial.Inverse(baseToLocalTransform@1)"
+            ## Coordinate transform from closing loop joint frame to its
+            ## successor frame.
+            coordinateTransformSucc = "eye(6)"
 
-            "base{Velocity,Acceleration}{S,P}" = "zeros(6, 1)"
+            "baseToLocalTransform{Succ,Pred}" = "eye(6)"
+            "localToBaseTransform{Succ,Pred}" = "Spatial.Inverse(baseToLocalTransform@1)"
+
+            "base{Velocity,Acceleration}{Succ,Pred}" = "zeros(6, 1)"
 
             constraintForceSubspace = "constraintForceSubspaceNull"
             activeForceSubspace = "activeForceSubspaceNull"
 
             ## The active loop joint spatial force in successor frame coordinates
-            activeLoopJointForce = "Spatial.MotionToForceInverseTransform(coordinateTransformS) ∙ activeForceSubspace ∙ τ"
+            activeLoopJointForce = "Spatial.MotionToForceInverseTransform(coordinateTransformSucc) ∙ activeForceSubspace ∙ τ"
 
             ## The constraint force subspace transformed from loop joint in
             ## successor frame coordinates to base coordinates
-            baseConstraintForceSubspace = "Spatial.MotionToForceInverseTransform(baseToLocalTransformS) ∙ constraintForceSubspace"
+            baseConstraintForceSubspace = "Spatial.MotionToForceInverseTransform(baseToLocalTransformSucc) ∙ constraintForceSubspace"
 
             ## The base constraint force subspace as to be applied to motion
             ## vectors (inversed)

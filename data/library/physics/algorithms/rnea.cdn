@@ -30,18 +30,18 @@ templates
 
         edge "loopJointTransformSuccessor"
         {
-            baseToLocalTransformS <= "output.coordinateTransformS ∙ baseToLocalTransform"
+            baseToLocalTransformSucc <= "output.coordinateTransformSucc ∙ baseToLocalTransform"
 
-            baseVelocityS <= "localToBaseTransform ∙ velocity"
-            baseAccelerationS <= "localToBaseTransform ∙ acceleration"
+            baseVelocitySucc <= "localToBaseTransform ∙ velocity"
+            baseAccelerationSucc <= "localToBaseTransform ∙ acceleration"
         }
 
         edge "loopJointTransformPredecessor"
         {
-            baseToLocalTransformP <= "output.coordinateTransformP ∙ baseToLocalTransform"
+            baseToLocalTransformPred <= "output.coordinateTransformPred ∙ baseToLocalTransform"
 
-            baseVelocityP <= "localToBaseTransform ∙ velocity"
-            baseAccelerationP <= "localToBaseTransform ∙ acceleration"
+            baseVelocityPred <= "localToBaseTransform ∙ velocity"
+            baseAccelerationPred <= "localToBaseTransform ∙ acceleration"
         }
 
         node "rnea"
@@ -101,7 +101,6 @@ node edges | has-template(physics.cjoint) | if(output | has-template(physics.bod
 {
     edge "loop_joint_@@0_to_@0" from "@@@0" to "@@@0" : physics.loopJointTransformSuccessor {}
 }
-
 
 node edges | has-template(physics.cjoint) | if(input | has-template(physics.body)) | input-name | output | outputs | output-name | parent
 {
