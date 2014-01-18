@@ -38,18 +38,20 @@ node | <body>:@bodies | sort
         "@[jacobian]LocationInBase" = locationInBase in @jacobian
     }
 
+    defines
+    {
+        parents = "@bodychain[$(@body[!] + 1)]"
+        parentsrev = "{@parents||@1\,@0}"
+        parentsdofex = "{@parentsrev|@bodydofex[$(@0 + 1)]}"
+    }
+
+    "@[jacobian]Jl" = "@jacobian.J[[0;1;2;3;4;5], [{@parentsdofex||@0\,@1}]]"
+
     # Select system node
     node | first | self | parent
     {
         edge "jacobian_in_@body" from jacobian to @body
         {
-            defines
-            {
-                parents = "@bodychain[$(@body[!] + 1)]"
-                parentsrev = "{@parents||@1\,@0}"
-                parentsdofex = "{@parentsrev|@bodydofex[$(@0 + 1)]}"
-            }
-
             # Fill in jacobian columns for the kinematic subtree from this body up
             # to the base
             "J0[[0;1;2;3;4;5], [{@parentsdofex||@0\,@1}]]" <= "J[[0;1;2;3;4;5], [@1]]"
