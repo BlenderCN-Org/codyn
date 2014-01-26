@@ -240,8 +240,8 @@ templates
                          kβ² ∙ kδ"
             }
 
-            k = "-baseConstraintForceMotionSubspace ∙ (baseAccelerationS - baseAccelerationP +
-                                                       Spatial.CrossMotion(baseVelocityS) ∙ baseVelocityP) -
+            k = "-baseConstraintForceMotionSubspace ∙ (baseAccelerationSucc - baseAccelerationPred +
+                                                       Spatial.CrossMotion(baseVelocitySucc) ∙ baseVelocityPred) -
                  stabilization.k"
         }
 
