@@ -88,7 +88,7 @@ edge "K_@cbodies" from   <cjoint>:@1
         jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
     }
 
-    "K[[@jr], @i]" <= "-@cjoint.baseConstraintForceMotionSubspace ∙ baseMotionSubspace"
+    "K[[@jr], @i]" <= "@side ∙ @cjoint.baseConstraintForceMotionSubspace ∙ baseMotionSubspace"
 }
 
 edge "k_@cbodies" from   @1
