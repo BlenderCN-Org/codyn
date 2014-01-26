@@ -44,12 +44,12 @@ node | "dynamics" | if(parent . has-template(physics.cbody))
         KT = "Kᵀ"
 
         Y = "sltdllinvt(ltdl, KT, λ)"
-        YT = "(sltdldinv(ltdl, Y) ∙ Y)ᵀ"
-        τc = "τ - C"
-        z = "sltdllinvt(ltdl, τc, λ)"
 
-        A = "YT ∙ Y"
-        b = "k - YT ∙ z"
+        τc = "τ - C"
+        z = "sltdldinvlinvt(ltdl, τc, λ)"
+
+        A = "Yᵀ ∙ sltdldinv(ltdl, Y)"
+        b = "k - Yᵀ ∙ z"
 
         l = "pinv(A) ∙ b"
 
