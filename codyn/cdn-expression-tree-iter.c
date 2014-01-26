@@ -107,6 +107,14 @@ tree_iter_new (CdnExpression const *expression,
 	return g_queue_pop_head (&stack);
 }
 
+/**
+ * cdn_expression_tree_iter_new:
+ * @expression: a #CdnExpression
+ *
+ * Create a new expression tree iter from an expression.
+ *
+ * Returns: (transfer full): a new expression tree iter.
+ */
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_new (CdnExpression const *expression)
 {

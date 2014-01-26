@@ -812,12 +812,28 @@ iter_to_string (CdnExpressionTreeIter *iter,
 	return iter->cached_to_string;
 }
 
+/**
+ * cdn_expression_tree_iter_to_string:
+ * @iter: a #CdnExpressionTreeIter
+ *
+ * Get the expression as a string.
+ *
+ * Returns: (transfer none): the expression as a string.
+ */
 gchar const *
 cdn_expression_tree_iter_to_string (CdnExpressionTreeIter *iter)
 {
 	return iter_to_string (iter, NULL, NULL, NULL, FALSE);
 }
 
+/**
+ * cdn_expression_tree_iter_to_string_dbg:
+ * @iter: a #CdnExpressionTreeIter
+ *
+ * Get the expression as a string (debug).
+ *
+ * Returns: (transfer none): the expression as a string.
+ */
 gchar const *
 cdn_expression_tree_iter_to_string_dbg (CdnExpressionTreeIter *iter)
 {
