@@ -51,6 +51,7 @@ node "system" : physics.system {
     edge from "knee" to "exo4" : physics.cjoint {}
     edge from "exo4" to "exo3" : physics.cjoint {}
 
+    include "physics/closed.cdn"
 
     include "physics/algorithms/transformations.cdn"
     include "physics/dynamics.cdn"
