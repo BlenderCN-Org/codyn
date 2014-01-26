@@ -28,7 +28,7 @@ defines
 
     # The total dofs in the system
     numdof = "@{@bodydof||$(@0 + @1)}"
-    cnumdof = "@{@cbodydof||$(@0 + @1)}"
+    cnumdof = "@{@cbodydof|$(@0)||$(@0 + @1)}"
     numcons = "@{@cbodydof|$(6 - @0)||$(@0 + @1)}"
 
     # bodychain will contain for each body, a comma separated list of indices
