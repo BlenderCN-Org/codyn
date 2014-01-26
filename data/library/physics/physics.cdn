@@ -245,9 +245,7 @@ templates
                  stabilization.k"
         }
 
-        edge "cjoint"
-        {
-        }
+        edge "cjoint" {}
     }
 }
 
