@@ -124,7 +124,7 @@ cdn_function_polynomial_evaluate_impl (CdnFunction *function,
 		if ((val >= begin || item == pol->priv->pieces) && (val < end || !item->next))
 		{
 			ret += cdn_function_polynomial_piece_evaluate (piece,
-			                                               val - begin);
+			                                               (val - begin) / (end - begin));
 
 			++num;
 			found = TRUE;
