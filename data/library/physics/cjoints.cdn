@@ -17,6 +17,14 @@ templates
                 ]"
 
             activeForceSubspace = "[1; 0; 0; 0; 0; 0]"
+
+            δ(X) = "[
+                 X[0, 2];
+                -X[0, 1];
+                 X[4, 1] * X[1, 1] + X[4, 1] * X[2, 1];
+                 X[0, 5];
+                -X[0, 4]
+            ]"
         }
 
         node "revoluteY" : physics.cbody
@@ -31,6 +39,14 @@ templates
                 ]"
 
             activeForceSubspace = "[0; 1; 0; 0; 0; 0]"
+
+            δ(X) = "[
+                -X[2, 1];
+                 X[0, 1];
+                -X[5, 1];
+                 X[5, 0] * X[0, 0] - X[3, 0] * X[2, 0];
+                 X[3, 1]
+            ]"
         }
 
         node "revoluteZ" : physics.cbody
@@ -45,6 +61,14 @@ templates
                 ]"
 
             activeForceSubspace = "[0; 0; 1; 0; 0; 0]"
+
+            δ(X) = "[
+                 X[1, 2];
+                -X[0, 2];
+                 X[4, 2];
+                -X[3, 2];
+                 X[3, 0] * X[1, 0] + X[3, 1] * X[0, 0]
+            ]"
         }
 
         node "prismaticX" : physics.cbody
@@ -59,6 +83,14 @@ templates
                 ]"
 
             activeForceSubspace = "[0; 0; 0; 1; 0; 0]"
+
+            δ(X) = "[
+                 0.5 * (X[1, 2] - X[2, 1]);
+                 0.5 * (X[2, 0] - X[0, 2]);
+                 0.5 * (X[0, 1] - X[1, 0]);
+                 X[5, 0];
+                -X[4, 0]
+            ]"
         }
 
         node "prismaticY" : physics.cbody
@@ -73,6 +105,14 @@ templates
                 ]"
 
             activeForceSubspace = "[0; 0; 0; 0; 1; 0]"
+
+            δ(X) = "[
+                 0.5 * (X[1, 2] - X[2, 1]);
+                 0.5 * (X[2, 0] - X[0, 2]);
+                 0.5 * (X[0, 1] - X[1, 0]);
+                -X[5, 1];
+                 X[3, 1]
+            ]"
         }
 
         node "prismaticZ" : physics.cbody
@@ -87,6 +127,14 @@ templates
                 ]"
 
             activeForceSubspace = "[0; 0; 0; 0; 0; 1]"
+
+            δ(X) = "[
+                 0.5 * (X[1, 2] - X[2, 1]);
+                 0.5 * (X[0, 2] - X[2, 0]);
+                 0.5 * (X[0, 1] - X[1, 0]);
+                 X[4, 2];
+                -X[3, 2]
+            ]"
         }
     } }
 }
