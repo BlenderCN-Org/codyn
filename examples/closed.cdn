@@ -8,6 +8,7 @@ integrator {
 node "system" : physics.system {
     node "{torso,hip,knee,ankle,exo1,exo2,exo3}" : physics.joints.revoluteY {
         I = "Inertia.Box(m, 0.05, 0.05, 0.4)"
+        τ = "-0.01 * dq"
     }
 
     node "torso" {
