@@ -1,0 +1,12 @@
+require "findbodies.cdn"
+
+node | "@cbodies"
+     | if(  outputs
+          | has-template(physics.cjoint)
+          | output
+          | name)
+{
+    coordinateTransformSucc = "Spatial.Inverse(@@0.baseToLocalTransform * localToBaseTransformPred)" | once
+}
+
+# vi:ts=4:et

@@ -12,7 +12,7 @@ templates
 
             ## World homogeneous 4x4 transformation matrix to transfer
             ## coordinates from the body frame to the world frame.
-            worldMatrix = "Spatial.ToTransform4x4(baseToLocalTransform)"
+            worldMatrix = "Spatial.ToTransform4x4(localToBaseTransform)"
 
             ## World 3x3 rotation matrix.
             worldOrientation = "Transform.RotationPart(worldMatrix)"

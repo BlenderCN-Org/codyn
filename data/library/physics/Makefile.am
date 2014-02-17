@@ -2,6 +2,8 @@ SUBDIRS = lagrange direct algorithms
 
 librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/physics
 library_DATA = \
+	cjoints.cdn \
+	closed.cdn \
 	contacts.cdn \
 	dynamics.cdn \
 	findbodies.cdn \

@@ -1,0 +1,3 @@
+require "physics/transformations.cdn"
+
+node | has-template(physics.body) : physics.transformations {}
