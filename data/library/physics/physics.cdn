@@ -233,16 +233,15 @@ templates
                 kα = "1 / T"
                 kβ = "1 / T"
 
-                # TODO: calculate the delta
-                kδ = "0"
+                Xstab = "baseToLocalTransformSucc * localToBaseTransformPred"
+                kδ = "δ(Xstab)"
 
-                k = "2 ∙ kα ∙ baseConstraintForceMotionSubspace ∙ (baseVelocityS - baseVelocityP) +
+                k = "2 ∙ kα ∙ baseConstraintForceMotionSubspace ∙ (baseVelocitySucc - baseVelocityPred) +
                          kβ² ∙ kδ"
             }
 
             k = "-baseConstraintForceMotionSubspace ∙ (baseAccelerationSucc - baseAccelerationPred +
-                                                       Spatial.CrossMotion(baseVelocitySucc) ∙ baseVelocityPred) -
-                 stabilization.k"
+                                                       Spatial.CrossMotion(baseVelocitySucc) ∙ baseVelocityPred) - stabilization.k"
         }
 
         edge "cjoint" {}
