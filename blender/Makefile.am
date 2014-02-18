@@ -5,7 +5,8 @@ blender_DATA = \
 	importer.py \
 	panel.py \
 	simulator.py \
-	camera.py
+	camera.py \
+	gui.py
 
 blenderdatadir = $(blenderdir)/data
 blenderdata_DATA = \
