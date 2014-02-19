@@ -211,12 +211,13 @@ have_lapack=no
 
 if test "x$enable_lapack" != "xno" && test "x$platform_osx" = "xyes"; then
 	AC_MSG_CHECKING([for lapack])
-	AC_MSG_RESULT([using vecLib framework])
 
-	LAPACK_LIBS="-framework vecLib"
+	AC_MSG_RESULT([using Accelerate framework])
+
+	LAPACK_LIBS="-framework Accelerate"
 	LAPACK_CFLAGS=""
 
-	have_lapack=vecLib
+	have_lapack=Accelerate
 fi
 
 dnl

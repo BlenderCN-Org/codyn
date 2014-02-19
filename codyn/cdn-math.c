@@ -30,7 +30,7 @@
 
 #ifdef HAVE_LAPACK
 #ifdef PLATFORM_OSX
-#include <vecLib/clapack.h>
+#include <Accelerate/Accelerate.h>
 #else
 #include <clapack.h>
 #endif
