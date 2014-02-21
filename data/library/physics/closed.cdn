@@ -9,4 +9,12 @@ node | "@cbodies"
     coordinateTransformSucc = "Spatial.Inverse(@@0.baseToLocalTransform * localToBaseTransformPred)" | once
 }
 
+node | "@cbodies"
+     | not(  outputs
+           | has-template(physics.cjoint)
+           | output)
+{
+    coordinateTransformSucc = "baseToLocalTransformPred" | once
+}
+
 # vi:ts=4:et

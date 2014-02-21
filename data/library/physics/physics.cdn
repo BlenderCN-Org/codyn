@@ -206,10 +206,13 @@ templates
             ## successor frame.
             coordinateTransformSucc = "eye(6)"
 
-            "baseToLocalTransform{Succ,Pred}" = "eye(6)"
+            baseToLocalTransformSucc = "coordinateTransformSucc"
+            baseToLocalTransformPred = "eye(6)"
+
             "localToBaseTransform{Succ,Pred}" = "Spatial.Inverse(baseToLocalTransform@1)"
 
             "base{Velocity,Acceleration}{Succ,Pred}" = "zeros(6, 1)"
+            baseAccelerationSucc = "[0; 0; 0; -g]"
 
             constraintForceSubspace = "constraintForceSubspaceNull"
             activeForceSubspace = "activeForceSubspaceNull"
