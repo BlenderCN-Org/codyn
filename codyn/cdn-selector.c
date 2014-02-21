@@ -2726,6 +2726,15 @@ xor_in_place (GSList *a,
 	GHashTable *objsa;
 	GHashTable *objsb;
 
+	if (b == NULL)
+	{
+		return a;
+	}
+	else if (a == NULL)
+	{
+		return b;
+	}
+
 	objsa = selections_to_object_hash (a);
 	objsb = selections_to_object_hash (b);
 
@@ -2746,11 +2755,6 @@ selector_pseudo_xor (CdnSelector  *self,
 	GSList *item;
 	GSList *ret;
 
-	if (!parent)
-	{
-		return NULL;
-	}
-
 	ret = NULL;
 
 	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
@@ -2766,14 +2770,7 @@ selector_pseudo_xor (CdnSelector  *self,
 		                               parent,
 		                               CDN_SELECTOR_TYPE_ANY);
 
-		if (sub == NULL)
-		{
-			g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
-			g_slist_free (ret);
-
-			return NULL;
-		}
-		else if (ret == NULL)
+		if (ret == NULL)
 		{
 			ret = sub;
 		}
