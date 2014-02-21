@@ -1,0 +1,56 @@
+require "physics/physics.cdn"
+require "physics/cjoints.cdn"
+
+integrator {
+    method = "runge-kutta"
+}
+
+defines
+{
+    initq = "0.3 * pi"
+}
+
+node "system" : physics.system {
+    node "j{1:3}" : physics.joints.revoluteY {
+          I = "Inertia.Box(m, 0.05, 0.05, 0.4)"
+        com = "[0; 0; -0.25]"
+    }
+
+    node "j1"
+    {
+        q = "-@initq"
+    }
+
+    node "j2"
+    {
+        tr = "[0; 0; -0.5]"
+        q = "@initq + 0.5 * pi"
+    }
+
+    node "j3"
+    {
+        tr = "[0; 0; -0.5]"
+         q = "0.5 * pi - @initq"
+    }
+
+    edge from "j{1:2}" to "j$(@1 + 1)" : physics.joint {}
+
+    # Closing joints
+    node "cl1" : physics.cjoints.revoluteY {
+      tr = "[0; 0; -0.5]"
+    }
+
+    edge from "j3" to "cl1" : physics.cjoint {}
+
+    include "physics/closed.cdn"
+
+    include "physics/algorithms/transformations.cdn"
+    include "physics/dynamics.cdn"
+
+    node | has-template(physics.body)
+    {
+        localMatrix | out
+    }
+}
+
+# vi:ts=4:et
