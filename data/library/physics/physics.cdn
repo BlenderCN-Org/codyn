@@ -192,6 +192,8 @@ templates
 
         node "cbody" : "cdof1"
         {
+            initial-state "active"
+
             ## Active joint loop forces
             τ = "null"
 
