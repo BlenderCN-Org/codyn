@@ -8,26 +8,11 @@ templates
     {
         node "contacts"
         {
-            node "contact" {}
-
-            node "soft" : contact, physics.sensors.velocity
+            node "contact" : physics.sensors.velocity
             {
                 initial-state "inactive"
 
-                # contact parameters
-                maxNormalForce = "50 * model.totalMass"
-
-                normalζ = "0.001"
-                normalStiffness = "1e6 * model.totalMass"
-                normalDamping = "normalζ * 2 * sqrt(model.totalMass * normalStiffness)"
-
-                frictionCoefficient = "0.6"
-
-                frictionζ = "0.0001"
-                frictionStiffness = "1e7 * model.totalMass"
-                frictionDamping = "frictionζ * 2 * sqrt(model.totalMass * frictionStiffness)"
-
-                coefficientOfRestitution = "0"
+                location = "com"
 
                 # calculate locations in base.
                 #
@@ -53,10 +38,37 @@ templates
                 # [1-by-N]
                 dpN = "dp[2, :]"
 
+                active = 0
+                contactPoint = "zeros(3, size(location, 1))"
+
+                coefficientOfRestitution = "0"
+
                 event "active" to "inactive" when "min(pN) > 0" within 0.001
                 {
                     set active = 0
                 }
+
+                # Add a jacobian node which will calculate the contact jacobian
+                # needed to calculate the contact impulse on impact
+                node "jacobian" : physics.jacobian {}
+            }
+
+            node "hard" : contact {}
+
+            node "soft" : contact
+            {
+                # contact parameters
+                maxNormalForce = "50 * model.totalMass"
+
+                normalζ = "0.001"
+                normalStiffness = "1e6 * model.totalMass"
+                normalDamping = "normalζ * 2 * sqrt(model.totalMass * normalStiffness)"
+
+                frictionCoefficient = "0.6"
+
+                frictionζ = "0.0001"
+                frictionStiffness = "1e7 * model.totalMass"
+                frictionDamping = "frictionζ * 2 * sqrt(model.totalMass * frictionStiffness)"
 
                 # the contact force due to the contact model stiffness
                 #
@@ -101,10 +113,6 @@ templates
 
                 force = "zeros(6, 1)"
 
-                # Add a jacobian node which will calculate the contact jacobian
-                # needed to calculate the contact impulse on impact
-                node "jacobian" : physics.jacobian {}
-
                 # finally, the contact force is calculated in body coordinates
                 # whereas all the previous quantities are calculated in base
                 # coordinates. Here we first transform each force to the base
@@ -115,9 +123,6 @@ templates
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
                               Spatial.ForcesAtOrigin(forceAtLocations, p)" state "active"
                 }
-
-                      active = 0
-                contactPoint = "zeros(3, size(location, 1))"
             }
         }
     }
