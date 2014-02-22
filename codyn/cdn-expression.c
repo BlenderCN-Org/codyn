@@ -3283,7 +3283,16 @@ parse_matrix (CdnExpression *expression,
 			rows = g_slist_delete_link (rows, rows);
 		}
 
-		if (tnumpop > 1)
+		if (tnumpop == 0)
+		{
+			CdnStackArgs args = {0,};
+
+			instructions_push (expression,
+			                   cdn_instruction_matrix_new (&args,
+			                   	                           &tdim),
+			                   context);
+		}
+		else if (tnumpop > 1)
 		{
 			CdnStackArgs args;
 
@@ -5417,7 +5426,7 @@ validate_stack (CdnExpression *expression,
 			cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
 		}
 
-		if (stack + nst <= 0 || numpopped > stack)
+		if (stack + nst < 0 || numpopped > stack)
 		{
 			return FALSE;
 		}
@@ -5458,7 +5467,6 @@ validate_stack (CdnExpression *expression,
 	}
 
 	cdn_stack_resize (&(expression->priv->output), maxstack);
-	cdn_stack_reset (&(expression->priv->output));
 
 	if (dimonly &&
 	    cdn_dimension_equal (&dim, &expression->priv->retdim.dimension))

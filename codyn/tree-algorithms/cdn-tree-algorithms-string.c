@@ -461,7 +461,14 @@ matrix_to_string (CdnInstructionMatrix *inst,
 		}
 	}
 
-	cols = smanip->pop.num / rows;
+	if (rows != 0)
+	{
+		cols = smanip->pop.num / rows;
+	}
+	else
+	{
+		cols = 0;
+	}
 
 	for (r = 0; r < rows; ++r)
 	{

@@ -274,6 +274,7 @@ cdn_stack_resize (CdnStack *stack,
 	if (size != stack->size)
 	{
 		stack->output = g_renew (gdouble, stack->output, size);
+		memset(stack->output, 0, size);
 		stack->size = size;
 	}
 
@@ -778,7 +779,7 @@ cdn_dimension_is_one (CdnDimension const *dim)
 		return TRUE;
 	}
 
-	return dim->rows == 1 && dim->columns == 1;
+	return dim->rows <= 1 && dim->columns <= 1;
 }
 
 /**
