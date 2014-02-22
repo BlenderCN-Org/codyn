@@ -12,7 +12,7 @@ templates
 
             node "soft" : contact, physics.sensors.velocity
             {
-                initial-state "air"
+                initial-state "inactive"
 
                 # contact parameters
                 maxNormalForce = "50 * model.totalMass"
@@ -52,6 +52,11 @@ templates
                 #
                 # [1-by-N]
                 dpN = "dp[2, :]"
+
+                event "active" to "inactive" when "min(pN) > 0" within 0.001
+                {
+                    set active = 0
+                }
 
                 # the contact force due to the contact model stiffness
                 #
@@ -113,8 +118,6 @@ templates
 
                       active = 0
                 contactPoint = "zeros(3, size(location, 1))"
-
-                event "ground"    to "air"    when "min(pN)   > 0" within 0.001                 { set active = 0 }
             }
         }
     }

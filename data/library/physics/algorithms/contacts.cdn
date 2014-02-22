@@ -1,6 +1,6 @@
 node | "@bodies" . has-template(physics.contacts.soft)
 {
-    event "air" to "ground" when "min(pN) < 0" within 0.001
+    event "inactive" to "active" when "min(pN) < 0" within 0.001
     {
         contactLocation = "csum((pN < 0) .* p) / (max(1, sum(pN < 0)))"
         contactJacobian = "Spatial.Translation(p) * J0"
