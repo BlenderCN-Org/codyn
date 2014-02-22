@@ -1,0 +1,65 @@
+node | "dynamics" | if(parent . has-template(physics.cbody))
+{
+    node "loopdynamics"
+    {
+        # Solve H ddq = tau - C + tauact + K^T lamda for ddq
+        ltdl = "sltdl(H, λ)"
+        KT = "Kᵀ"
+
+        Y = "sltdllinvt(ltdl, KT, λ)"
+
+        τc = "τ - C"
+        z = "sltdldinvlinvt(ltdl, τc, λ)"
+
+        A = "Yᵀ ∙ sltdldinv(ltdl, Y)"
+        b = "k - Yᵀ ∙ z"
+
+        l = "pinv(A) ∙ b"
+
+        ddq = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, τc + KT ∙ l, λ), λ)"
+    }
+
+    ddq = "loopdynamics.ddq"
+}
+
+edge "K_@cbodies" from   <cjoint>:@1
+                       | <cons-index>:append-context("@@1[!]")
+                       | xor(  inputs
+                             | has-template(physics.cjoint)
+                             | input
+                             | recurse(inputs | has-template(physics.joint) | input)
+                             | <ojoint>:name | <side>:append-context("-1"),
+                               outputs
+                             | has-template(physics.cjoint)
+                             | output
+                             | recurse(inputs | has-template(physics.joint) | input)
+                             | <ojoint>:name | <side>:append-context("1"))
+                  to dynamics state "active"
+{
+    defines
+    {
+        b = "$(@bodies[!@ojoint] + 1)"
+        i = "@{@bodydofidx[@b]:+$(@bodydof[@b] - 1)||@0\,@1}"
+        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
+    }
+
+    debug-print "@i"
+
+    "K[[@jr], [@i]]" <= "@side ∙ @cjoint.baseConstraintForceMotionSubspace ∙ baseMotionSubspace" state "active"
+    "K[[@jr], [@i]]" <= "zeros(size(@cjoint.knull, 0), size(motionSubspace, 1))" state "inactive"
+}
+
+edge "k_@cbodies" from   @1
+                       | <cons-index>:append-context("@@1[!]")
+                    to dynamics
+{
+    defines
+    {
+        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
+    }
+
+    "k[@jr]" <= k state "active"
+    "k[@jr]" <= knull state "inactive"
+}
+
+# vi:ex:ts=4:et

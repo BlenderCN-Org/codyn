@@ -183,8 +183,10 @@ templates
         node "cdof{1:6}"
         {
             null = "zeros(@@1, 1)"
+            cfnull = "zeros(6, $(6 - @@1))"
+            knull = "zeros($(6 - @@1), 1)"
 
-            constraintForceSubspaceNull = "zeros(6, $(6 - @@1))"
+            constraintForceSubspaceNull = "cfnull"
             activeForceSubspaceNull = "zeros(6, @@1)"
         }
 
@@ -203,8 +205,8 @@ templates
             coordinateTransformPred = "Spatial.Translation(tr)"
 
             ## Coordinate transform from closing loop joint frame to its
-            ## successor frame.
-            coordinateTransformSucc = "eye(6)"
+            ## successor frame. Defaults to fixed frame
+            coordinateTransformSucc = "baseToLocalTransformPred" | once
 
             baseToLocalTransformSucc = "coordinateTransformSucc"
             baseToLocalTransformPred = "eye(6)"
