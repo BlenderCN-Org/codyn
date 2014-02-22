@@ -8,13 +8,13 @@ templates
         node "revoluteX" : physics.cbody
         {
             constraintForceSubspace = "[
-                    0, 0, 0, 0, 0;
-                    1, 0, 0, 0, 0;
-                    0, 1, 0, 0, 0;
-                    0, 0, 1, 0, 0;
-                    0, 0, 0, 1, 0;
-                    0, 0, 0, 0, 1
-                ]"
+                0, 0, 0, 0, 0;
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
 
             activeForceSubspace = "[1; 0; 0; 0; 0; 0]"
 
@@ -30,13 +30,13 @@ templates
         node "revoluteY" : physics.cbody
         {
             constraintForceSubspace = "[
-                    1, 0, 0, 0, 0;
-                    0, 0, 0, 0, 0;
-                    0, 1, 0, 0, 0;
-                    0, 0, 1, 0, 0;
-                    0, 0, 0, 1, 0;
-                    0, 0, 0, 0, 1
-                ]"
+                1, 0, 0, 0, 0;
+                0, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
 
             activeForceSubspace = "[0; 1; 0; 0; 0; 0]"
 
@@ -52,13 +52,13 @@ templates
         node "revoluteZ" : physics.cbody
         {
             constraintForceSubspace = "[
-                    1, 0, 0, 0, 0;
-                    0, 1, 0, 0, 0;
-                    0, 0, 0, 0, 0;
-                    0, 0, 1, 0, 0;
-                    0, 0, 0, 1, 0;
-                    0, 0, 0, 0, 1
-                ]"
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
 
             activeForceSubspace = "[0; 0; 1; 0; 0; 0]"
 
@@ -74,13 +74,13 @@ templates
         node "prismaticX" : physics.cbody
         {
             constraintForceSubspace = "[
-                    1, 0, 0, 0, 0;
-                    0, 1, 0, 0, 0;
-                    0, 0, 1, 0, 0;
-                    0, 0, 0, 0, 0;
-                    0, 0, 0, 1, 0;
-                    0, 0, 0, 0, 1
-                ]"
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
 
             activeForceSubspace = "[0; 0; 0; 1; 0; 0]"
 
@@ -96,13 +96,13 @@ templates
         node "prismaticY" : physics.cbody
         {
             constraintForceSubspace = "[
-                    1, 0, 0, 0, 0;
-                    0, 1, 0, 0, 0;
-                    0, 0, 1, 0, 0;
-                    0, 0, 0, 1, 0;
-                    0, 0, 0, 0, 0;
-                    0, 0, 0, 0, 1
-                ]"
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 0;
+                0, 0, 0, 0, 1
+            ]"
 
             activeForceSubspace = "[0; 0; 0; 0; 1; 0]"
 
@@ -118,13 +118,13 @@ templates
         node "prismaticZ" : physics.cbody
         {
             constraintForceSubspace = "[
-                    1, 0, 0, 0, 0;
-                    0, 1, 0, 0, 0;
-                    0, 0, 1, 0, 0;
-                    0, 0, 0, 1, 0;
-                    0, 0, 0, 0, 1;
-                    0, 0, 0, 0, 0
-                ]"
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1;
+                0, 0, 0, 0, 0
+            ]"
 
             activeForceSubspace = "[0; 0; 0; 0; 0; 1]"
 
