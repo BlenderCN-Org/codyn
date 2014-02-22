@@ -35,74 +35,6 @@ node "dynamics"
     λ = "[{@parentsdof||@0;@1}]"
 }
 
-node | "dynamics" | if(parent . has-template(physics.cbody))
-{
-    node "loopdynamics"
-    {
-        # Solve H ddq = tau - C + tauact + K^T lamda for ddq
-        ltdl = "sltdl(H, λ)"
-        KT = "Kᵀ"
-
-        Y = "sltdllinvt(ltdl, KT, λ)"
-
-        τc = "τ - C"
-        z = "sltdldinvlinvt(ltdl, τc, λ)"
-
-        A = "Yᵀ ∙ sltdldinv(ltdl, Y)"
-        b = "k - Yᵀ ∙ z"
-
-        l = "pinv(A) ∙ b"
-
-        ddq = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, τc + KT ∙ l, λ), λ)"
-    }
-
-    ddq = "loopdynamics.ddq"
-}
-
-include "algorithms/contacts.cdn"
-
-node "@bodies"
-{
-    ## Generalized coordinate accelerations differential equation
-    q̇ = "dqdot"
-    q̈ = "ddq"
-}
-
-edge "K_@cbodies" from   <cjoint>:@1
-                       | <cons-index>:append-context("@@1[!]")
-                       | xor(  inputs
-                             | has-template(physics.cjoint)
-                             | input
-                             | recurse(inputs | has-template(physics.joint) | input)
-                             | <ojoint>:name | <side>:append-context("-1"),
-                               outputs
-                             | has-template(physics.cjoint)
-                             | output
-                             | recurse(inputs | has-template(physics.joint) | input)
-                             | <ojoint>:name | <side>:append-context("1"))
-                  to dynamics
-{
-    defines
-    {
-        i = "@bodydofidx[$(@bodies[!@ojoint]+1)]"
-        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
-    }
-
-    "K[[@jr], @i]" <= "@side ∙ @cjoint.baseConstraintForceMotionSubspace ∙ baseMotionSubspace"
-}
-
-edge "k_@cbodies" from   @1
-                       | <cons-index>:append-context("@@1[!]")
-                    to dynamics
-{
-    defines
-    {
-        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
-    }
-
-    "k[@jr]" <= k
-}
-
 # Fill in H and C for all relevant body relationships
 edge "HC_@bodies" from   @1
                        | <body-index>:append-context("@@1[!]")
@@ -146,6 +78,13 @@ edge "HC_@bodies" from   @1
 }
 
 # Integrate accelerations on bodies
+node "@bodies"
+{
+    ## Generalized coordinate accelerations differential equation
+    q̇ = "dqdot"
+    q̈ = "ddq"
+}
+
 node | <body>:@bodies | sort | parent
 {
     defines
@@ -165,5 +104,8 @@ node | <body>:@bodies | sort | parent
         "τ[[@j], 0]" <= "τ"
     }
 }
+
+include "algorithms/contacts.cdn"
+include "loopdynamics.cdn"
 
 # vi:ex:ts=4:et
