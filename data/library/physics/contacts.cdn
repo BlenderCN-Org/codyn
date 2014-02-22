@@ -113,7 +113,7 @@ templates
                 edge self | first
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
-                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
+                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "active"
                 }
 
                       active = 0
