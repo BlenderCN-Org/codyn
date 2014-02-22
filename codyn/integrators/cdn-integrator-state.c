@@ -347,9 +347,18 @@ release_state_node (CdnNode *node)
 }
 
 static void
+object_unref0 (gpointer ptr)
+{
+	if (ptr != NULL)
+	{
+		g_object_unref (ptr);
+	}
+}
+
+static void
 release_state_list (GSList *list)
 {
-	g_slist_foreach (list, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (list, (GFunc)object_unref0, NULL);
 	g_slist_free (list);
 }
 
