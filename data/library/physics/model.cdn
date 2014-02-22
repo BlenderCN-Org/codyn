@@ -25,5 +25,6 @@ node | "@cbodies"
 }
 
 include "jacobian.cdn"
+include "algorithms/transformations.cdn"
 
 # vi:ts=4:et
