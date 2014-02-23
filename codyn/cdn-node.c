@@ -2402,12 +2402,16 @@ void
 cdn_node_set_initial_state (CdnNode     *node,
                             const gchar *state)
 {
+	gboolean upst;
+
 	g_return_if_fail (CDN_IS_NODE (node));
+
+	upst = g_strcmp0 (node->priv->initial_state, node->priv->state) == 0;
 
 	g_free (node->priv->initial_state);
 	node->priv->initial_state = g_strdup (state);
 
-	if (node->priv->state == NULL)
+	if (upst)
 	{
 		node->priv->state = g_strdup (state);
 	}
