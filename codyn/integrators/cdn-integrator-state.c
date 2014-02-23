@@ -45,6 +45,7 @@ struct _CdnIntegratorStatePrivate
 	GSList *direct_edge_actions;
 	GSList *discrete_edge_actions;
 
+	GSList *nodes;
 	GSList *operators;
 	GSList *functions;
 
@@ -180,6 +181,7 @@ clear_lists (CdnIntegratorState *state)
 	clear_list (&(state->priv->functions));
 	clear_list (&(state->priv->events));
 	clear_list (&(state->priv->phase_events));
+	clear_list (&(state->priv->nodes));
 
 	// Clear the table
 	g_hash_table_remove_all (state->priv->direct_variables_hash);
@@ -561,6 +563,10 @@ collect (CdnIntegratorState *state,
 
 	if (CDN_IS_NODE (object))
 	{
+		state->priv->nodes =
+			g_slist_prepend (state->priv->nodes,
+			                 object);
+
 		collect_actors (state, CDN_NODE (object));
 
 		if (cdn_node_has_self_edge (CDN_NODE (object)))
@@ -903,6 +909,18 @@ add_to_state_hash (CdnIntegratorState *state,
 	}
 }
 
+static CdnNode *
+state_root_for_edge_action (CdnEdgeAction *action)
+{
+	CdnEdge *edge;
+	CdnNode *input;
+
+	edge = cdn_edge_action_get_edge (action);
+	input = cdn_edge_get_input (edge);
+
+	return input;
+}
+
 static void
 extract_state_hash (CdnIntegratorState *state)
 {
@@ -936,12 +954,26 @@ extract_state_hash (CdnIntegratorState *state)
 		}
 	}
 
+	// Also collect all nodes with have an initial state
+	for (item = state->priv->nodes; item; item = g_slist_next (item))
+	{
+		CdnNode *node = item->data;
+
+		if (cdn_node_get_initial_state (node) != NULL &&
+		    !g_hash_table_lookup (state->priv->state_hash, node))
+		{
+			g_hash_table_insert (state->priv->state_hash,
+			                     g_object_ref (node),
+			                     g_slist_prepend (NULL, NULL));
+		}
+	}
+
 	// Now, collect phaseables
 	for (item = state->priv->integrated_edge_actions; item; item = g_slist_next (item))
 	{
 		CdnNode *parent;
 
-		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		parent = state_root_for_edge_action (item->data);
 		add_to_state_hash (state, item->data, parent);
 	}
 
@@ -949,7 +981,7 @@ extract_state_hash (CdnIntegratorState *state)
 	{
 		CdnNode *parent;
 
-		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		parent = state_root_for_edge_action (item->data);
 		add_to_state_hash (state, item->data, parent);
 	}
 
@@ -957,7 +989,7 @@ extract_state_hash (CdnIntegratorState *state)
 	{
 		CdnNode *parent;
 
-		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		parent = state_root_for_edge_action (item->data);
 		add_to_state_hash (state, item->data, parent);
 	}
 
