@@ -1,4 +1,4 @@
-node | "@bodies" . has-template(physics.contacts.soft)
+node | "@bodies" . has-template(physics.contacts.contact)
 {
     event "inactive" to "active" when "min(pN) < 0" within 0.001
     {
@@ -24,11 +24,68 @@ node | "@bodies" . has-template(physics.contacts.soft)
         set active = "1"
         set contactPoint = "p"
 
+        set parent | name | has-template(physics.contacts.hard) | parent | name . "closing_contact_@0_@@0" . active = 1
+
         set   recurse(parent)
             | has-template(physics.system)
             | first .
                 "@bodies".dq = "dqAfterImpulse[[{@bodydofex[$(@@1[!] + 1)]||@0\, @1}]]"
+
+        set parent . baseToLocalTransformSucc = "baseToLocalTransformPred"
     }
+}
+
+node | has-template(physics.body) . has-template(physics.contacts.hardbase) | <cname>:name | parent | <oname>:name | <cc>:append-context("@0_@@0")
+{
+    defines
+    {
+        ci = "$(@ccontactnames[!@cc] + 1)"
+    }
+
+    interface
+    {
+        "K_@ci" = "K" in "@cname"
+    }
+}
+
+edge from   has-template(physics.body)
+          . has-template(physics.contacts.hardbase)
+          | name
+          | parent
+          | <oname>:name
+          | <cname>:append-context("@0_@@0")
+          | recurse(inputs | has-template(physics.joint) | input)
+          | <ojoint>:name
+          | parent . "@oname"
+       to   dynamics
+{
+    defines
+    {
+        bi = "$(@bodies[!@ojoint] + 1)"
+        ci = "$(@ccontactnames[!@cname] + 1)"
+
+        c = "@{@bodydofidx[@bi]:+$(@bodydof[@bi] - 1)||@0\,@1}"
+        r = "@{@ccontactconsidx[@ci]:+$(@ccontactcons[@ci] - 1)||@0;@1}"
+    }
+
+    "K[[@r], [@c]]" <= "-K_@ci * @ojoint.baseMotionSubspace"
+}
+
+edge from   has-template(physics.body)
+          . has-template(physics.contacts.hardbase)
+          | <ccname>:name
+          | parent
+          | <oname>:name
+          | <cname>:append-context("@0_@@0")
+       to   dynamics
+{
+    defines
+    {
+        ci = "$(@ccontactnames[!@cname] + 1)"
+        r = "@{@ccontactconsidx[@ci]:+$(@ccontactcons[@ci] - 1)||@0;@1}"
+    }
+
+    "k[@r]" <= "@ccname.k"
 }
 
 # vi:ts=4:et

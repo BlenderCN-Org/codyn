@@ -1,6 +1,7 @@
 require "spatial.cdn"
 require "sensors.cdn"
 require "physics.cdn"
+require "cjoints.cdn"
 
 templates
 {
@@ -43,17 +44,37 @@ templates
 
                 coefficientOfRestitution = "0"
 
-                event "active" to "inactive" when "min(pN) > 0" within 0.001
-                {
-                    set active = 0
-                }
-
                 # Add a jacobian node which will calculate the contact jacobian
                 # needed to calculate the contact impulse on impact
                 node "jacobian" : physics.jacobian {}
             }
 
-            node "hard" : contact {}
+            node "hardbase" : contact
+            {
+                baseToLocalTransformPred = "coordinateTransformPred ∙ baseToLocalTransform"
+
+                baseVelocityPred = "localToBaseTransform ∙ velocity"
+                baseAccelerationPred = "localToBaseTransform ∙ acceleration"
+
+                tr = "location"
+                K = "cfnullT"
+
+                edge self
+                {
+                    K <= "baseConstraintForceMotionSubspace" state "active"
+                    K <= "cfnullT" state "inactive"
+                }
+            }
+
+            node "hard" : physics.cjoints.spherical, hardbase
+            {
+                initial-state "inactive"
+            }
+
+            node "hardPlanar{X,Y,Z}" : physics.cjoints."revolute@@@1", hardbase
+            {
+                initial-state "inactive"
+            }
 
             node "soft" : contact
             {
@@ -122,6 +143,11 @@ templates
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
                               Spatial.ForcesAtOrigin(forceAtLocations, p)" state "active"
+                }
+
+                event "active" to "inactive" when "min(pN) > 0" within 0.001
+                {
+                    set active = 0
                 }
             }
         }

@@ -11,7 +11,7 @@ defines
               | append-context("@1")
 
     # Same for closed loop bodies
-    cbodydof = | @cbodies | sort
+    cbodydof = | "@cbodies" | sort
                | if (applied-templates | recurse(applied-templates) | /cdof([1-6])/ | last)
                | append-context("@1")
 
@@ -29,8 +29,19 @@ defines
     # The total dofs in the system
     numdof = "@{@bodydof||$(@0 + @1)}"
 
-    cnumdof = "@{@cbodydof|$(@0)||$(@0 + @1)}"
-    numcons = "{@cbodydof|$($(@0) == 0 ? 0 : 6 - $(@0))||$(@0 + @1)}"
+    numbodycons = "@{@cbodydof|$($(@0) == 0 ? 0 : 6 - $(@0))||$(@0 + @1)}"
+
+    ccontactnames = children | has-template(physics.contacts.hardbase) | name | parent | name | append-context("@0_@@0")
+
+    ccontactdof = children | has-template(physics.contacts.hardbase) | if (applied-templates | recurse(applied-templates) | /cdof([1-6])/ | last) | append-context("@1")
+    ccontactcons = "{@ccontactdof|$(6 - @0)}"
+
+    ccontactconsidx = "{@ccontactdof|$(@numbodycons + @ccnt[+$(6 - @0)])}"
+
+    # Number of constraints in the system
+    numccontactcons = "@{@ccontactdof|$($(@0) == 0 ? 0 : 6 - $(@0))||$(@0 + @1)}"
+
+    numcons = "$(@numbodycons + @numccontactcons)"
 
     # bodychain will contain for each body, a comma separated list of indices
     # from (and including) the body upwards to the root of the kinematic tree.

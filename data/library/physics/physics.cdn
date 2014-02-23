@@ -184,6 +184,7 @@ templates
         {
             null = "zeros(@@1, 1)"
             cfnull = "zeros(6, $(6 - @@1))"
+            cfnullT = "zeros($(6 - @@1), 6)"
             knull = "zeros($(6 - @@1), 1)"
 
             constraintForceSubspaceNull = "cfnull"
@@ -215,7 +216,9 @@ templates
 
             "localToBaseTransform{Succ,Pred}" = "Spatial.Inverse(baseToLocalTransform@1)"
 
-            "base{Velocity,Acceleration}{Succ,Pred}" = "zeros(6, 1)"
+            "baseVelocity{Succ,Pred}" = "zeros(6, 1)"
+
+            baseAccelerationPred = "zeros(6, 1)"
             baseAccelerationSucc = "[0; 0; 0; -g]"
 
             constraintForceSubspace = "constraintForceSubspaceNull"
@@ -247,8 +250,17 @@ templates
                          kβ² ∙ kδ"
             }
 
-            k = "-baseConstraintForceMotionSubspace ∙ (baseAccelerationSucc - baseAccelerationPred +
-                                                       Spatial.CrossMotion(baseVelocitySucc) ∙ baseVelocityPred) - stabilization.k"
+            loopAcceleration = "baseAccelerationSucc - baseAccelerationPred"
+            loopVelocity = "Spatial.CrossMotion(baseVelocitySucc) ∙ baseVelocityPred"
+            loopMotionSubspace = "baseConstraintForceMotionSubspace"
+
+            k = "knull"
+
+            edge self
+            {
+                k <= "-loopMotionSubspace ∙ (loopAcceleration + loopVelocity) - stabilization.k" state "active"
+                k <= "knull" state "inactive"
+            }
         }
 
         edge "cjoint" {}

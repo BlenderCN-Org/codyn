@@ -1,0 +1,33 @@
+require "physics/physics.cdn"
+require "physics/cjoints.cdn"
+require "physics/contacts.cdn"
+
+integrator
+{
+    method = "runge-kutta"
+}
+
+node "system" : physics.system
+{
+    node "box" : physics.joints.planarY
+    {
+        m = "1.5"
+        I = "Inertia.Box(m, 0.1001, 0.1002, 0.1003)"
+        q = "[0.1 * pi; 0; 0.1]"
+
+        node "c1" : physics.contacts.hardPlanarY
+        {
+            location = "[-0.05; 0; -0.05]"
+        }
+
+        node "c2" : physics.contacts.hardPlanarY
+        {
+            location = "[0.05; 0; -0.05]"
+        }
+    }
+
+    include "physics/model.cdn"
+    include "physics/dynamics.cdn"
+}
+
+# vi:ts=4:et

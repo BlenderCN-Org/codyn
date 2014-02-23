@@ -1,4 +1,4 @@
-node | "dynamics" | if(parent . has-template(physics.cbody))
+node | "dynamics" | if(parent . has-template(physics.cbody), parent . children | has-template(physics.contacts.hardbase))
 {
     node "loopdynamics"
     {
@@ -34,7 +34,8 @@ edge "K_@cbodies" from   <cjoint>:@1
                              | output
                              | recurse(inputs | has-template(physics.joint) | input)
                              | <ojoint>:name | <side>:append-context("1"))
-                  to dynamics state "active"
+                       | parent . "@cjoint"
+                  to dynamics
 {
     defines
     {
@@ -43,10 +44,8 @@ edge "K_@cbodies" from   <cjoint>:@1
         jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
     }
 
-    debug-print "@i"
-
-    "K[[@jr], [@i]]" <= "@side ∙ @cjoint.baseConstraintForceMotionSubspace ∙ baseMotionSubspace" state "active"
-    "K[[@jr], [@i]]" <= "zeros(size(@cjoint.knull, 0), size(motionSubspace, 1))" state "inactive"
+    "K[[@jr], [@i]]" <= "@side ∙ baseConstraintForceMotionSubspace ∙ @ojoint.baseMotionSubspace" state "active"
+    "K[[@jr], [@i]]" <= "zeros(size(knull, 0), size(@ojoint.motionSubspace, 1))" state "inactive"
 }
 
 edge "k_@cbodies" from   @1
@@ -58,8 +57,7 @@ edge "k_@cbodies" from   @1
         jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
     }
 
-    "k[@jr]" <= k state "active"
-    "k[@jr]" <= knull state "inactive"
+    "k[@jr]" <= k
 }
 
 # vi:ex:ts=4:et
