@@ -31,6 +31,11 @@ node | "@bodies" . has-template(physics.contacts.contact)
 
         set parent . baseToLocalTransformSucc = "baseToLocalTransformPred"
     }
+
+    event "active" to "inactive" when "forceN > 0"
+    {
+        set active = 0
+    }
 }
 
 node | has-template(physics.body) . has-template(physics.contacts.hardbase) | <cname>:name | parent | <oname>:name | <cc>:append-context("@0_@@0")
@@ -42,7 +47,7 @@ node | has-template(physics.body) . has-template(physics.contacts.hardbase) | <c
 
     interface
     {
-        "K_@ci" = "K" in "@cname"
+        "{K,λ}_@ci" = "@1" in "@cname"
     }
 }
 
@@ -84,6 +89,23 @@ edge from   has-template(physics.body)
     }
 
     "k[@r]" <= "@ccname.k"
+}
+
+edge from   dynamics
+       to   has-template(physics.body)
+          . has-template(physics.contacts.hardbase)
+          | <ccname>:name
+          | parent
+          | <oname>:name
+          | <cname>:append-context("@0_@@0")
+{
+    defines
+    {
+        ci = "$(@ccontactnames[!@cname] + 1)"
+        r = "@{@ccontactconsidx[@ci]:+$(@ccontactcons[@ci] - 1)||@0;@1}"
+    }
+
+    "λ_@ci" <= "λ[[@r]]"
 }
 
 # vi:ts=4:et
