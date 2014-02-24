@@ -257,6 +257,8 @@ templates
             k = "knull"
             λ = "knull"
 
+            force = "baseConstraintForceSubspace * λ"
+
             edge self
             {
                 k <= "-loopMotionSubspace ∙ (loopAcceleration + loopVelocity) - stabilization.k" state "active"
