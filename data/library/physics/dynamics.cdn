@@ -28,11 +28,11 @@ node "dynamics"
     k = "zeros(@numcons, 1)"
 
     ## Generalized accelerations
-    ddq = "slinsolve(H, τ - C, λ)"
+    ddq = "slinsolve(H, τ - C, pλ)"
 
     ## Parent indices. This is used only for solving the linear system by
     ## exploiting the branch induced sparsity (slinsolve).
-    λ = "[{@parentsdof||@0;@1}]"
+    pλ = "[{@parentsdof||@0;@1}]"
 }
 
 # Fill in H and C for all relevant body relationships

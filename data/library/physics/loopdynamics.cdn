@@ -3,20 +3,24 @@ node | "dynamics" | if(parent . has-template(physics.cbody), parent . children |
     node "loopdynamics"
     {
         # Solve H ddq = tau - C + tauact + K^T lamda for ddq
-        ltdl = "sltdl(H, λ)"
+        ltdl = "sltdl(H, pλ)"
         KT = "Kᵀ"
 
-        Y = "sltdllinvt(ltdl, KT, λ)"
+        Y = "sltdllinvt(ltdl, KT, pλ)"
 
         τc = "τ - C"
-        z = "sltdldinvlinvt(ltdl, τc, λ)"
+        z = "sltdldinvlinvt(ltdl, τc, pλ)"
 
         A = "Yᵀ ∙ sltdldinv(ltdl, Y)"
         b = "k - Yᵀ ∙ z"
 
-        l = "pinv(A) ∙ b"
+        λ = "pinv(A) ∙ b"
+        ddq = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, τc + KT ∙ λ, pλ), pλ)"
+    }
 
-        ddq = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, τc + KT ∙ l, λ), λ)"
+    interface
+    {
+        λ = λ in "loopdynamics"
     }
 
     ddq = "loopdynamics.ddq"
@@ -58,6 +62,17 @@ edge "k_@cbodies" from   @1
     }
 
     "k[@jr]" <= k
+}
+
+edge "λ_@cbodies" from dynamics
+                    to @1 | <cons-index>:append-context("@@1[!]")
+{
+    defines
+    {
+        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
+    }
+
+    λ <= "λ[@jr]"
 }
 
 # vi:ex:ts=4:et

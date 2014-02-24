@@ -255,6 +255,7 @@ templates
             loopMotionSubspace = "baseConstraintForceMotionSubspace"
 
             k = "knull"
+            λ = "knull"
 
             edge self
             {
