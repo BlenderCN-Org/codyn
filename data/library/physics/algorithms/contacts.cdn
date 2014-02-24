@@ -24,8 +24,6 @@ node | "@bodies" . has-template(physics.contacts.contact)
         set active = "1"
         set contactPoint = "p"
 
-        set parent | name | has-template(physics.contacts.hard) | parent | name . "closing_contact_@0_@@0" . active = 1
-
         set   recurse(parent)
             | has-template(physics.system)
             | first .
