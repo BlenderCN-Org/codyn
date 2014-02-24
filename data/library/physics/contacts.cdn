@@ -109,8 +109,8 @@ templates
                 # tangential forces due to friction (in X and Y)
                 #
                 # [1-by-N]
-                ep = "contactPoint[@1[!], :] - p[@1[!], :]"
-                "forceTangential{X,Y}" = "(frictionStiffness * csign(ep^3, ep) - frictionDamping * dp[@1[!], :])  .* (pN < 0)"
+                ep = "sticking * (contactPoint[@1[!], :] - p[@1[!], :])"
+                "forceTangential{X,Y}" = "(frictionStiffness * csign(ep^3, ep) - frictionDamping * dp[@1[!], :]) .* (pN < 0)"
 
                 # maximum tangential force by simple coulomb friction
                 #
@@ -142,12 +142,26 @@ templates
                 edge self | first
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
-                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "active"
+                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "{active,slip}"
                 }
 
-                event "active" to "inactive" when "min(pN) > 0" within 0.001
+                sticking = 1
+
+                event "{active,slip}" to "inactive" when "min(pN) > 0" within 0.001
                 {
                     set active = 0
+                    set sticking = 1
+                }
+
+                event "active" to "slip" when "abs(forceTangentialX) > forceTangentialMax || abs(forceTangentialY) > forceTangentialMax"
+                {
+                    set sticking = 0
+                }
+
+                event "slip" to "active" when "abs(forceTangentialX) <= forceTangentialMax || abs(forceTangentialY) <= forceTangentialMax"
+                {
+                    set sticking = 1
+                    set contactPoint = "p"
                 }
             }
         }
