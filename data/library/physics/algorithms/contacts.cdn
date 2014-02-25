@@ -17,12 +17,13 @@ node | "@bodies" . has-template(physics.contacts.contact)
 
         # Velocity difference in operational space
         dv = "-(1 + coefficientOfRestitution) ∙ contactVelocity"
+        dvn = "[0; 0; 0; dv[3:6]]"
 
         # The system output velocity after impulse: q̇⁺ = H⁻¹ Jᵀ F + q̇⁻
-        dqAfterImpulse = "inertiaWeightedJacobianPseudoInverse ∙ dv + model.dq"
 
         set active = "1"
         set contactPoint = "p"
+        dqAfterImpulse = "inertiaWeightedJacobianPseudoInverse ∙ dvn + model.dq"
 
         set   recurse(parent)
             | has-template(physics.system)
