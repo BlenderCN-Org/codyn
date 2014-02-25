@@ -257,7 +257,7 @@ templates
             k = "knull"
             λ = "knull"
 
-            force = "baseConstraintForceSubspace * λ"
+            force = "-Spatial.ForceTranslation(LocalPointToBase(location)) * baseConstraintForceSubspace ∙ λ"
 
             edge self
             {
