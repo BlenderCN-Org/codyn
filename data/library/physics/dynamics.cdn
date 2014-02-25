@@ -62,7 +62,8 @@ edge "HC_@bodies" from   @1
         defines
         {
             # Compute the indices of this childs' DOF (in column and row)
-            ic = "@{@bodydofidx[$(@fh[1] + 1)]:+$(@bodydof[$(@fh[1] + 1)] - 1)||@0\,@1}"
+            fi = "$(@fh[1] + 1)"
+            ic = "@{@bodydofidx[@fi]:+$(@bodydof[@fi] - 1)||@0\,@1}"
             ir = "@{@ic||@0;@1}"
         }
 
@@ -89,7 +90,8 @@ node | <body>:@bodies | sort | parent
 {
     defines
     {
-        j = "@{@bodydofidx[$(@body[!] + 1)]:+$(@bodydof[$(@body[!] + 1)] - 1)||@0;@1}"
+        bi = "$(@body[!] + 1)"
+        j = "@{@bodydofidx[@bi]:+$(@bodydof[@bi] - 1)||@0;@1}"
     }
 
     edge "acceleration_@0" from "dynamics" to "@body"
