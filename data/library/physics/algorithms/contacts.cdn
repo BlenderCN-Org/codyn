@@ -20,9 +20,6 @@ node | "@bodies" . has-template(physics.contacts.contact)
         dvn = "[0; 0; 0; dv[3:6]]"
 
         # The system output velocity after impulse: q̇⁺ = H⁻¹ Jᵀ F + q̇⁻
-
-        set active = "1"
-        set contactPoint = "p"
         dqAfterImpulse = "inertiaWeightedJacobianPseudoInverse ∙ dvn + model.dq"
 
         set   recurse(parent)
@@ -31,6 +28,9 @@ node | "@bodies" . has-template(physics.contacts.contact)
                 "@bodies".dq = "dqAfterImpulse[[{@bodydofex[$(@@1[!] + 1)]||@0\, @1}]]"
 
         set parent . baseToLocalTransformSucc = "baseToLocalTransformPred"
+
+        set active = "1"
+        set contactPoint = "p"
     }
 
     event "active" to "inactive" when "forceN[5] < 0" within 0.001
