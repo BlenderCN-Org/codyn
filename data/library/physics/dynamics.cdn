@@ -33,6 +33,8 @@ node "dynamics"
     ## Parent indices. This is used only for solving the linear system by
     ## exploiting the branch induced sparsity (slinsolve).
     pλ = "[{@parentsdof||@0;@1}]"
+
+    invH = "inv(H)"
 }
 
 # Fill in H and C for all relevant body relationships
