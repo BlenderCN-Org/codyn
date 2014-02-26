@@ -33,7 +33,7 @@ node | "@bodies" . has-template(physics.contacts.contact)
         set contactPoint = "p"
     }
 
-    event "active" to "inactive" when "forceN[5] < 0" within 0.001
+    event "active" to "inactive" when "forceN < 0" within 0.001
     {
         set active = 0
     }
