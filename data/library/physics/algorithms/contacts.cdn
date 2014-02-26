@@ -27,7 +27,7 @@ node | "@bodies" . has-template(physics.contacts.contact)
             | first .
                 "@bodies".dq = "dqAfterImpulse[[{@bodydofex[$(@@1[!] + 1)]||@0\, @1}]]"
 
-        set parent . baseToLocalTransformSucc = "baseToLocalTransformPred"
+        set parent . baseToLocalTransformSucc = "Spatial.Translate(baseToLocalTransformPred, [0; 0; -pN])"
 
         set active = "1"
         set contactPoint = "p"
