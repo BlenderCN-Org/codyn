@@ -1002,6 +1002,25 @@ extract_state_hash (CdnIntegratorState *state)
 	}
 }
 
+static gint
+compare_events (CdnEvent *a, CdnEvent *b)
+{
+	CdnNode *pa = cdn_object_get_parent (CDN_OBJECT (a));
+	CdnNode *pb = cdn_object_get_parent (CDN_OBJECT (b));
+
+	return (pa < pb ? -1 : (pa > pb ? 1 : 0));
+}
+
+static void
+sort_events (CdnIntegratorState *state)
+{
+	state->priv->events =
+		g_slist_reverse (state->priv->events);
+
+	state->priv->events =
+		g_slist_sort (state->priv->events, (GCompareFunc)compare_events);
+}
+
 /**
  * cdn_integrator_state_update:
  * @state: A #CdnIntegratorState
@@ -1035,8 +1054,7 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 	state->priv->io =
 		g_slist_reverse (state->priv->io);
 
-	state->priv->events =
-		g_slist_reverse (state->priv->events);
+	sort_events (state);
 
 	/* order the direct link actions based on their dependencies */
 	sort_edge_actions (state);
