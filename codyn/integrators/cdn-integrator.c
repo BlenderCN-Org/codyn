@@ -470,9 +470,10 @@ execute_events (CdnIntegrator *integrator,
 }
 
 static GSList *
-append_happened (GSList   *events,
-                 CdnEvent *event,
-                 gdouble  *smallest)
+append_happened (GSList    *events,
+                 CdnEvent  *event,
+                 gdouble   *smallest,
+                 CdnEvent **smallest_event)
 {
 	gdouble dist;
 	gdouble prec = 1e-9;
@@ -480,10 +481,12 @@ append_happened (GSList   *events,
 
 	dist = cdn_event_last_distance (event);
 
-	if (!events)
+	if (*smallest_event != event)
 	{
 		*smallest = dist;
-		return g_slist_prepend (NULL, event);
+		*smallest_event = event;
+
+		return g_slist_prepend (events, event);
 	}
 
 	if (dist > *smallest + prec)
@@ -527,6 +530,7 @@ handle_events (CdnIntegrator *integrator,
 {
 	GSList const *events;
 	GSList *happened = NULL;
+	CdnEvent *smallest_event = NULL;
 	gdouble smallest = 0;
 
 	if (!integrator->priv->inner_event_loop)
@@ -543,7 +547,7 @@ handle_events (CdnIntegrator *integrator,
 
 		if (cdn_event_happened (ev, NULL))
 		{
-			happened = append_happened (happened, ev, &smallest);
+			happened = append_happened (happened, ev, &smallest, &smallest_event);
 		}
 
 		events = g_slist_next (events);
