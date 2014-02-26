@@ -61,6 +61,9 @@ templates
                 tr = "location"
                 K = "cfnullT"
 
+                force = "-Spatial.ForceTranslation(LocalPointToBase(location)) * baseConstraintForceSubspace ∙ λ"
+
+
                 edge self
                 {
                     K <= "baseConstraintForceMotionSubspace" state "active"

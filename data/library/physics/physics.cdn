@@ -257,8 +257,6 @@ templates
             k = "knull"
             λ = "knull"
 
-            force = "-Spatial.ForceTranslation(LocalPointToBase(location)) * baseConstraintForceSubspace ∙ λ"
-
             edge self
             {
                 k <= "-loopMotionSubspace ∙ (loopAcceleration + loopVelocity) - stabilization.k" state "active"
