@@ -848,6 +848,15 @@ update_direct_phase (CdnIntegratorState *state,
 	}
 }
 
+static gint
+compare_events (CdnEvent *a, CdnEvent *b)
+{
+	CdnNode *pa = cdn_object_get_parent (CDN_OBJECT (a));
+	CdnNode *pb = cdn_object_get_parent (CDN_OBJECT (b));
+
+	return (pa < pb ? -1 : (pa > pb ? 1 : 0));
+}
+
 static void
 add_to_state_hash (CdnIntegratorState *state,
                    CdnPhaseable       *ph,
@@ -888,7 +897,16 @@ add_to_state_hash (CdnIntegratorState *state,
 					                     TRUE);
 				}
 
-				*ptr = g_slist_prepend (*ptr, ph);
+				if (ptr == &state->priv->phase_events)
+				{
+					*ptr = g_slist_insert_sorted (*ptr,
+					                              ph,
+					                              (GCompareFunc)compare_events);
+				}
+				else
+				{
+					*ptr = g_slist_prepend (*ptr, ph);
+				}
 			}
 		}
 	}
@@ -1000,15 +1018,6 @@ extract_state_hash (CdnIntegratorState *state)
 		parent = CDN_NODE (cdn_object_get_parent (item->data));
 		add_to_state_hash (state, item->data, parent);
 	}
-}
-
-static gint
-compare_events (CdnEvent *a, CdnEvent *b)
-{
-	CdnNode *pa = cdn_object_get_parent (CDN_OBJECT (a));
-	CdnNode *pb = cdn_object_get_parent (CDN_OBJECT (b));
-
-	return (pa < pb ? -1 : (pa > pb ? 1 : 0));
 }
 
 static void
@@ -1465,7 +1474,16 @@ cdn_integrator_state_set_state (CdnIntegratorState  *state,
 				update_direct_phase (state, item->data, TRUE);
 			}
 
-			*ptr = g_slist_prepend (*ptr, ph);
+			if (ptr == &state->priv->phase_events)
+			{
+				*ptr = g_slist_insert_sorted (*ptr,
+				                              ph,
+				                              (GCompareFunc)compare_events);
+			}
+			else
+			{
+				*ptr = g_slist_prepend (*ptr, ph);
+			}
 
 			if (events_added && CDN_IS_EVENT (item->data))
 			{
