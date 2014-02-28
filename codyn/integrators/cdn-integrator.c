@@ -423,7 +423,8 @@ execute_events (CdnIntegrator *integrator,
                 GSList        *events)
 {
 	gchar const *state;
-	GSList *execute = NULL;
+
+	update_events (integrator);
 
 	while (events)
 	{
@@ -439,7 +440,7 @@ execute_events (CdnIntegrator *integrator,
 		{
 			state = cdn_event_get_goto_state (ev);
 
-			execute = g_slist_prepend (execute, ev);
+			cdn_event_execute (ev);
 
 			if (state)
 			{
@@ -456,16 +457,6 @@ execute_events (CdnIntegrator *integrator,
 		}
 
 		events = g_slist_next (events);
-	}
-
-	update_events (integrator);
-
-	execute = g_slist_reverse (execute);
-
-	while (execute)
-	{
-		cdn_event_execute (execute->data);
-		execute = g_slist_delete_link (execute, execute);
 	}
 }
 
