@@ -2,7 +2,7 @@ import os, platform, tempfile, shutil, mathutils
 
 import codyn, camera, gui
 
-from gi.repository import Cdn
+from gi.repository import Cdn, Gio
 import cdnrawc
 
 def find_and_load_rawc(data):
@@ -277,6 +277,24 @@ def setup_gui(data):
     data.gui.add(b)
     data.lbl_time = l
 
+def needs_reload(owner):
+    network = codyn.data.networks[owner.name]
+    mtime = os.path.getmtime(owner['cdn_filename'])
+
+    if not owner.name in codyn.data.networks:
+        return [True, mtime]
+
+    for f in network.files:
+        try:
+            fmtime = os.path.getmtime(f)
+
+            if fmtime > mtime:
+                mtime = fmtime
+        except:
+            pass
+
+    return [mtime > network.mtime, mtime]
+
 def init():
     import bge
 
@@ -284,12 +302,26 @@ def init():
     owner = cont.owner
 
     filename = owner['cdn_filename']
-    mtime = os.path.getmtime(filename)
 
-    if not owner.name in codyn.data.networks or \
-       mtime > codyn.data.networks[owner.name].mtime:
+    try:
+        [rel, mtime] = needs_reload(owner)
+    except:
+        rel = True
+        mtime = os.path.getmtime(filename)
+
+    if rel:
         # Load network from property
-        network = Cdn.Network.new_from_path(filename)
+        network = Cdn.Network()
+
+        ctx = Cdn.ParserContext.new(network)
+
+        files = []
+
+        ctx.connect('file-used', lambda x, y, z: files.append(y.get_path()))
+        ctx.push_input(Gio.File.new_for_path(filename), None, False)
+
+        ctx.parse(True)
+
         network.compile(None, None)
 
         data = codyn.data.networks[owner.name]
@@ -298,6 +330,7 @@ def init():
         data.filename = filename
         data.mtime = mtime
         data.rawc = None
+        data.files = files
 
     # Load rawc version if it's there
     data = codyn.data.networks[owner.name]
