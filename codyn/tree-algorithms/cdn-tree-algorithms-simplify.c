@@ -1835,31 +1835,6 @@ iter_simplify (CdnExpressionTreeIter *iter,
 	return ret;
 }
 
-static gchar *
-sparsity_str (CdnExpressionTreeIter *iter)
-{
-	CdnStackManipulation const *smanip;
-	GString *s = g_string_new ("");
-	guint i;
-
-	smanip = cdn_instruction_get_stack_manipulation (iter->instruction, NULL);
-
-	g_string_append (s, "[sp:");
-
-	for (i = 0; i < smanip->push.num_sparse; ++i)
-	{
-		if (i != 0)
-		{
-			g_string_append (s, ", ");
-		}
-
-		g_string_append_printf (s, "%u", smanip->push.sparsity[i]);
-	}
-
-	g_string_append_c (s, ']');
-	return g_string_free (s, FALSE);
-}
-
 /**
  * cdn_expression_tree_iter_simplify:
  * @iter: a #CdnExpressionTreeIter
@@ -1874,9 +1849,8 @@ CdnExpressionTreeIter *
 cdn_expression_tree_iter_simplify (CdnExpressionTreeIter *iter)
 {
 	cdn_debug_message (DEBUG_SIMPLIFY,
-	                   "Simplifying: {%s} %s",
-	                   cdn_expression_tree_iter_to_string (iter),
-	                   sparsity_str (iter));
+	                   "Simplifying: {%s}",
+	                   cdn_expression_tree_iter_to_string (iter));
 
 	cdn_debug_push_indent ();
 	cdn_expression_tree_iter_canonicalize (iter);
@@ -1886,9 +1860,8 @@ cdn_expression_tree_iter_simplify (CdnExpressionTreeIter *iter)
 	iter_invalidate_cache_down (iter);
 
 	cdn_debug_message (DEBUG_SIMPLIFY,
-	                   "Simplified:  {%s} %s",
-	                   cdn_expression_tree_iter_to_string (iter),
-	                   sparsity_str (iter));
+	                   "Simplified:  {%s}",
+	                   cdn_expression_tree_iter_to_string (iter));
 
 	return iter;
 }

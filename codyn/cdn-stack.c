@@ -51,11 +51,6 @@ cdn_stack_arg_destroy (CdnStackArg *arg)
 	{
 		return;
 	}
-
-	g_free (arg->sparsity);
-
-	arg->sparsity = NULL;
-	arg->num_sparse = 0;
 }
 
 static CdnStackArg *
@@ -548,94 +543,12 @@ cdn_stack_arg_copy (CdnStackArg       *ret,
 {
 	ret->rows = src->rows;
 	ret->columns = src->columns;
-
-	cdn_stack_arg_set_sparsity (ret, src->sparsity, src->num_sparse);
 }
 
 guint
 cdn_stack_arg_size (CdnStackArg const *arg)
 {
 	return arg ? arg->rows * arg->columns : 1;
-}
-
-void
-cdn_stack_arg_set_sparsity (CdnStackArg *arg,
-                            guint       *sparsity,
-                            guint        num_sparse)
-{
-	if (num_sparse != arg->num_sparse)
-	{
-		g_free (arg->sparsity);
-
-		if (num_sparse != 0)
-		{
-			arg->sparsity = g_memdup (sparsity, sizeof (guint) * num_sparse);
-		}
-		else
-		{
-			arg->sparsity = NULL;
-		}
-
-		arg->num_sparse = num_sparse;
-	}
-	else if (num_sparse != 0)
-	{
-		memcpy (arg->sparsity, sparsity, sizeof (guint) * num_sparse);
-	}
-}
-
-/**
- * cdn_stack_arg_get_sparsity:
- * @arg: a #CdnStackArg.
- * @num_sparse: (out): return value for the length of the sparsity array.
- *
- * Get the sparsity indices.
- *
- * Returns: (array length=num_sparse): the sparsity indices.
- *
- **/
-guint const *
-cdn_stack_arg_get_sparsity (CdnStackArg *arg,
-                            guint       *num_sparse)
-{
-	*num_sparse = arg->num_sparse;
-	return arg->sparsity;
-}
-
-void
-cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
-                                guint        sparsity)
-{
-	cdn_stack_arg_set_sparsity (arg, &sparsity, 1);
-}
-
-static int
-compare_sparse_index (gconstpointer a,
-                      gconstpointer b)
-{
-	guint const *ai;
-	guint const *bi;
-
-	ai = (guint const *)a;
-	bi = (guint const *)b;
-
-	return ai < bi ? -1 : (ai == bi ? 0 : 1);
-}
-
-gboolean
-cdn_stack_arg_is_sparse (CdnStackArg const *arg,
-                         guint              idx)
-{
-	if (arg->sparsity == NULL)
-	{
-		return FALSE;
-	}
-
-	return bsearch (&idx,
-	                arg->sparsity,
-	                arg->num_sparse,
-	                sizeof (guint),
-	                compare_sparse_index) != NULL;
 }
 
 void
@@ -733,16 +646,6 @@ cdn_stack_args_copy (CdnStackArgs       *dest,
 
 	dest->num = src->num;
 	dest->args = g_memdup (src->args, sizeof (CdnStackArg) * dest->num);
-
-	for (i = 0; i < src->num; ++i)
-	{
-		dest->args[i].sparsity = NULL;
-		dest->args[i].num_sparse = 0;
-
-		cdn_stack_arg_set_sparsity (&dest->args[i],
-		                            src->args[i].sparsity,
-		                            src->args[i].num_sparse);
-	}
 }
 
 void

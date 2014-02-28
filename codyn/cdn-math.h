@@ -211,10 +211,6 @@ gboolean             cdn_math_function_is_commutative         (CdnMathFunctionTy
 const gchar         *cdn_math_function_lookup_by_id           (CdnMathFunctionType   type,
                                                                gint                 *arguments);
 
-void                 cdn_math_compute_sparsity                (CdnMathFunctionType  type,
-                                                               CdnStackArgs const  *inargs,
-                                                               CdnStackArg         *outarg);
-
 gboolean             cdn_math_function_get_stack_manipulation (CdnMathFunctionType   type,
                                                                CdnStackArgs const   *inargs,
                                                                CdnStackArg          *outarg,

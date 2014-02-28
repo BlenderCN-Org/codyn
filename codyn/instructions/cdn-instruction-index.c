@@ -461,12 +461,6 @@ cdn_instruction_index_finalize (CdnMiniObject *object)
 }
 
 static void
-cdn_instruction_index_recalculate_sparsity (CdnInstruction *instruction)
-{
-	// TODO
-}
-
-static void
 cdn_instruction_index_class_init (CdnInstructionIndexClass *klass)
 {
 	CdnMiniObjectClass *object_class = CDN_MINI_OBJECT_CLASS (klass);
@@ -480,7 +474,6 @@ cdn_instruction_index_class_init (CdnInstructionIndexClass *klass)
 	inst_class->execute = cdn_instruction_index_execute;
 	inst_class->get_stack_manipulation = cdn_instruction_index_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_index_equal;
-	inst_class->recalculate_sparsity = cdn_instruction_index_recalculate_sparsity;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionIndexPrivate));
 }
@@ -521,7 +514,6 @@ cdn_instruction_index_new (gint               *indices,
 	cdn_stack_args_init (&self->priv->smanip.pop, 1);
 	cdn_stack_arg_copy (self->priv->smanip.pop.args, arg);
 
-	cdn_instruction_index_recalculate_sparsity (CDN_INSTRUCTION (self));
 	self->priv->smanip.extra_space = cdn_dimension_size (retdim);
 
 	self->priv->diff_size = cdn_dimension_size (&arg->dimension) - cdn_dimension_size (retdim);
@@ -568,7 +560,6 @@ cdn_instruction_index_new_rows_x_columns (gint              *rows,
 	self->priv->rows_x_columns.rows = rows;
 	self->priv->rows_x_columns.columns = columns;
 
-	cdn_instruction_index_recalculate_sparsity (CDN_INSTRUCTION (self));
 	self->priv->smanip.extra_space = n_rows * n_columns;
 
 	self->priv->diff_size = cdn_dimension_size (&arg->dimension) - n_rows * n_columns;
@@ -634,8 +625,6 @@ cdn_instruction_index_new_range (CdnIndexRange const *range,
 		                        cdn_dimension_size (&retdim);
 	}
 
-	cdn_instruction_index_recalculate_sparsity (CDN_INSTRUCTION (self));
-
 	return CDN_INSTRUCTION (ret);
 }
 
@@ -687,8 +676,6 @@ cdn_instruction_index_new_range_block (CdnIndexRange const *rows,
 	self->priv->diff_size = cdn_stack_arg_size (arg) -
 	                        cdn_dimension_size (&retdim);
 
-	cdn_instruction_index_recalculate_sparsity (CDN_INSTRUCTION (self));
-
 	return CDN_INSTRUCTION (ret);
 }
 
@@ -711,8 +698,6 @@ cdn_instruction_index_new_offset (gint                offset,
 
 	cdn_stack_args_init (&self->priv->smanip.pop, 1);
 	cdn_stack_arg_copy (self->priv->smanip.pop.args, arg);
-
-	cdn_instruction_index_recalculate_sparsity (CDN_INSTRUCTION (self));
 
 	self->priv->diff_size = cdn_dimension_size (&arg->dimension) - cdn_dimension_size (retdim);
 

@@ -89,18 +89,6 @@ cdn_instruction_function_get_stack_manipulation (CdnInstruction  *instruction,
 	return self->priv->error ? NULL : &self->priv->smanip;
 }
 
-static void
-cdn_instruction_function_recalculate_sparsity (CdnInstruction *instruction)
-{
-	CdnInstructionFunction *self;
-
-	self = CDN_INSTRUCTION_FUNCTION (instruction);
-
-	cdn_math_compute_sparsity ((CdnMathFunctionType)self->priv->id,
-	                           &self->priv->smanip.pop,
-	                           &self->priv->smanip.push);
-}
-
 static gboolean
 cdn_instruction_function_equal (CdnInstruction *i1,
                                 CdnInstruction *i2,
@@ -140,7 +128,6 @@ cdn_instruction_function_class_init (CdnInstructionFunctionClass *klass)
 	inst_class->get_stack_manipulation = cdn_instruction_function_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_function_equal;
 	inst_class->get_is_commutative = cdn_instruction_function_get_is_commutative;
-	inst_class->recalculate_sparsity = cdn_instruction_function_recalculate_sparsity;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionFunctionPrivate));
 }

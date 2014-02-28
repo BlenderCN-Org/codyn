@@ -106,46 +106,6 @@ cdn_instruction_matrix_finalize (CdnMiniObject *object)
 }
 
 static void
-cdn_instruction_matrix_recalculate_sparsity (CdnInstruction *instruction)
-{
-	CdnInstructionMatrix *self;
-	CdnStackArgs *args;
-	gint i;
-	gint sp = 0;
-
-	self = CDN_INSTRUCTION_MATRIX (instruction);
-
-	args = &self->priv->smanip.pop;
-
-	for (i = 0; i < args->num; ++i)
-	{
-		sp += args->args[i].num_sparse;
-	}
-
-	if (sp > 0)
-	{
-		gint off = 0;
-		guint *sparsity = g_new0 (guint, sp);
-		gint spi = 0;
-
-		for (i = args->num - 1; i >= 0; --i)
-		{
-			gint j;
-
-			for (j = 0; j < args->args[i].num_sparse; ++j)
-			{
-				sparsity[spi++] = args->args[i].sparsity[j] + off;
-			}
-
-			off += cdn_dimension_size (&args->args[i].dimension);
-		}
-
-		cdn_stack_arg_set_sparsity (&self->priv->smanip.push, sparsity, sp);
-		g_free (sparsity);
-	}
-}
-
-static void
 cdn_instruction_matrix_class_init (CdnInstructionMatrixClass *klass)
 {
 	CdnMiniObjectClass *object_class = CDN_MINI_OBJECT_CLASS (klass);
@@ -159,7 +119,6 @@ cdn_instruction_matrix_class_init (CdnInstructionMatrixClass *klass)
 	inst_class->execute = cdn_instruction_matrix_execute;
 	inst_class->get_stack_manipulation = cdn_instruction_matrix_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_matrix_equal;
-	inst_class->recalculate_sparsity = cdn_instruction_matrix_recalculate_sparsity;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionMatrixPrivate));
 }
@@ -182,8 +141,6 @@ cdn_instruction_matrix_new (CdnStackArgs const *args,
 
 	cdn_stack_args_copy (&self->priv->smanip.pop, args);
 	self->priv->smanip.push.dimension = *dim;
-
-	cdn_instruction_matrix_recalculate_sparsity (CDN_INSTRUCTION (self));
 
 	return CDN_INSTRUCTION (ret);
 }

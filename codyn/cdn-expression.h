@@ -146,7 +146,6 @@ gboolean       cdn_expression_get_dimension    (CdnExpression      *expression,
                                                 CdnDimension       *dimension);
 
 CdnStackArg   *cdn_expression_get_stack_arg    (CdnExpression      *expression);
-void           cdn_expression_recalculate_sparsity (CdnExpression *expression);
 
 void           cdn_expression_set_cache_notify (CdnExpression            *expression,
                                                 CdnExpressionCacheNotify  notify,
@@ -159,11 +158,6 @@ void           cdn_expression_set_evaluate_notify (CdnExpression            *exp
                                                    GDestroyNotify            destroy_notify);
 
 guint          cdn_expression_get_stack_size   (CdnExpression       *expression);
-
-void           cdn_expression_set_pinned_sparsity (CdnExpression *expression,
-                                                   gboolean       pinned);
-
-gboolean       cdn_expression_get_pinned_sparsity (CdnExpression *expression);
 
 void          _cdn_expression_transfer_dependencies (CdnExpression *expression,
                                                      CdnExpression *transfer_to);

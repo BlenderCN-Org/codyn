@@ -47,9 +47,6 @@ typedef struct
 typedef struct
 {
 	CdnDimension dimension;
-
-	guint *sparsity;
-	guint num_sparse;
 } CdnStackArg;
 
 #else
@@ -80,9 +77,6 @@ typedef struct
 			gint32 columns;
 		};
 	};
-
-	guint *sparsity;
-	guint num_sparse;
 } CdnStackArg;
 #endif
 
@@ -101,7 +95,7 @@ typedef struct
 } CdnStackManipulation;
 
 #define CDN_DIMENSION(r, c) {{{.rows = r, .columns = (c)}}}
-#define CDN_STACK_ARG(r, c) {{.dimension = CDN_DIMENSION (r, c)}, .sparsity = NULL, .num_sparse = 0}
+#define CDN_STACK_ARG(r, c) {{.dimension = CDN_DIMENSION (r, c)}}
 #define CDN_STACK_ARG_EMPTY CDN_STACK_ARG(0, 0)
 
 extern CdnDimension cdn_dimension_one;
@@ -176,19 +170,6 @@ void      cdn_stack_arg_destroy        (CdnStackArg       *arg);
 guint     cdn_stack_arg_size              (CdnStackArg const *arg);
 void      cdn_stack_arg_get_dimension     (CdnStackArg const *arg,
                                            CdnDimension      *dim);
-
-gboolean  cdn_stack_arg_is_sparse (CdnStackArg const *arg,
-                                   guint              idx);
-
-void      cdn_stack_arg_set_sparsity (CdnStackArg *arg,
-                                      guint       *sparsity,
-                                      guint        num_sparse);
-
-guint const *cdn_stack_arg_get_sparsity (CdnStackArg *arg,
-                                         guint       *num_sparse);
-
-void      cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
-                                          guint        sparsity);
 
 void      cdn_stack_manipulation_destroy (CdnStackManipulation *smanip);
 

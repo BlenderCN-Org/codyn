@@ -309,12 +309,6 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 	cdn_stack_args_init (&popargs, num);
 	cdn_stack_args_init (&matargs, num);
 
-	// Make all sparse
-	for (i = 0; i < num; ++i)
-	{
-		cdn_stack_arg_set_sparsity_one (&matargs.args[i], 0);
-	}
-
 	for (i = 0; i < num; ++i)
 	{
 		// To make this work, we are going to replace references to
@@ -329,15 +323,9 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 		popargs.args[i].dimension = fsmanip->push.dimension;
 
-		// Set i to not be sparse
-		cdn_stack_arg_set_sparsity (&matargs.args[i], NULL, 0);
-
 		instrs = g_slist_prepend (instrs,
 		                          cdn_instruction_matrix_new (&matargs,
 		                                                      &fsmanip->push.dimension));
-
-		// reset i to be sparse
-		cdn_stack_arg_set_sparsity_one (&matargs.args[i], 0);
 
 		for (j = num - 1; j >= 0; --j)
 		{
