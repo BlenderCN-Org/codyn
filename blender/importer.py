@@ -12,6 +12,7 @@ class CodynImport(bpy.types.Operator):
     filepath = bpy.props.StringProperty(subtype="FILE_PATH")
     animation_start = bpy.props.FloatProperty(name="Animation start (t)", min=0, subtype='UNSIGNED', default=0)
     animation_end = bpy.props.FloatProperty(name="Animation end (t)", min=0, subtype='UNSIGNED', default=0)
+    coordinate_frames = bpy.props.BoolProperty(name="Coordinate frames", default=False)
 
     def make_object(self, context, name, mesh=None):
         if name in bpy.data.objects:
@@ -293,11 +294,14 @@ class CodynImport(bpy.types.Operator):
 
             obj.game.properties['cdn_node'].value = body.get_full_id()
 
-            csid = '{0}_cs'.format(bid)
+            cs = None
 
-            cs = self.make_object(context, csid, lambda: bpy.data.meshes['coordinate_system'])
-            cs.scale = [0.05, 0.05, 0.05]
-            cs.parent = obj
+            if self.coordinate_frames:
+                csid = '{0}_cs'.format(bid)
+
+                cs = self.make_object(context, csid, lambda: bpy.data.meshes['coordinate_system'])
+                cs.scale = [0.05, 0.05, 0.05]
+                cs.parent = obj
 
             # Attach coordinate system visualization
             comid = '{0}_com'.format(bid)
@@ -353,7 +357,10 @@ class CodynImport(bpy.types.Operator):
                     ret.append(fobjbottom)
 
             ret.append(obj)
-            ret.append(cs)
+
+            if not cs is None:
+                ret.append(cs)
+
             ret.append(comobj)
 
             objmap[obj] = body
