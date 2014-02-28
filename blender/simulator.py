@@ -345,6 +345,7 @@ def init():
     data.simulator.update()
     data.paused = True
     data.single_step = False
+    data.single_step_prev = None
     data.gui = gui.Screen()
     data.i = 0
     data.nt = 1
@@ -383,9 +384,17 @@ def loop():
     if not record:
         fps /= data.nt
 
+    if not data.single_step:
+        data.single_step_cnt = 0
+
     if data.single_step:
-        data.simulator.step()
-        data.simulator.update()
+        data.single_step_cnt += 1
+
+        if data.single_step_cnt / fps > 0.01:
+            data.single_step_cnt = 0
+
+            data.simulator.step()
+            data.simulator.update()
 
         data.paused = True
         data.single_step = False
