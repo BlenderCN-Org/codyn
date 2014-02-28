@@ -1,5 +1,5 @@
 import bpy, os, inspect, sys, math, mathutils, collections
-from gi.repository import Cdn
+from gi.repository import Cdn, Gio
 
 import codyn
 
@@ -477,9 +477,17 @@ class CodynImport(bpy.types.Operator):
         self.link_library(context)
 
         path = self.filepath
+        files = []
 
         try:
-            network = Cdn.Network.new_from_path(path)
+            network = Cdn.Network()
+            ctx = Cdn.ParserContext.new(network)
+
+            ctx.connect('file-used', lambda x, y, z: files.append(y.get_path()))
+            ctx.push_input(Gio.File.new_for_path(path), None, False)
+
+            ctx.parse(True)
+
         except Exception as e:
             self.report({'ERROR'}, 'Failed to load network: ' + str(e))
             return {'FINISHED'}
@@ -555,10 +563,23 @@ class CodynImport(bpy.types.Operator):
 
         codyn.data.networks[name].cdn = network
         codyn.data.networks[name].filename = path
-        codyn.data.networks[name].mtime = os.path.getmtime(path)
+
+        mtime = os.path.getmtime(path)
+
+        for f in files:
+            try:
+                fmtime = os.path.getmtime(f)
+
+                if fmtime > mtime:
+                    mtime = fmtime
+            except:
+                pass
+
+        codyn.data.networks[name].mtime = mtime
         codyn.data.networks[name].rawc = None
         codyn.data.networks[name].nodes = nodes
         codyn.data.networks[name].systems = systems
+        codyn.data.networks[name].files = files
 
         if self.animation_end != 0:
             context.scene.render.engine = 'BLENDER_RENDER'
