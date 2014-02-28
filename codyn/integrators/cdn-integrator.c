@@ -343,7 +343,7 @@ update_events (CdnIntegrator *integrator)
 	GSList const *events;
 
 	// Here we are going to check our events
-	events = cdn_integrator_state_phase_events (integrator->priv->state);
+	events = cdn_integrator_state_events (integrator->priv->state);
 
 	while (events)
 	{
