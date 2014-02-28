@@ -4833,10 +4833,10 @@ cdn_parser_context_define (CdnParserContext  *context,
 
 /**
  * cdn_parser_context_push_input:
- * @context the parser context.
- * @file the file.
- * @stream the input stream.
- * @isonce whether only to process it once.
+ * @context: the parser context.
+ * @file: (allow-none): the file.
+ * @stream: (allow-none): the input stream.
+ * @isonce: whether only to process it once.
  *
  **/
 void
