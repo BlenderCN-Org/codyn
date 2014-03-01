@@ -1274,7 +1274,7 @@ collect_towards (CdnExpressionTreeIter  *iter,
 			(*towardsmap)[i] = TRUE;
 		}
 
-		v = _cdn_function_argument_get_variable (arg);
+		v = cdn_function_argument_get_variable (arg);
 
 		if (newgen && !cdn_variable_get_derivative (v))
 		{
@@ -1395,7 +1395,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 		{
 			CdnVariable *tow;
 
-			tow = _cdn_function_argument_get_variable (towards->data);
+			tow = cdn_function_argument_get_variable (towards->data);
 
 			towards = g_slist_delete_link (towards, towards);
 

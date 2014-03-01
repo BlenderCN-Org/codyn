@@ -94,7 +94,7 @@ void                 cdn_function_argument_set_default_value  (CdnFunctionArgume
 void                 _cdn_function_argument_set_variable      (CdnFunctionArgument *argument,
                                                                CdnVariable         *property);
 
-CdnVariable         *_cdn_function_argument_get_variable      (CdnFunctionArgument *argument);
+CdnVariable          *cdn_function_argument_get_variable      (CdnFunctionArgument *argument);
 
 void                  cdn_function_argument_get_dimension     (CdnFunctionArgument *argument,
                                                                CdnDimension        *dimension);

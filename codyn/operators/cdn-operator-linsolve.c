@@ -330,7 +330,7 @@ prepare_functions (GSList  *functions,
 			// Map from the original argument property to the dummy
 			// property
 			g_hash_table_insert (propmap,
-			                     _cdn_function_argument_get_variable (args->data),
+			                     cdn_function_argument_get_variable (args->data),
 			                     iter_for_property (prop));
 
 			args = g_list_next (args);
@@ -344,7 +344,7 @@ prepare_functions (GSList  *functions,
 
 		*unknownprops = g_slist_prepend (*unknownprops,
 		                                 property_from_iter (g_hash_table_lookup (propmap,
-		                                                                          _cdn_function_argument_get_variable (unknowns->data))));
+		                                                                          cdn_function_argument_get_variable (unknowns->data))));
 
 		fiter = cdn_expression_tree_iter_new (cdn_function_get_expression (functions->data));
 
@@ -414,7 +414,7 @@ generate_functions (CdnOperatorLinsolve *self,
 			CdnVariable *pprop;
 
 			// Create property tree for this property
-			pprop = _cdn_function_argument_get_variable (args->data);
+			pprop = cdn_function_argument_get_variable (args->data);
 			iter = iter_for_property (pprop);
 
 			g_hash_table_insert (propmap,

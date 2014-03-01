@@ -200,7 +200,7 @@ create_symbols (CdnFunction *function)
 		arg = args->data;
 
 		ret = g_slist_prepend (ret,
-		                       g_object_ref (_cdn_function_argument_get_variable (arg)));
+		                       g_object_ref (cdn_function_argument_get_variable (arg)));
 
 		args = g_list_next (args);
 	}
@@ -230,10 +230,10 @@ replace_args (CdnExpressionTreeIter *iter,
 		gchar const *nm;
 		CdnVariable *v2;
 
-		v = _cdn_function_argument_get_variable (args->data);
+		v = cdn_function_argument_get_variable (args->data);
 		nm = cdn_function_argument_get_name (args->data);
 
-		v2 = _cdn_function_argument_get_variable (cdn_function_get_argument (newf,
+		v2 = cdn_function_argument_get_variable (cdn_function_get_argument (newf,
 		                                                                     nm));
 
 		it = cdn_expression_tree_iter_new_from_instruction_take (cdn_instruction_variable_new (v2));
@@ -279,7 +279,7 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 	fsmanip = cdn_function_get_stack_manipulation (func);
 
 	cdn_function_argument_get_dimension (arg, &dim);
-	argv = _cdn_function_argument_get_variable (arg);
+	argv = cdn_function_argument_get_variable (arg);
 
 	dummy = cdn_variable_new (cdn_variable_get_name (argv),
 	                          cdn_expression_new0 (),
@@ -297,7 +297,7 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 	nf = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (func)));
 	nfarg = cdn_function_get_argument (nf, cdn_function_argument_get_name (arg));
-	nfargv = _cdn_function_argument_get_variable (nfarg);
+	nfargv = cdn_function_argument_get_variable (nfarg);
 
 	replace_args (iter, func, nf);
 

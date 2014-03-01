@@ -545,7 +545,7 @@ function_argument_index (CdnFunction *f,
 
 	while (args)
 	{
-		if (_cdn_function_argument_get_variable (args->data) == p)
+		if (cdn_function_argument_get_variable (args->data) == p)
 		{
 			return i;
 		}

@@ -481,7 +481,7 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 }
 
 /**
- * _cdn_function_argument_get_variable:
+ * cdn_function_argument_get_variable:
  * @argument: A #CdnFunctionArgument
  *
  * Get the function argument variable.
@@ -490,7 +490,7 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
  *
  **/
 CdnVariable *
-_cdn_function_argument_get_variable (CdnFunctionArgument *argument)
+cdn_function_argument_get_variable (CdnFunctionArgument *argument)
 {
 	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
 
