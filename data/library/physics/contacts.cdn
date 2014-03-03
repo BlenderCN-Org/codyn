@@ -61,7 +61,7 @@ templates
                 tr = "location"
                 K = "cfnullT"
 
-                force = "-Spatial.ForceTranslation(LocalPointToBase(location)) * baseConstraintForceSubspace ∙ λ"
+                force = "Spatial.MotionToForceInverseTransform(Spatial.RotationPart(baseToLocalTransform)) ∙ -constraintForceSubspace ∙ λ"
 
                 edge self
                 {

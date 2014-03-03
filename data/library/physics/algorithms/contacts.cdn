@@ -32,7 +32,7 @@ node | "@bodies" . has-template(physics.contacts.contact)
         set parent | first . baseToLocalTransformSucc = "Spatial.Translate(baseToLocalTransformPred, [0; 0; -pN])"
 
         set active = "1"
-        set contactPoint = "p"
+        set contactPoint = "[p[0]; p[1]; 0]"
     }
 
     event "active" to "inactive" when "forceN < 0" within 0.001
