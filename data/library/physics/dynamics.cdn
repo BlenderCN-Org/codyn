@@ -27,14 +27,18 @@ node "dynamics"
     ## k
     k = "zeros(@numcons, 1)"
 
+    ## LᵀDL factorization of H
+    ltdl = "sltdl(H, pλ)"
+
     ## Generalized accelerations
-    ddq = "slinsolve(H, τ - C, pλ)"
+    ddq = "InvH(τ - C)"
 
     ## Parent indices. This is used only for solving the linear system by
     ## exploiting the branch induced sparsity (slinsolve).
     pλ = "[{@parentsdof||@0;@1}]"
 
-    invH = "inv(H)"
+    ## Compute H⁻¹ x using the LᵀDL factorization
+    InvH(x) = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, x, pλ), pλ)"
 }
 
 # Fill in H and C for all relevant body relationships

@@ -3,7 +3,6 @@ node | "dynamics" | if(parent . has-template(physics.cbody), parent . children |
     node "loopdynamics"
     {
         # Solve H ddq = tau - C + tauact + K^T lamda for ddq
-        ltdl = "sltdl(H, pλ)"
         KT = "Kᵀ"
 
         Y = "sltdllinvt(ltdl, KT, pλ)"
@@ -11,8 +10,10 @@ node | "dynamics" | if(parent . has-template(physics.cbody), parent . children |
         τc = "τ - C"
         z = "sltdldinvlinvt(ltdl, τc, pλ)"
 
-        A = "Yᵀ ∙ sltdldinv(ltdl, Y)"
-        b = "k - Yᵀ ∙ z"
+        YT = "Yᵀ"
+
+        A = "YT ∙ sltdldinv(ltdl, Y)"
+        b = "k - YT ∙ z"
 
         λ = "pinv(A) ∙ b"
         ddq = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, τc + KT ∙ λ, pλ), pλ)"
