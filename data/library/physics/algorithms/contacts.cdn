@@ -10,11 +10,13 @@ node | "@bodies" . has-template(physics.contacts.contact)
 
         contactVelocity = "Jc ∙ model.dq"
 
+        invHJcT = "dynamics.InvH(JcT)"
+
         # The operational space inertia: Λ = (J H⁻¹ Jᵀ)⁻¹
-        operationalSpaceInertia = "pinv(Jc ∙ dynamics.invH ∙ JcT)"
+        operationalSpaceInertia = "pinv(Jc ∙ invHJcT)"
 
         # The inertia weighted jacobian pseudo inverse: J̄ = H⁻¹ Jᵀ Λ
-        inertiaWeightedJacobianPseudoInverse = "dynamics.invH ∙ JcT ∙ operationalSpaceInertia"
+        inertiaWeightedJacobianPseudoInverse = "invHJcT ∙ operationalSpaceInertia"
 
         # Velocity difference in operational space
         dv = "-(1 + coefficientOfRestitution) ∙ contactVelocity"
