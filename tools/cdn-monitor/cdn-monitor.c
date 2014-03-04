@@ -472,6 +472,107 @@ record_monitors (CdnMonitored *monitored)
 }
 
 static void
+display_monitor (CdnMonitored *monitored, CdnMonitorVariable *mon)
+{
+	CdnDimension dim;
+	gdouble const *values;
+	CdnMatrix *m;
+	gchar *name;
+	gchar *val;
+	gchar *namestr;
+
+	values = mon->get_values (mon);
+	dim = mon->dimension;
+
+	m = cdn_matrix_new (values, &dim);
+
+	name = mon->get_name (mon);
+
+	namestr = g_strdup_printf ("%s [%d-by-%d]:", name, dim.rows, dim.columns);
+
+	g_output_stream_write_all (monitored->stream,
+	                           namestr,
+	                           strlen (namestr),
+	                           NULL,
+	                           NULL,
+	                           NULL);
+
+	g_free (name);
+	g_free (namestr);
+
+	if (cdn_dimension_is_one (&dim))
+	{
+		val = g_strdup_printf (precision, values[0]);
+	}
+	else
+	{
+		gint i = 0;
+		gint r;
+		gint c;
+		GString *vals;
+
+		vals = g_string_new ("");
+
+		g_string_append (vals, "  [");
+
+		for (r = 0; r < dim.rows; ++r)
+		{
+			if (r != 0)
+			{
+				g_string_append (vals, "   ");
+			}
+
+			for (c = 0; c < dim.columns; ++c)
+			{
+				gchar *sv;
+
+				if (c != 0)
+				{
+					g_string_append (vals, ", ");
+				}
+
+				sv = g_strdup_printf (precision, cdn_matrix_get_at (m, r, c));
+
+				if (sv[0] != '-')
+				{
+					g_string_append_c (vals, ' ');
+				}
+
+				g_string_append (vals, sv);
+				g_free (sv);
+				++i;
+			}
+
+			if (r != dim.rows - 1)
+			{
+				g_string_append (vals, ";\n");
+			}
+		}
+
+		g_string_append (vals, "  ]");
+		val = g_string_free (vals, FALSE);
+	}
+
+	g_output_stream_write_all (monitored->stream,
+	                           val,
+	                           strlen (val),
+	                           NULL,
+	                           NULL,
+	                           NULL);
+
+	g_free (val);
+
+	g_output_stream_write_all (monitored->stream,
+	                           "\n\n",
+	                           2,
+	                           NULL,
+	                           NULL,
+	                           NULL);
+
+	cdn_matrix_free (m);
+}
+
+static void
 display_monitors (CdnMonitored *monitored)
 {
 	GSList *monitors;
@@ -480,56 +581,7 @@ display_monitors (CdnMonitored *monitored)
 
 	while (monitors)
 	{
-		CdnMonitorVariable *mon = monitors->data;
-		CdnDimension dim;
-		gdouble const *values;
-		CdnMatrix *m;
-		gchar *name;
-		gchar *val;
-
-		values = mon->get_values (mon);
-
-		dim = mon->dimension;
-
-		m = cdn_matrix_new (values, &dim);
-
-		name = mon->get_name (mon);
-
-		g_output_stream_write_all (monitored->stream,
-		                           name,
-		                           strlen (name),
-		                           NULL,
-		                           NULL,
-		                           NULL);
-
-		g_output_stream_write_all (monitored->stream,
-		                           ": ",
-		                           2,
-		                           NULL,
-		                           NULL,
-		                           NULL);
-
-		val = cdn_matrix_to_string (m);
-
-		g_output_stream_write_all (monitored->stream,
-		                           val,
-		                           strlen (val),
-		                           NULL,
-		                           NULL,
-		                           NULL);
-
-		g_free (name);
-		g_free (val);
-
-		g_output_stream_write_all (monitored->stream,
-		                           "\n\n",
-		                           2,
-		                           NULL,
-		                           NULL,
-		                           NULL);
-
-		cdn_matrix_free (m);
-
+		display_monitor (monitored, monitors->data);
 		monitors = g_slist_next (monitors);
 	}
 }
