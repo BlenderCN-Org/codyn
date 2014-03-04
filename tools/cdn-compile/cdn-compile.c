@@ -151,6 +151,8 @@ display_variable (CdnVariable *v, gchar const *indent, gchar const *name)
 			}
 
 			g_printf ("%s", sv);
+			g_free (sv);
+
 			++i;
 		}
 
