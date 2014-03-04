@@ -1493,7 +1493,7 @@ op_pseudo_inverse (CdnStack           *stack,
 		bptr += lb + 1;
 	}
 
-	rcond = DBL_EPSILON * m;
+	rcond = 1e-6;
 
 	dgelsd_ (&m,
 	         &n,
