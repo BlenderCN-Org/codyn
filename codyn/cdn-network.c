@@ -647,6 +647,8 @@ init_seed_from_time (CdnNetwork *network)
 static void
 cdn_network_init (CdnNetwork *network)
 {
+	cdn_init ();
+
 	network->priv = CDN_NETWORK_GET_PRIVATE (network);
 
 #ifdef G_OS_UNIX
