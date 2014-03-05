@@ -75,7 +75,12 @@ templates
                 initial-state "inactive"
             }
 
-            node "hardPlanar{X,Y,Z}" : physics.cjoints."revolute@@@1", hardbase
+            node "hardRevolute{X,Y,Z}" : physics.cjoints."revolute@@@1", hardbase
+            {
+                initial-state "inactive"
+            }
+
+            node "hardPlanar{X,Y,Z}" : physics.cjoints."planar@@@1", hardbase
             {
                 initial-state "inactive"
             }
