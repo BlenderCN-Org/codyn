@@ -1,4 +1,4 @@
-SUBDIRS = cdn-monitor cdn-parser cdn-render cdn-compile plugins
+SUBDIRS = cdn-monitor cdn-parser cdn-render cdn-compile cdn-python plugins
 
 if ENABLE_CONTEXT
 SUBDIRS += cdn-context

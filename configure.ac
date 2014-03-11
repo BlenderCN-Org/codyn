@@ -525,6 +525,7 @@ tools/cdn-render/Makefile
 tools/cdn-context/Makefile
 tools/cdn-archive/Makefile
 tools/cdn-compile/Makefile
+tools/cdn-python/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cdncontext/Makefile
