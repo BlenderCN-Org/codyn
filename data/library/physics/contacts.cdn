@@ -34,7 +34,7 @@ templates
                 # [1-by-N]
                 pN = "p[2, :]"
 
-                forceN = "force[5, :]"
+                forceAtLocationsN = "forceAtLocations[5, :]"
 
                 # the contact velocity in the normal direction
                 #
@@ -61,7 +61,9 @@ templates
                 tr = "location"
                 K = "cfnullT"
 
-                force = "Spatial.MotionToForceInverseTransform(Spatial.RotationPart(baseToLocalTransformSucc)) * -constraintForceSubspace ∙ λ"
+                forceAtLocations = "Spatial.MotionToForceInverseTransform(Spatial.RotationPart(baseToLocalTransformSucc)) ∙ force"
+
+                force = "-constraintForceSubspace ∙ λ"
 
                 edge self
                 {
