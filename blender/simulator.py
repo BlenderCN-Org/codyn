@@ -47,9 +47,10 @@ def find_and_load_rawc(data):
 
 class Simulator:
     class Force:
-        def __init__(self, gobj, idx):
+        def __init__(self, gobj, vname, idx):
             self.gobj = gobj
             self.idx = idx
+            self.vname = vname
 
             for child in self.gobj.children:
                 if 'bottom' in child.name:
@@ -111,7 +112,7 @@ class Simulator:
                 self.nodes[child['cdn_node']] = child
             elif 'cdn_force' in child:
                 parts = child['cdn_force'].split(':')
-                self.forces[child['cdn_force']] = [child, parts[0], int(parts[1])]
+                self.forces[child['cdn_force']] = [child, parts[0], parts[1], int(parts[2])]
 
             self._find_nodes(child)
 
@@ -128,11 +129,11 @@ class SimulatorCodyn(Simulator):
             self.gobj.localTransform = m
 
     class Force(Simulator.Force):
-        def __init__(self, node, gobj, idx):
-            Simulator.Force.__init__(self, gobj, idx)
+        def __init__(self, node, gobj, vname, idx):
+            Simulator.Force.__init__(self, gobj, vname, idx)
 
             self.node = node
-            self.force = self.node.get_variable("forceAtLocations")
+            self.force = self.node.get_variable(vname)
 
         def update(self):
             v = self.force.get_values()
@@ -154,7 +155,7 @@ class SimulatorCodyn(Simulator):
 
         for n in self.forces:
             f = self.forces[n]
-            self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(f[1]), f[0], f[2]))
+            self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(f[1]), f[0], f[2], f[3]))
 
     def step(self, t=None):
         dt = self.data.cdn.get_integrator().get_default_timestep()

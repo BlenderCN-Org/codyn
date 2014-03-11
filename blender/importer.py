@@ -13,6 +13,7 @@ class CodynImport(bpy.types.Operator):
     animation_start = bpy.props.FloatProperty(name="Animation start (t)", min=0, subtype='UNSIGNED', default=0)
     animation_end = bpy.props.FloatProperty(name="Animation end (t)", min=0, subtype='UNSIGNED', default=0)
     coordinate_frames = bpy.props.BoolProperty(name="Coordinate frames", default=False)
+    import_forces = bpy.props.BoolProperty(name="Forces", default=True)
 
     def make_object(self, context, name, mesh=None):
         if name in bpy.data.objects:
@@ -315,46 +316,55 @@ class CodynImport(bpy.types.Operator):
                 shape.parent = obj
                 ret.append(shape)
 
-            contacts = body.find_objects('has-template(physics.contacts.soft)')
+            if self.import_forces:
+                contacts = body.find_objects('has-template(physics.contacts.contact)')
 
-            for c in contacts:
-                # Add contact force vector at each location
-                locs = c.get_variable('location').get_values()
-                locvals = locs.get_flat()
-                dim = locs.dimension()
+                mforce = [(c, 'location', 'forceAtLocations') for c in contacts]
+                mforce += [(body, 'forceExternalLocations', 'forceExternalAtLocations')]
 
-                for cc in range(dim.columns):
-                    bpy.ops.object.add_named(linked=True, name='force')
-                    fobj = context.active_object
+                for (c, vloc, vforce) in mforce:
+                    # Add contact force vector at each location
+                    v = c.get_variable(vloc)
 
-                    bpy.ops.object.add_named(linked=True, name='force_top')
-                    fobjtop = context.active_object
+                    if v is None:
+                        continue
 
-                    bpy.ops.object.add_named(linked=True, name='force_bottom')
-                    fobjbottom = context.active_object
+                    locs = v.get_values()
+                    locvals = locs.get_flat()
+                    dim = locs.dimension()
 
-                    fobj.name = '{0}_force_{1}'.format(bid, cc)
-                    fobjtop.name = '{0}_force_top_{1}'.format(bid, cc)
-                    fobjbottom.name = '{0}_force_bottom_{1}'.format(bid, cc)
+                    for cc in range(dim.columns):
+                        bpy.ops.object.add_named(linked=True, name='force')
+                        fobj = context.active_object
 
-                    fobjtop.parent = fobj
-                    fobjbottom.parent = fobj
+                        bpy.ops.object.add_named(linked=True, name='force_top')
+                        fobjtop = context.active_object
 
-                    fobj.scale = [0.1, 0.1, 0.1]
-                    fobj.parent = obj
+                        bpy.ops.object.add_named(linked=True, name='force_bottom')
+                        fobjbottom = context.active_object
 
-                    istart = cc * dim.rows
-                    fobj.location = locvals[istart:istart+3]
+                        fobj.name = '{0}_force_{1}'.format(bid, cc)
+                        fobjtop.name = '{0}_force_top_{1}'.format(bid, cc)
+                        fobjbottom.name = '{0}_force_bottom_{1}'.format(bid, cc)
 
-                    if not 'cdn_force' in obj.game.properties:
-                        context.scene.objects.active = fobj
-                        bpy.ops.object.game_property_new(type='STRING', name='cdn_force')
+                        fobjtop.parent = fobj
+                        fobjbottom.parent = fobj
 
-                    fobj.game.properties['cdn_force'].value = '{0}:{1}'.format(c.get_full_id(), cc)
+                        fobj.scale = [0.05, 0.05, 0.05]
+                        fobj.parent = obj
 
-                    ret.append(fobj)
-                    ret.append(fobjtop)
-                    ret.append(fobjbottom)
+                        istart = cc * dim.rows
+                        fobj.location = locvals[istart:istart+3]
+
+                        if not 'cdn_force' in obj.game.properties:
+                            context.scene.objects.active = fobj
+                            bpy.ops.object.game_property_new(type='STRING', name='cdn_force')
+
+                        fobj.game.properties['cdn_force'].value = '{0}:{1}:{2}'.format(c.get_full_id(), vforce, cc)
+
+                        ret.append(fobj)
+                        ret.append(fobjtop)
+                        ret.append(fobjbottom)
 
             ret.append(obj)
 
@@ -461,6 +471,99 @@ class CodynImport(bpy.types.Operator):
             # Simulate until start
             start = self.run_for(network.cdn, start)
 
+        class Force:
+            def __init__(self, node, fbody, s):
+                self.node = node
+                self.fbody = fbody
+
+                parts = s.split(':')
+
+                self.vnodename = parts[0]
+                self.vname = parts[1]
+                self.vindex = int(parts[2])
+
+                self.vnode = network.cdn.find_object(self.vnodename)
+
+                self.variable = self.vnode.get_variable(self.vname)
+                self.dimension = self.variable.get_dimension()
+
+                self.origin = self.fbody
+                self.top = None
+                self.bottom = None
+
+                for item in self.origin.children:
+                    if 'top' in item.name:
+                        self.top = item
+                    elif 'bottom' in item.name:
+                        self.bottom = item
+
+                self.bodies = [self.origin, self.top, self.bottom]
+
+            def animate(self):
+                i = self.vindex * 6
+                f = self.variable.get_values().get_flat()[i:i + 6]
+
+                visible = (abs(f[3]) + abs(f[4]) + abs(f[5]) > 0.01) or (frame == 1)
+
+                for b in self.bodies:
+                    b.hide_render = not visible
+                    b.keyframe_insert(data_path='hide_render', frame=frame)
+
+                    b.hide = not visible
+                    b.keyframe_insert(data_path='hide', frame=frame)
+
+                if not visible:
+                    return
+
+                vv = mathutils.Vector(f[3:6])
+                norm = vv.normalized()
+                l = vv.length
+
+                n = mathutils.Vector([0, 0, 1])
+
+                xyz = n.cross(norm)
+                w = 1 + n.dot(norm)
+
+                q = mathutils.Vector((w, xyz[0], xyz[1], xyz[2]))
+                q /= q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]
+
+                vl = l / 50
+
+                t = self.fbody.matrix_world.to_translation()
+
+                q = mathutils.Quaternion(list(q))
+                m = q.to_matrix().to_4x4()
+
+                loc = self.fbody.location.copy()
+                self.fbody.matrix_world = m
+                self.fbody.location = loc
+                self.fbody.scale = [0.05, 0.05, 0.05]
+
+                self.bottom.scale = [1, 1, vl]
+                self.top.scale = [1, 1, 1]
+
+                pz = (vl - 1) * 0.6923
+                self.bottom.location = [0, 0, pz]
+                self.top.location = [0, 0, pz]
+
+                self.bottom.keyframe_insert(data_path='location', frame=frame)
+                self.bottom.keyframe_insert(data_path='scale', frame=frame)
+                self.top.keyframe_insert(data_path='location', frame=frame)
+                self.top.keyframe_insert(data_path='scale', frame=frame)
+
+                self.fbody.keyframe_insert(data_path='location', frame=frame)
+                self.fbody.keyframe_insert(data_path='rotation_euler', frame=frame)
+                self.fbody.keyframe_insert(data_path='scale', frame=frame)
+
+        forces = []
+
+        for node in network.nodes:
+            body = network.nodes[node]
+
+            for child in body.children:
+                if 'cdn_force' in child.game.properties:
+                    forces.append(Force(node, child, child.game.properties['cdn_force'].value))
+
         # Simulate until start == end
         while start < end:
             # Update keyframe from codyn
@@ -471,6 +574,9 @@ class CodynImport(bpy.types.Operator):
 
                 node.keyframe_insert(data_path='location', frame=frame)
                 node.keyframe_insert(data_path='rotation_euler', frame=frame)
+
+            for force in forces:
+                force.animate()
 
             # Simulate for one frame
             start += self.run_for(network.cdn, period)
