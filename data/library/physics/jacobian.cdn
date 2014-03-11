@@ -26,17 +26,9 @@ node | <body>:@bodies | sort
      | if (
                recurse(children)
              | has-template(physics.jacobian)
-             | <jacobian>:name
           )
 {
     J0 = "zeros(6, @numdof)"
-
-    interface
-    {
-        "@[jacobian]J" = J in @jacobian
-        "@[jacobian]Location" = location in @jacobian
-        "@[jacobian]LocationInBase" = locationInBase in @jacobian
-    }
 
     defines
     {
@@ -45,7 +37,18 @@ node | <body>:@bodies | sort
         parentsdofex = "{@parentsrev|@bodydofex[$(@0 + 1)]}"
     }
 
-    "@[jacobian]Jl" = "@jacobian.J[[0;1;2;3;4;5], [{@parentsdofex||@0\,@1}]]"
+    # It's jacobians all the way down
+    node recurse(children) | has-template(physics.jacobian) | <jacobian>:name | parent
+    {
+        interface
+        {
+            "@[jacobian]J" = J in @jacobian
+            "@[jacobian]Location" = location in @jacobian
+            "@[jacobian]LocationInBase" = locationInBase in @jacobian
+        }
+
+        "@[jacobian]Jl" = "@[jacobian]J[[0;1;2;3;4;5], [{@parentsdofex||@0\,@1}]]"
+    }
 
     # Select system node
     node | first | self | parent
