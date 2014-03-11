@@ -235,6 +235,42 @@ class CodynImport(bpy.types.Operator):
         o.game.properties['cdn_record'].value = not record is None
         return o
 
+    def has_template(self, node, fullname):
+        templ = node.find_object('templates-root . ' + fullname)
+
+        if templ is None:
+            return False
+
+        return self.has_applied_template(node, templ)
+
+    def add_lamp(self, context, body, lamp, nodemap):
+        if self.has_template(lamp, 'physics.rendering.sun'):
+            bpy.ops.object.lamp_add(type='SUN')
+        elif self.has_template(lamp, 'physics.rendering.spot'):
+            bpy.ops.object.lamp_add(type='SPOT')
+        else:
+            bpy.ops.object.lamp_add()
+
+        o = context.active_object
+
+        if lamp.get_parent() in nodemap:
+            o.parent = nodemap[lamp.get_parent()]
+        else:
+            o.parent = body
+
+        o.matrix_local = codyn.matrix_to_mat4x4(lamp.get_variable('transform').get_values())
+        o.data.energy = lamp.get_variable('energy').get_value()
+        o.data.color = lamp.get_variable('color').get_values().get_flat()
+
+        if o.data.type == 'POINT':
+            o.data.distance = lamp.get_variable('distance').get_value()
+        elif o.data.type == 'SPOT':
+            o.data.distance = lamp.get_variable('distance').get_value()
+            o.data.spot_size = lamp.get_variable('size').get_value()
+            o.data.spot_blend = lamp.get_variable('blend').get_value()
+
+        return o
+
     def has_applied_template(self, obj, template):
         templmap = {}
         templ = collections.deque(obj.get_applied_templates())
@@ -406,6 +442,11 @@ class CodynImport(bpy.types.Operator):
 
             # Transform
             nodemap[body].matrix_local = codyn.local_blender_transform(body)
+
+        for lamp in system.find_objects('has-template(physics.rendering.lamp)'):
+            l = self.add_lamp(context, sysobj, lamp, nodemap)
+            nodemap[lamp] = l
+            ret.append(l)
 
         return ret, nodemap
 

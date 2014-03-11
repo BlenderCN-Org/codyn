@@ -30,6 +30,32 @@ templates
         {
         }
 
+        node "lamp"
+        {
+            transform = "eye(4)"
+            color = "[1; 1; 1]"
+            energy = "1"
+
+            localMatrix = transform
+            worldMatrix = transform
+        }
+
+        node "point" : lamp
+        {
+            distance = "25"
+        }
+
+        node "sun" : lamp
+        {
+        }
+
+        node "spot" : lamp
+        {
+            distance = "25"
+            size = "pi / 4"
+            blend = "0.15"
+        }
+
         node "camera"
         {
             orthographic = "0"
