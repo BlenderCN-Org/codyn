@@ -554,6 +554,19 @@ cdn_network_reset_impl (CdnObject *object)
 }
 
 static void
+cdn_network_constructed (GObject *object)
+{
+	CdnNetwork *network;
+
+	network = CDN_NETWORK (object);
+
+	if (cdn_object_get_id (CDN_OBJECT (network)) == NULL)
+	{
+		cdn_object_set_id (CDN_OBJECT (network), "(cdn)");
+	}
+}
+
+static void
 cdn_network_class_init (CdnNetworkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -564,6 +577,7 @@ cdn_network_class_init (CdnNetworkClass *klass)
 	object_class->dispose = cdn_network_dispose;
 	object_class->get_property = cdn_network_get_property;
 	object_class->set_property = cdn_network_set_property;
+	object_class->constructed = cdn_network_constructed;
 
 	cdn_class->compile = cdn_network_compile_impl;
 	cdn_class->get_compile_context = cdn_network_get_compile_context_impl;
@@ -759,7 +773,7 @@ cdn_network_new ()
 {
 	cdn_init ();
 
-	return g_object_new (CDN_TYPE_NETWORK, "id", "(cdn)", NULL);
+	return g_object_new (CDN_TYPE_NETWORK, NULL);
 }
 
 static CdnNetworkFormat
