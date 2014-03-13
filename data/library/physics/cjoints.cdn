@@ -209,6 +209,31 @@ templates
             ]"
         }
 
+        node "cubical" : physics.cbody, physics.cdof3
+        {
+            constraintForceSubspace = "[
+                1, 0, 0;
+                0, 1, 0;
+                0, 0, 1;
+                0, 0, 0;
+                0, 0, 0;
+                0, 0, 0
+            ]"
+
+            activeForceSubspace = "[0, 0, 0;
+                                    0, 0, 0;
+                                    0, 0, 0;
+                                    1, 0, 0;
+                                    0, 1, 0;
+                                    0, 0, 1]"
+
+            δ(X) = "[
+                 X[1, 2];
+                -X[0, 2];
+                 X[0, 1]
+            ]"
+        }
+
         node "spherical" : physics.cbody, physics.cdof3
         {
             constraintForceSubspace = "[
