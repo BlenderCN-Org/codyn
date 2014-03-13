@@ -83,12 +83,12 @@ cdn_selection_ref (CdnSelection *selection)
 
 /**
  * cdn_selection_new:
- * @object: The object
- * @context: (transfer none): The expansion context
+ * @object: (type GObject*): The object
+ * @context: (transfer none) (allow-none): The expansion context
  *
  * Create a new selection.
  *
- * Returns: A #CdnSelection
+ * Returns: (transfer full): A #CdnSelection
  *
  **/
 CdnSelection *
@@ -101,7 +101,15 @@ cdn_selection_new (gpointer             object,
 	ret->ref_count = 1;
 
 	ret->object = object ? g_object_ref (object) : NULL;
-	ret->context = cdn_expansion_context_ref (context);
+
+	if (context == NULL)
+	{
+		ret->context = cdn_expansion_context_new (NULL);
+	}
+	else
+	{
+		ret->context = cdn_expansion_context_ref (context);
+	}
 
 	return ret;
 }
@@ -133,7 +141,7 @@ cdn_selection_copy (CdnSelection *selection)
  *
  * Get the object being selected.
  *
- * Returns: (transfer none): The object being selected
+ * Returns: (transfer none) (type GObject*): The object being selected
  *
  **/
 gpointer
