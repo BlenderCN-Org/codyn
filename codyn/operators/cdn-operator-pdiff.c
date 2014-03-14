@@ -59,11 +59,15 @@ cdn_operator_pdiff_responds_to (gchar const *name)
 }
 
 static CdnFunction *
-derived_function (CdnExpression      *expr,
-                  CdnStackArgs const *argdim)
+derived_function (CdnExpression       *expr,
+                  CdnStackArgs const  *argdim,
+                  GError             **error)
 {
 	GSList const *instr;
 	CdnFunction *ret = NULL;
+	gint nargs;
+	gint nimpl;
+	gint nopt;
 
 	instr = cdn_expression_get_instructions (expr);
 
@@ -85,8 +89,34 @@ derived_function (CdnExpression      *expr,
 	}
 	else
 	{
+		g_set_error (error,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
+		             "Expected function reference but got `%s'. Use the dt[] operator for deriving expressions",
+		             cdn_expression_get_as_string (expr));
+
 		return NULL;
 	}
+
+	// Verify if we could actually call the resulting function with
+	// the provided number of arguments
+	nargs = cdn_function_get_n_arguments (ret);
+	nimpl = cdn_function_get_n_implicit (ret);
+	nopt = cdn_function_get_n_optional (ret);
+
+	if (argdim->num < (nargs - nimpl - nopt))
+	{
+		g_set_error (error,
+		             CDN_COMPILE_ERROR_TYPE,
+		             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		             "Expected at least %d function arguments but only got %d for partial derivative of function `%s'",
+		             nargs - nimpl - nopt,
+		             argdim->num,
+		             cdn_object_get_id (CDN_OBJECT (ret)));
+
+		return NULL;
+	}
+
 
 	return cdn_function_for_dimension (ret, argdim);
 }
@@ -118,16 +148,10 @@ validate_arguments (GSList const        *expressions,
                     gint                *order,
                     GError             **error)
 {
-	*func = derived_function (expressions->data, argdim);
+	*func = derived_function (expressions->data, argdim, error);
 
 	if (!*func)
 	{
-		g_set_error (error,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-		             "Expected function reference but got `%s'. Use the dt[] operator for deriving expressions",
-		             cdn_expression_get_as_string (expressions->data));
-
 		return FALSE;
 	}
 
@@ -513,7 +537,7 @@ cdn_operator_pdiff_initialize (CdnOperator         *op,
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-		             "The operator `pdiff' expects arguments [Func{, order};variable] {optional} <list>");
+		             "The operator `pdiff' expects arguments [Func{, order};variable] {optional}");
 
 		return FALSE;
 	}
