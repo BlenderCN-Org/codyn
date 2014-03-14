@@ -466,6 +466,10 @@ Type `help' for more information."""
             except KeyError:
                 self._error('The variable `{0}\' was not being watched'.format(o.get_full_name_for_display()))
 
+    def do_reset(self, s):
+        self.network.reset()
+        self._update_prompt()
+
     def do_EOF(self, s):
         self.stdout.write('\n')
         sys.exit(1)
