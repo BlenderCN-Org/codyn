@@ -1148,8 +1148,12 @@ generate_name_value_pairs (CdnParserContext  *context,
 			CdnExpansionContext *pctx;
 
 			pctx = expansion_context_push_base (context);
-			cdn_expansion_context_shared_defines (pctx,
-			                                      cdn_selection_get_context (sel));
+
+			if (sel)
+			{
+				cdn_expansion_context_shared_defines (pctx,
+				                                      cdn_selection_get_context (sel));
+			}
 
 			cdn_expansion_context_add_expansion (pctx,
 			                                     nameit->data);
