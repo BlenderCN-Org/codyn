@@ -139,7 +139,7 @@ Type `help' for more information."""
     def do_d(self, s):
         self.do_display(s)
 
-    def _display_vars(self, vars, alwaysname=False):
+    def _display_vars(self, vars, alwaysname=False, onlyobjname=False):
         if len(vars) == 0:
             return
 
@@ -151,7 +151,12 @@ Type `help' for more information."""
             indent = ''
 
             if not isone or alwaysname:
-                self.stdout.write('\x1b[32m{0}\x1b[0m:\n'.format(v.get_full_name_for_display()))
+                if onlyobjname:
+                    name = v.get_object().get_full_id_for_display()
+                else:
+                    name = v.get_full_name_for_display()
+
+                self.stdout.write('\x1b[32m{0}\x1b[0m:\n'.format(name))
                 indent = '    '
 
             vals = v.get_values()
@@ -465,6 +470,62 @@ Type `help' for more information."""
                 self._watch.remove(o)
             except KeyError:
                 self._error('The variable `{0}\' was not being watched'.format(o.get_full_name_for_display()))
+
+    def do_e(self, s):
+        self.do_eval(s)
+
+    def do_eval(self, s):
+        objs = filter(lambda x: isinstance(x, Cdn.Object), [x.get_object() for x in self._selections])
+
+        rm = []
+        disp = []
+
+        parts = s.split('=', 2)
+
+        varname = '__repl_tmp'
+        exprs = s
+        tryrmvar = True
+
+        if len(parts) == 2 and not parts[1].strip().startswith('='):
+            varname = parts[0].strip()
+            exprs = parts[1].strip()
+            tryrmvar = False
+
+        for o in objs:
+            e = Cdn.Expression.new(exprs)
+            v = o.get_variable(varname)
+
+            if v is None:
+                v = Cdn.Variable.new(varname, e, Cdn.VariableFlags.NONE)
+
+                try:
+                    o.add_variable(v)
+                except Exception as e:
+                    self._error('Failed to add variable: {0}'.format(e.message))
+                    continue
+
+                rmvar = tryrmvar
+            else:
+                v.get_expression().set_from_string(exprs)
+                rmvar = False
+
+            err = Cdn.CompileError()
+
+            if not v.compile(err):
+                self._error('Failed to compile expression: {0}'.format(err.get_formatted_string()))
+            else:
+                disp.append(v)
+
+            if rmvar:
+                rm.append((o, v))
+
+        self._display_vars(disp, False, True)
+
+        for (o, v) in rm:
+            try:
+                o.remove_variable(v.get_name())
+            except:
+                pass
 
     def do_reset(self, s):
         self.network.reset()
