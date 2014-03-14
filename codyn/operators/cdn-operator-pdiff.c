@@ -125,7 +125,7 @@ validate_arguments (GSList const        *expressions,
 		g_set_error (error,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
+		             "Expected function reference but got `%s'. Use the dt[] operator for deriving expressions",
 		             cdn_expression_get_as_string (expressions->data));
 
 		return FALSE;
