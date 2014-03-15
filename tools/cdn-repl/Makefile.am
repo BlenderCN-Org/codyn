@@ -4,3 +4,5 @@ cdnrepl_PYTHON =			\
 	cdnrepl/command.py
 
 bin_SCRIPTS = cdn-repl
+
+-include $(top_srcdir)/git.mk
