@@ -487,6 +487,9 @@ if test "x$enable_python" = "xyes"; then
 	AC_SUBST(pyoverridesdir)
 fi
 
+adl_RECURSIVE_EVAL($pythondir, EXPANDED_PYTHONDIR)
+AC_SUBST(EXPANDED_PYTHONDIR)
+
 AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
 
 AC_CONFIG_FILES([
@@ -526,6 +529,8 @@ tools/cdn-context/Makefile
 tools/cdn-archive/Makefile
 tools/cdn-compile/Makefile
 tools/cdn-python/Makefile
+tools/cdn-repl/Makefile
+tools/cdn-repl/cdn-repl
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cdncontext/Makefile
