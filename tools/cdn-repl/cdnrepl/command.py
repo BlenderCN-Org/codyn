@@ -18,6 +18,15 @@ Type `help' for more information."""
         self._set_selections()
         self._watch = set()
 
+        self._plot_server = None
+
+    def _exit(self, code=1):
+        if not self._plot_server is None:
+            self._plot_server.shutdown()
+            self._plot_server.join()
+
+        sys.exit(code)
+
     def cmdloop(self, intro=None):
         while True:
             try:
@@ -30,7 +39,7 @@ Type `help' for more information."""
                     self.stdout.write('\n')
                 else:
                     self.stdout.write('^C\n')
-                    sys.exit(1)
+                    self._exit()
 
     def _command_names(self):
         return [x[3:] for x in filter(lambda x: x.startswith('do_'), self.get_names())]
@@ -38,7 +47,7 @@ Type `help' for more information."""
     def default(self, line):
         if line == 'EOF':
             self.stdout.write('\n')
-            sys.exit(1)
+            self._exit()
 
         # Find command with unique prefix
         cmd, arg, line = self.parseline(line)
@@ -614,5 +623,49 @@ Type `help' for more information."""
         """
         self.network.reset()
         self._update_prompt()
+
+    def _ensure_plot_server(self):
+        if not self._plot_server is None:
+            return
+
+        import SimpleHTTPServer, threading, SocketServer, inspect
+        datadir = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
+        class Server(SocketServer.TCPServer):
+            allow_reuse_address = True
+
+        class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+            def translate_path(self, path):
+                return os.path.join(datadir, 'plot.html')
+
+            def log_message(self, format, *args):
+                pass
+
+        class SocketThread(threading.Thread):
+            def __init__(self):
+                threading.Thread.__init__(self)
+
+                self.httpd = Server(('localhost', 0), Handler)
+                (self.host, self.port) = self.httpd.server_address
+
+            def shutdown(self):
+                self.httpd.shutdown()
+                self.httpd.server_close()
+
+            def run(self):
+                self.httpd.serve_forever()
+
+        self._plot_server = SocketThread()
+        self._plot_server.start()
+
+    def do_plot(self, s):
+        import subprocess
+
+        self._ensure_plot_server()
+
+        url = 'http://{0}:{1}'.format(self._plot_server.host, self._plot_server.port)
+        dn = open(os.devnull, 'w')
+
+        subprocess.call(('google-chrome', '--app=' + url), stdout=dn, stderr=dn)
 
 # vi:ts=4:et
