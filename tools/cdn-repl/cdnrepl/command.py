@@ -210,6 +210,11 @@ Type `help' for more information."""
             self.stdout.write('\n')
 
     def do_display(self, s):
+        """display <selector>    Display the value of variables matching a selector.
+
+        display shows the values of all variables matching the provided selector
+        in the current context.
+        """
         sel = self._select(s, Cdn.SelectorType.VARIABLE)
 
         if sel is None:
@@ -264,6 +269,10 @@ Type `help' for more information."""
         self.stdout.write('\x1b[31m{0}\x1b[0m\n'.format(s))
 
     def do_ls(self, s):
+        """ls    List objects and variables.
+
+        ls lists all objects and variables available in the current context.
+        """
         objects = filter(lambda x: isinstance(x, Cdn.Object), [x.get_object() for x in self._selections])
         isone = len(objects) == 1
 
@@ -277,6 +286,12 @@ Type `help' for more information."""
             self.columnize(objs + vars)
 
     def do_load(self, s):
+        """load <filepath>    Load a network from a file.
+
+        load loads a new network from the specified <filepath>. The previously
+        loaded network will no longer be available. The current context and
+        watched variables will be preserved if possible.
+        """
         self.load_network(s)
 
     def load_network(self, s):
@@ -313,6 +328,11 @@ Type `help' for more information."""
             return obj.get_full_id()
 
     def do_reload(self, s):
+        """reload    Reload the currently loaded network from disk.
+
+        reload reads the currently loaded network from disk, recompiles it and
+        restores the current context and watch variables if possible.
+        """
         if self.filename is None:
             self._error('No network has been loaded yet')
             return
@@ -367,6 +387,14 @@ Type `help' for more information."""
         return selector.select_set(self._selections, seltype)
 
     def do_cd(self, s):
+        """cd <selector>   Select new evaluation context.
+
+        cd changes the evaluation context to the objects selected by the provided
+        selector. A special .. selector can be used as a shorthand for
+        `| parent'. If <selector> is not specified, the context will be changed
+        to the root of the current network. Finally, if <selector> is `-', then
+        the current context will be changed to the previous context.
+        """
         s = s.strip()
 
         if len(s) == 0:
@@ -387,6 +415,12 @@ Type `help' for more information."""
             self._set_selections(sel)
 
     def do_step(self, s):
+        """step <timestep>    Numerically integrate the network one timestep.
+
+        step numerically integrates the network one step forward with the
+        provided <timestep>. Any watched variables will be printed after the
+        step has completed.
+        """
         s = s.strip()
 
         if len(s) == 0:
@@ -408,6 +442,15 @@ Type `help' for more information."""
         self._update_prompt()
 
     def do_run(self, s):
+        """run <range>    Numerically integrate the network.
+
+        run numerically integrates the network forward over a period of time.
+        The provided range should be <start>:<step>:<end>, where <start> and
+        <step> are optional. If not provided <start> is set to 0 and <step>
+        is set to the default integrator timestep.
+
+        Any watched variables will be printed after the run has completed.
+        """
         s = s.strip()
 
         if len(s) == 0:
@@ -458,6 +501,12 @@ Type `help' for more information."""
         self._update_prompt()
 
     def do_watch(self, s):
+        """watch <selector>    Watch variables during integration.
+
+        watch adds the variables selected by <selector> to the watch list.
+        Variables in the watch list will be automatically displayed after
+        the `step' or `run' commands.
+        """
         sel = self._select(s, Cdn.SelectorType.VARIABLE)
 
         if sel is None:
@@ -470,8 +519,15 @@ Type `help' for more information."""
         for o in sel:
             self._watch.add(o.get_object())
 
+    def help_help(self):
+        self.stdout.write('List available commands with "help" or detailed help with "help cmd"\n')
 
     def do_unwatch(self, s):
+        """unwatch <selector>    Remove watch variables.
+
+        unwatch removes the variables selected by <selector> from the watch list.
+        See also the `watch' command.
+        """
         sel = self._select(s, Cdn.SelectorType.VARIABLE)
 
         if sel is None:
@@ -490,6 +546,12 @@ Type `help' for more information."""
                 self._error('The variable `{0}\' was not being watched'.format(o.get_full_name_for_display()))
 
     def do_eval(self, s):
+        """eval <expression>    Evaluate the given mathematical expression.
+
+        eval evaluates the provided <expression> in the current context. Using
+        the syntax `<var> = <expression>', a new variable will be created and
+        evaluated in the current context.
+        """
         objs = filter(lambda x: isinstance(x, Cdn.Object), [x.get_object() for x in self._selections])
 
         rm = []
@@ -543,6 +605,10 @@ Type `help' for more information."""
                 pass
 
     def do_reset(self, s):
+        """reset    Reset the integrated network to its initial state.
+
+        reset sets the network back to its initial state after integration.
+        """
         self.network.reset()
         self._update_prompt()
 
