@@ -32,6 +32,35 @@ Type `help' for more information."""
                     self.stdout.write('^C\n')
                     sys.exit(1)
 
+    def _command_names(self):
+        return [x[3:] for x in filter(lambda x: x.startswith('do_'), self.get_names())]
+
+    def default(self, line):
+        if line == 'EOF':
+            self.stdout.write('\n')
+            sys.exit(1)
+
+        # Find command with unique prefix
+        cmd, arg, line = self.parseline(line)
+
+        if cmd is None or cmd == '':
+            return cmd.Cmd.default(self, line)
+
+        names = filter(lambda x: x.startswith(cmd), self._command_names())
+
+        if len(names) == 1:
+            try:
+                func = getattr(self, 'do_' + names[0])
+            except AttributeError:
+                return cmd.Cmd.default(self, line)
+
+            return func(arg)
+        elif len(names) == 0:
+            self._error('Unknown command {0}'.format(cmd))
+        else:
+            colnames = ['`\x1b[1m{0}\x1b[2m\''.format(x) for x in names]
+            self._error('Did you mean {0} or {1}?'.format(', '.join(colnames[:-1]), colnames[-1]))
+
     def _cache_dir(self):
         cache = os.getenv('XDG_CACHE_HOME')
 
@@ -135,9 +164,6 @@ Type `help' for more information."""
             ret.append(n)
 
         return ret
-
-    def do_d(self, s):
-        self.do_display(s)
 
     def _display_vars(self, vars, alwaysname=False, onlyobjname=False):
         if len(vars) == 0:
@@ -279,9 +305,6 @@ Type `help' for more information."""
 
     def complete_load(self, text, line, begidx, endidx):
         return self._complete_filename(text)
-
-    def do_r(self, s):
-        self.do_reload(s)
 
     def _reload_id(self, obj):
         if isinstance(obj, Cdn.Network):
@@ -434,9 +457,6 @@ Type `help' for more information."""
 
         self._update_prompt()
 
-    def do_w(self, s):
-        self.do_watch(s)
-
     def do_watch(self, s):
         sel = self._select(s, Cdn.SelectorType.VARIABLE)
 
@@ -450,8 +470,6 @@ Type `help' for more information."""
         for o in sel:
             self._watch.add(o.get_object())
 
-    def do_uw(self, s):
-        self.do_unwatch(s)
 
     def do_unwatch(self, s):
         sel = self._select(s, Cdn.SelectorType.VARIABLE)
@@ -470,9 +488,6 @@ Type `help' for more information."""
                 self._watch.remove(o)
             except KeyError:
                 self._error('The variable `{0}\' was not being watched'.format(o.get_full_name_for_display()))
-
-    def do_e(self, s):
-        self.do_eval(s)
 
     def do_eval(self, s):
         objs = filter(lambda x: isinstance(x, Cdn.Object), [x.get_object() for x in self._selections])
@@ -530,9 +545,5 @@ Type `help' for more information."""
     def do_reset(self, s):
         self.network.reset()
         self._update_prompt()
-
-    def do_EOF(self, s):
-        self.stdout.write('\n')
-        sys.exit(1)
 
 # vi:ts=4:et
