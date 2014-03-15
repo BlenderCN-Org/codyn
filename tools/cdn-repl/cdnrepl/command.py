@@ -241,6 +241,9 @@ Type `help' for more information."""
             except Exception as e:
                 columns = 80
 
+        if len(items) == 0:
+            return
+
         items = [self._makeutf8(x) for x in items]
         lens = [self._strlen(x) for x in items]
 
