@@ -1,0 +1,29 @@
+<html>
+  <head>
+    <title>cȯdγn repl plot</title>
+    <script type="text/javascript">
+    @JQUERY_JAVASCRIPT@
+    </script>
+
+    <style type="text/css">
+    @REPL_CSS@
+    </style>
+
+    <script type="text/javascript">
+    var remote_port = '@REMOTE_PORT';
+
+    @REPL_JAVASCRIPT@
+    </script>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  </head>
+  <body>
+    <div id="main">
+      <div id="plotbg">
+        <div id="plot">
+        </div>
+      </div>
+    </div>
+  </body>
+<html>
+<!-- vi:ts=2:et -->

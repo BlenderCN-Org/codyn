@@ -16,7 +16,23 @@ Type `help' for more information."""
 
         self._selections = None
         self._set_selections()
-        self._watch = set()
+        self._watch = list()
+        self._watch_vars = set()
+        self._plot_mutex = None
+        self._plot_queue = None
+        self._t = Cdn.Monitor.new(self.network, self.network.get_integrator().get_variable('t'))
+
+        self._plot_server = None
+
+    def _exit(self, code=1):
+        if not self._plot_server is None:
+            import signal
+            signal.alarm(1)
+
+            self._plot_server.shutdown()
+            self._plot_server.join()
+
+        sys.exit(code)
 
     def cmdloop(self, intro=None):
         while True:
@@ -30,7 +46,7 @@ Type `help' for more information."""
                     self.stdout.write('\n')
                 else:
                     self.stdout.write('^C\n')
-                    sys.exit(1)
+                    self._exit()
 
     def _command_names(self):
         return [x[3:] for x in filter(lambda x: x.startswith('do_'), self.get_names())]
@@ -38,7 +54,7 @@ Type `help' for more information."""
     def default(self, line):
         if line == 'EOF':
             self.stdout.write('\n')
-            sys.exit(1)
+            self._exit()
 
         # Find command with unique prefix
         cmd, arg, line = self.parseline(line)
@@ -317,7 +333,10 @@ Type `help' for more information."""
 
         self._selections = None
         self._set_selections()
-        self._watch = set()
+        self._watch = list()
+        self._watch_vars = set()
+
+        self._t = Cdn.Monitor.new(self.network, self.network.get_integrator().get_variable('t'))
 
         return True
 
@@ -343,7 +362,7 @@ Type `help' for more information."""
         objs = filter(lambda x: isinstance(x, Cdn.Object), [x.get_object() for x in self._selections])
 
         names = [self._reload_id(x) for x in objs]
-        watches = [v.get_full_name() for v in self._watch]
+        watches = [m.get_variable().get_full_name() for m in self._watch]
 
         if self.load_network(self.filename):
             newsel = []
@@ -368,8 +387,9 @@ Type `help' for more information."""
                 except:
                     v = None
 
-                if not v is None:
-                    self._watch.add(v)
+                if not v is None and not v in self._watch_vars:
+                    self._watch.append(Cdn.Monitor.new(self.network, v))
+                    self._watch_vars.add(v)
 
     def _select(self, s, seltype=Cdn.SelectorType.ANY):
         s = s.strip()
@@ -440,7 +460,7 @@ Type `help' for more information."""
             return
 
         self.network.step(dt)
-        self._display_vars(self._watch, True)
+        self._display_vars([x.get_variable() for x in self._watch], True)
 
         self._update_prompt()
 
@@ -499,9 +519,17 @@ Type `help' for more information."""
             return
 
         self.network.run(start, step, end)
-        self._display_vars(self._watch, True)
+        self._display_vars([x.get_variable() for x in self._watch], True)
 
         self._update_prompt()
+
+        if not self._plot_mutex is None:
+            self._plot_mutex.acquire()
+            
+            if self._plot_client:
+                self._plot_queue.put(self._plot_data())
+
+            self._plot_mutex.release()
 
     def do_watch(self, s):
         """watch <selector>    Watch variables during integration.
@@ -520,7 +548,11 @@ Type `help' for more information."""
             return
 
         for o in sel:
-            self._watch.add(o.get_object())
+            if not o in self._watch_vars:
+                v = o.get_object()
+
+                self._watch.append(Cdn.Monitor.new(self.network, v))
+                self._watch_vars.add(v)
 
     def help_help(self):
         self.stdout.write('List available commands with "help" or detailed help with "help cmd"\n')
@@ -544,7 +576,9 @@ Type `help' for more information."""
             o = o.get_object()
 
             try:
-                self._watch.remove(o)
+                self._watch_vars.remove(o)
+                self._watch = [x for x in self._watch if x.get_variable() != o]
+
             except KeyError:
                 self._error('The variable `{0}\' was not being watched'.format(o.get_full_name_for_display()))
 
@@ -614,5 +648,117 @@ Type `help' for more information."""
         """
         self.network.reset()
         self._update_prompt()
+
+    def _start_plot_client(self):
+        import subprocess
+
+        url = 'http://{0}:{1}'.format(self._plot_server.host, self._plot_server.port)
+        dn = open(os.devnull, 'w')
+
+        if sys.platform.startswith('darwin'):
+            subprocess.call(('open', url), stdout=dn, stderr=dn)
+        elif os.name == 'posix':
+            subprocess.call(('xdg-open', url), stdout=dn, stderr=dn)
+
+    def _ensure_plot_server(self):
+        if not self._plot_server is None:
+            self._plot_mutex.acquire()
+            if not self._plot_client:
+                self._start_plot_client()
+
+            self._plot_mutex.release()
+            return
+
+        import Queue
+        self._plot_queue = Queue.Queue()
+
+        import SimpleHTTPServer, threading, SocketServer, inspect
+        datadir = os.path.dirname(inspect.getfile(inspect.currentframe()))
+
+        cmd = self
+
+        self._plot_mutex = threading.Lock()
+        self._plot_client = False
+
+        class Server(SocketServer.TCPServer):
+            allow_reuse_address = True
+
+        class PlotHtmlHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+            def __init__(self, *args):
+                SimpleHTTPServer.SimpleHTTPRequestHandler.__init__(self, *args)
+                self._last_data = None
+
+            def do_GET(self):
+                if self.path == '/data':
+                    self.handle_data()
+                else:
+                    SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self)
+
+            def handle_data(self):
+                import json
+
+                # Wait until new data is ready
+                cmd._plot_mutex.acquire()
+                cmd._plot_client = True
+                cmd._plot_mutex.release()
+
+                data = cmd._plot_queue.get()
+                cmd._plot_queue.task_done()
+
+                datajs = json.dumps(data)
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Content-length', len(datajs))
+                self.end_headers()
+                self.wfile.write(datajs)
+
+                cmd._plot_mutex.acquire()
+                cmd._plot_client = False
+                cmd._plot_mutex.release()
+
+            def translate_path(self, path):
+                return os.path.join(datadir, 'plot.html')
+
+            def log_message(self, format, *args):
+                pass
+
+        class ServerThread(threading.Thread):
+            def __init__(self, httpd):
+                threading.Thread.__init__(self)
+
+                self.httpd = httpd
+                (self.host, self.port) = self.httpd.server_address
+
+            def shutdown(self):
+                self.httpd.shutdown()
+                self.httpd.server_close()
+
+            def run(self):
+                self.httpd.serve_forever()
+
+        self._plot_server = ServerThread(Server(('localhost', 0), PlotHtmlHandler))
+        self._plot_server.start()
+
+        self._start_plot_client()
+
+    def _plot_data(self):
+        t = self._t.get_data()
+
+        lines = []
+
+        for w in self._watch:
+            lines.append({
+                'label': w.get_variable().get_full_name_for_display(),
+                'data': w.get_data()
+            })
+
+        return {'t': t, 'lines': lines}
+
+    def do_plot(self, s):
+        import subprocess
+
+        self._ensure_plot_server()
+        self._plot_queue.put(self._plot_data())
 
 # vi:ts=4:et
