@@ -42,7 +42,7 @@ main (int argc, char const *argv[])
 	nargv = (char const **)malloc((argc + 2) * sizeof (char const *));
 
 	nargv[0] = "/usr/bin/env";
-	nargv[1] = "python";
+	nargv[1] = PYTHON;
 
 	for (i = 1; i < argc; i++)
 	{
