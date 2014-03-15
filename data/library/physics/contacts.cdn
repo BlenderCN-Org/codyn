@@ -46,8 +46,6 @@ templates
 
                 coefficientOfRestitution = "0"
 
-                a = "jacobianJ * dynamics.ddq + acceleration"
-
                 # Add a jacobian node which will calculate the contact jacobian
                 # needed to calculate the contact impulse on impact
                 node "jacobian" : physics.jacobian
