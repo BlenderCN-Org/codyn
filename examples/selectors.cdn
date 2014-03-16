@@ -1,0 +1,24 @@
+# Define some nodes n1_left to n3_right
+node "n{1:3}_{left,right}" {
+}
+
+# Open previously defined n1_right to n3_right nodes
+node /n(.*)_right/ {
+    # Define a variable v on which we can later select
+    v = 1
+}
+
+# Create an edge between all left and right nodes with matching names
+# using a regular expression selector and generator selector
+edge from /(.*)_left/
+       to "@1_right" {}
+
+# Create a reverse edge for each pair of nodes which already have
+# a connecting edge.
+edge from nodes | if(inputs) | name
+       to @0 | inputs | input {}
+
+# Select nodes which do not yet have a variable named `v'
+node not(children | variables | "v") {
+    v = 2
+}
