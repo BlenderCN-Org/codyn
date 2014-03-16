@@ -1,0 +1,42 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.01:5 -m '"n{1:5}{r,l}"."{x,y}"'
+
+g = 9.81
+
+node "n{1:5}{r,l}" {
+    m = 1.5
+
+    # Generator syntax also applies to variable names
+    "{x,y}" = "rand(-5, 5)"
+
+    x'' = 0
+
+    # External force implementing damping (due to friction)
+    Dy = 0.5
+    Fy = "-Dy * dy"
+
+    # Acceleration due to gravity plus external force
+    y'' = "-m * g + Fy"
+}
+
+# We can open up existing nodes and modify them. Here
+# we will add a simple fixed spring to the first node on
+# both left and right sides
+node "n1{r,l}" {
+    Ky = 10
+
+    # Set external force to damping plus a spring force
+    # pulling back the point mass to 0
+    Fy = "-Dy * dy + Ky * -y"
+}
+
+# This generates full coupling between the left and right
+# nodes
+<bidirectional>
+edge from "n{1:5}r" to "n{1:5}l" {
+    Kx = "5"
+    Ky = "20"
+
+    dx' += "Kx * (input.x - output.x)"
+    dy' += "Ky * (input.y - output.y)"
+}

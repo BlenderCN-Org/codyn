@@ -1,0 +1,29 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.01:5 -m n1.y -m n2.y
+
+# Global gravity, accessible from child nodes
+g = 9.81
+
+# Define a single node named n1
+node "n1" {
+    # Position of the point mass 
+    y = 10
+
+    # Mass
+    m = 0.6
+
+    # Acceleration
+    y'' = "-m * g"
+}
+
+# Define a single node named n2
+node "n2" {
+    # Position of the point mass 
+    y = 8
+
+    # Mass
+    m = 0.4
+
+    # Acceleration
+    y'' = "-m * g"
+}
