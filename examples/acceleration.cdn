@@ -1,0 +1,11 @@
+# Position of the point mass 
+y = 10
+
+# Gravity
+g = 9.81
+
+# Mass
+m = 0.6
+
+# Acceleration
+y'' = "-m * g"
