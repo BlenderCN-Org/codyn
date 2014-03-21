@@ -1,0 +1,46 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.01:8 -m '"h{1:5}".x'
+
+templates {
+    node "polar_hopf" {
+        f = 1
+        omega = "2 * pi * f"
+
+        p' = "omega"
+
+           mu = 1
+        gamma = 1
+   
+         r = "mu"
+        r' = "gamma * (mu - r^2) * r"
+
+        x = "r * cos(p)"
+    }
+
+    edge "polar_coupling" {
+        bias = 0
+        weight = 1
+
+        p' += "weight * input.r * sin(input.p - output.p - bias)"
+    }
+}
+
+defines {
+    n = "5"
+}
+
+node "h{1:@n}" : polar_hopf {
+    p = "rand(-pi, pi)"
+    f = 0.5
+    r = 0.001
+    gamma = 3
+}
+
+<bidirectional>
+edge from "h{1:@n}" to "h$(@1 + 1)" : polar_coupling {
+    s = [1, -1]
+    weight = 1
+    bias = "s * $(2 * pi / @n)"
+}
+
+# vi:ts=4:et

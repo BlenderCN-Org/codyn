@@ -1,0 +1,30 @@
+templates {
+    node "neuron" {
+          y = "max(x, 0)"
+        
+        x = "rand(-0.1, 0.1)"
+        v = "rand(-0.1, 0.1)"
+
+        x' = "1 / tau * (c - x - b * v)"
+        v' = "1 / Tau * (y - v)"
+    }
+
+    node "matsuoka" {
+          a = "2"
+          b = "2"
+          c = "1"
+        tau = "0.1"
+        Tau = "0.1"
+
+        node "neuron{1,2}" : neuron {}
+
+        <bidirectional>
+        edge from "neuron1" to "neuron2" {
+            x' += "-1 / tau * a * y"
+        }
+
+        x = "neuron1.y - neuron2.y"
+    }
+}
+
+node "m" : matsuoka {}

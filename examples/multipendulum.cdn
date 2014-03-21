@@ -1,0 +1,60 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.001:20 -m system./p.*/.q
+
+integrator {
+    method = "runge-kutta"
+}
+
+# Includes the codyn physics templates for systems, bodies and
+# joint models
+include "physics/physics.cdn"
+
+defines {
+    n = 5
+}
+
+# All models start by defining a node derived from the physics.system
+# template
+node "system" : physics.system {
+    # Inside the system, joints are defined by inheriting from any
+    # of the physics.joints.* templates. codyn provides a large number
+    # of general purpose joints.
+    node "p{1:@n}" : physics.joints.revoluteY {
+        # The center of mass
+        com = "[0; 0; -0.5]"
+
+        # The translation from the parent frame to the frame of
+        # this joint
+         tr = "[0; 0; -1]"
+
+        # The inertia tensor of the physical body on this joint
+          I = "Inertia.Box(m, 0.05, 0.05, 1)"
+
+        # Add some damping in the system on the generalized force
+        τ = "-10 * dq"
+    }
+
+    # Override certain variables on the root joint.
+    node "p1" {
+        tr = "[0; 0; 0]"
+         q = "0.2 * pi"
+    }
+
+    # Create edges between successive nodes inheriting from
+    # the physics.joint template. This chains joints together
+    # to for the articulated rigid body.
+    edge from "p{1:@n}" to "p$(@1 + 1)" : physics.joint {}
+
+    # The physics/model.cdn file should be included at the end of the
+    # model definition and constructs a "model" node containing global
+    # system quantities such as the center of mass and total mass. It is
+    # also responsible for constructing the required Jacobians if requested.
+    include "physics/model.cdn"
+
+    # The physics/dynamics.cdn file should be included last and constructs
+    # the equations necessary for forward simulation of the dynamics. It
+    # uses RNEA to construct C and CRBA to construct H in a new node called
+    # "dynamics". It then derives generalized accelerations in dynamics.ddq
+    # which are project back to the individual joints.
+    include "physics/dynamics.cdn"
+}

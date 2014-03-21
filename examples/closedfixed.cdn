@@ -1,0 +1,41 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.001:6 -m system./p.*/.q
+
+include "physics/physics.cdn"
+include "physics/cjoints.cdn"
+
+integrator {
+	method = "runge-kutta"
+}
+
+defines {
+	offset = "0.2 * pi"
+}
+
+node "system" : physics.system {
+	node "p{1:3}" : physics.joints.revoluteY {
+		 tr = "[0; 0; -1]"
+		com = "[0; 0; -0.5]"
+		  I = "Inertia.Box(m, 0.05, 0.05, 1)"
+	}
+
+	node "p1" {
+		tr = "[0; 0; 0]"
+		 q = "-@offset"
+	}
+
+	node "p{2:3}" {
+		q = ["0.5 * pi + @offset", "0.5 * pi - @offset"]
+	}
+
+	edge from "p{1:3}" to "p$(@1 + 1)" : physics.joint {}
+
+	node "pcl" : physics.cjoints.revoluteY {
+		tr = "[0; 0; -1]"
+	}
+
+	edge from "p3" to "pcl" : physics.cjoint {}
+
+	include "physics/model.cdn"
+	include "physics/dynamics.cdn"
+}

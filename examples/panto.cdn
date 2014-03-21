@@ -1,0 +1,64 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.001:6 -m panto.hip.q -m panto.knee.q -m panto.ankle.q -m panto.par.q
+
+include "physics/physics.cdn"
+include "physics/cjoints.cdn"
+
+integrator {
+    method = "runge-kutta"
+}
+
+node "panto" : physics.system {
+  node "hip" : physics.joints.revoluteY {
+    com = "[0; 0; -0.02]"
+      m = "0.01"
+      I = "Inertia.Box(m, 0.01, 0.005, 0.04)"
+      q = "0.1 * pi"
+    
+      # Torque due to slight damping
+      D = "1e-3"
+      τ = "-D * dq"
+  }
+
+  node "knee" : physics.joints.revoluteY {
+     tr = "[0; 0; -0.04]"
+    com = "[0; 0; -0.03]"
+      m = "0.02"
+      I = "Inertia.Box(m, 0.01, 0.005, 0.06)"
+      q = "-0.4 * pi"
+
+       # Torque due to a virtual spring around the
+       #  initial angle of the leg
+      q0 = "q" | once
+       K = "0.1"
+       τ = "K * (q0 - q)"
+  }
+
+  node "ankle" : physics.joints.revoluteY {
+     tr = "[0; 0; -0.06]"
+    com = "[0; 0; -0.025]"
+      m = "0.01"
+      I = "Inertia.Box(m, 0.01, 0.005, 0.05)"
+      q = "0.4 * pi"
+  }
+
+  node "par" : physics.joints.revoluteY {
+     tr = "[0; 0; 0.02]"
+    com = "[0; 0; 0.025]"
+      m = 0.1
+      I = "Inertia.Box(m, 0.01, 0.005, 0.05)"
+      q = "-0.4 * pi"
+  }
+
+  edge from "{hip,knee,ankle}" to ["knee", "ankle", "par"] : physics.joint {}
+
+  # Close pantographic parallel structure
+  node "cl" : physics.cjoints.revoluteY {
+    tr = "[0; 0; 0.06]"
+  }
+
+  edge from "{par,cl}" to ["cl", "hip"] : physics.cjoint {}
+
+  include "physics/model.cdn"
+  include "physics/dynamics.cdn"
+}
