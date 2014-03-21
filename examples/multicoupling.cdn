@@ -1,6 +1,9 @@
 #!/usr/bin/env cdn-monitor-i
 # -t 0:0.01:5 -m '"n{1:5}{r,l}"."{x,y}"'
 
+## Example of many to many coupling between point masses.
+
+## Gravity
 g = 9.81
 
 node "n{1:5}{r,l}" {
@@ -40,3 +43,5 @@ edge from "n{1:5}r" to "n{1:5}l" {
     dx' += "Kx * (input.x - output.x)"
     dy' += "Ky * (input.y - output.y)"
 }
+
+# vi:ts=4:et

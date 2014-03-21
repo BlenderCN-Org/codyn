@@ -1,3 +1,5 @@
+## A simple Van der Pol oscillator
+
 mu = 5
 x = "1"
 x'' = "mu * (1 - x^2) * dx - x"

@@ -1,7 +1,14 @@
+
+## Model implementing SLIP (spring loaded inverted pendulum).
+## This example makes use of defines to allow specifying
+## values through the environment, making it easy to run a
+## systematic search on the model using a script.
+
 integrator {
     method = "runge-kutta"
 }
 
+## Gravity
 g = 9.81
 
 defines {
@@ -60,3 +67,5 @@ node "slip"
     # y'' = projected(FSpring, Y) / m
     dy' = "(cos(aol) * fspring) / m" state "ground"
 }
+
+# vi:ts=4:et

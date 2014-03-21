@@ -1,6 +1,9 @@
 #!/usr/bin/env cdn-monitor-i
 # -t 0:0.001:20 -m system./p.*/.q
 
+## Example of a multiple pendulum rigid body dynamics system.
+## The pendulums are chained together in a serial configuration.
+
 integrator {
     method = "runge-kutta"
 }
@@ -58,3 +61,5 @@ node "system" : physics.system {
     # which are project back to the individual joints.
     include "physics/dynamics.cdn"
 }
+
+# vi:ts=4:et

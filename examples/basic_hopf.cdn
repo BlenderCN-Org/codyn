@@ -1,26 +1,47 @@
 #!/usr/bin/env cdn-monitor-i
 # -t 0:0.01:8 -m '"h{1:5}".x'
 
+## A simple example of a coupled system of polar hopf
+## oscillators. It uses templates to define the hopf oscillator
+## and corresponding phase coupling. It then creates a small
+## system of oscillators and couples them to produce a traveling
+## wave.
+
 templates {
+    ## A simple polar hopf oscillator
     node "polar_hopf" {
+        ## Frequency
         f = 1
+
+        ## Angular frequency
         omega = "2 * pi * f"
 
+        ## Phase state variable
         p' = "omega"
 
+        ## Desired amplitude
            mu = 1
+
+        ## Convergence constant for amplitude
         gamma = 1
    
+        ## Amplitude state variable 
          r = "mu"
         r' = "gamma * (mu - r^2) * r"
 
+        ## Output variable
         x = "r * cos(p)"
     }
 
+    ## Simple phase coupling
     edge "polar_coupling" {
-        bias = 0
+        ## Coupling bias
+          bias = 0
+
+        ## Coupling weight
         weight = 1
 
+        ## Coupling
         p' += "weight * input.r * sin(input.p - output.p - bias)"
     }
 }
@@ -29,6 +50,7 @@ defines {
     n = "5"
 }
 
+# Create @n nodes at the same time
 node "h{1:@n}" : polar_hopf {
     p = "rand(-pi, pi)"
     f = 0.5
@@ -36,10 +58,16 @@ node "h{1:@n}" : polar_hopf {
     gamma = 3
 }
 
+# Create bidirectional edges for phase coupling
+# between consecutive nodes 
 <bidirectional>
 edge from "h{1:@n}" to "h$(@1 + 1)" : polar_coupling {
-    s = [1, -1]
-    weight = 1
+    ## Use [] syntax to set s to 1 for the edge on way, and -1 for
+    ## the bidirectional counter edge
+         s = [1, -1]
+
+    ## Set coupling bias such as to reach a full
+    ## traveling wave
     bias = "s * $(2 * pi / @n)"
 }
 

@@ -1,5 +1,13 @@
+## Simple example of using the delayed operator. In this example
+## two oscillators are phase coupled together, but observed
+## phase of one of the oscillators is delayed.
+
+## Create two oscillator nodes
 node "n{1:2}" {
+    ## Convergence constant
     g = 1
+
+    ## Desired amplitude
     R = 1
 
     ## Phase of oscillation

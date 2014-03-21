@@ -1,30 +1,51 @@
+
+## Example implementation of a matsuoka oscillator.
+
 templates {
+    ## Neuron template provides one half center of the oscillator
     node "neuron" {
-          y = "max(x, 0)"
+        y = "max(x, 0)"
         
+        ## Set initial x state to small random value to avoid
+        ## fixed points
         x = "rand(-0.1, 0.1)"
+
+        ## Set initial v state to small random value to avoid
+        ## fixed points
         v = "rand(-0.1, 0.1)"
 
+        ## Differential equation on x
         x' = "1 / tau * (c - x - b * v)"
+
+        ## Differential equation on v
         v' = "1 / Tau * (y - v)"
     }
 
+    ## The matsuoka oscillator
     node "matsuoka" {
+        ## Constants
           a = "2"
           b = "2"
           c = "1"
         tau = "0.1"
         Tau = "0.1"
 
+        # Construct the two half center neurons
         node "neuron{1,2}" : neuron {}
 
+        # Create the coupling between the two half centers
         <bidirectional>
         edge from "neuron1" to "neuron2" {
             x' += "-1 / tau * a * y"
         }
 
+        ## The output of the oscillators is the difference between
+        ## the y values of the two half centers
         x = "neuron1.y - neuron2.y"
     }
 }
 
+# Create an instance of the matsuoka oscillator
 node "m" : matsuoka {}
+
+# vi:ts=4:et

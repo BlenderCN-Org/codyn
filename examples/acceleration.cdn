@@ -1,14 +1,18 @@
 #!/usr/bin/env cdn-monitor-i
 # -t 0:0.01:5 -m y
 
-# Position of the point mass 
+## A simple example of second order systems in codyn.
+
+## Position of the point mass 
 y = 10
 
-# Gravity
+## Gravity
 g = 9.81
 
-# Mass
+## Mass
 m = 0.6
 
-# Acceleration
+## Acceleration
 y'' = "-m * g"
+
+# vi:ts=4:et
