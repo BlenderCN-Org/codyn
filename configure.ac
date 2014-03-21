@@ -510,6 +510,7 @@ data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile
 data/library/physics/algorithms/Makefile
+examples/Makefile
 io/Makefile
 io/file/Makefile
 io/network/Makefile
