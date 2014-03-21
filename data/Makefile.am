@@ -12,15 +12,16 @@ latex_DATA = codyn.sty cdn-listings.tex
 emacsdir = $(datadir)/emacs/site-lisp
 emacs_DATA = codyn-mode.el
 
-EXTRA_DIST =		\
-	$(dtd_DATA)	\
-	cdn.xml.in	\
-	$(latex_DATA) 	\
-	codyn-mode.el	\
-	keywords.list	\
-	selectors.list	\
-	cdn.lang	\
-	cdn.lang.in	\
+EXTRA_DIST =			\
+	$(dtd_DATA)		\
+	cdn.xml.in		\
+	$(latex_DATA) 		\
+	cdn-listings.tex.in	\
+	codyn-mode.el		\
+	keywords.list		\
+	selectors.list		\
+	cdn.lang		\
+	cdn.lang.in		\
 	make-cdn-lang.py
 
 CLEANFILES = cdn.xml
