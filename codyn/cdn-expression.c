@@ -79,7 +79,6 @@ struct _CdnExpressionPrivate
 	guint modified : 1;
 	guint once : 1;
 	guint has_cache : 1;
-	guint pinned_sparsity : 1;
 	guint compiling : 1;
 };
 
@@ -1194,8 +1193,6 @@ make_zeros (CdnDimension const *dimension)
 			args.args[i].rows = 1;
 			args.args[i].columns = 1;
 
-			cdn_stack_arg_set_sparsity_one (&args.args[i], 0);
-
 			ret = g_slist_prepend (ret,
 			                       cdn_instruction_number_new_from_string ("0"));
 		}
@@ -1523,11 +1520,6 @@ eye_macro (CdnExpression *expression,
 				                   context);
 
 				args.args[i].dimension = cdn_dimension_one;
-
-				if (c != r)
-				{
-					cdn_stack_arg_set_sparsity_one (&args.args[i], 0);
-				}
 
 				++i;
 			}
@@ -2379,15 +2371,19 @@ parse_function (CdnExpression *expression,
 
 			if (fid == CDN_MATH_FUNCTION_TYPE_LINSOLVE)
 			{
-				// For linsolve, we swap the arguments A and B
-				// because that's the way the linsolve math
+				// For linsolve and sltdl, we swap the arguments
+				// A and B because that's the way the linsolve math
 				// function wants the arguments, but it's less
 				// intuitive to have the user specify them
 				// in that order
 				swap_arguments (expression, context);
 			}
 			else if (fid == CDN_MATH_FUNCTION_TYPE_INDEX ||
-			         fid == CDN_MATH_FUNCTION_TYPE_SLINSOLVE)
+			         fid == CDN_MATH_FUNCTION_TYPE_SLINSOLVE ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_DINV ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_DINV_LINVT ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_LINVT ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLTDL_LINV)
 			{
 				// For index, we move the first argument to
 				// the last (i.e. the thing to index)
@@ -3279,7 +3275,16 @@ parse_matrix (CdnExpression *expression,
 			rows = g_slist_delete_link (rows, rows);
 		}
 
-		if (tnumpop > 1)
+		if (tnumpop == 0)
+		{
+			CdnStackArgs args = {0,};
+
+			instructions_push (expression,
+			                   cdn_instruction_matrix_new (&args,
+			                   	                           &tdim),
+			                   context);
+		}
+		else if (tnumpop > 1)
 		{
 			CdnStackArgs args;
 
@@ -5404,16 +5409,9 @@ validate_stack (CdnExpression *expression,
 		g_printf ("%d (+%d)\n", stack, tmpspace + nst);
 #endif
 
-		if (expression->priv->pinned_sparsity)
-		{
-			expression->priv->retdim.dimension = smanip->push.dimension;
-		}
-		else
-		{
-			cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
-		}
+		cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
 
-		if (stack + nst <= 0 || numpopped > stack)
+		if (stack + nst < 0 || numpopped > stack)
 		{
 			return FALSE;
 		}
@@ -5454,7 +5452,6 @@ validate_stack (CdnExpression *expression,
 	}
 
 	cdn_stack_resize (&(expression->priv->output), maxstack);
-	cdn_stack_reset (&(expression->priv->output));
 
 	if (dimonly &&
 	    cdn_dimension_equal (&dim, &expression->priv->retdim.dimension))
@@ -5685,8 +5682,6 @@ cdn_expression_set_instructions_take (CdnExpression *expression,
 
 	// Validate the stack here
 	validate_stack (expression, NULL, FALSE);
-
-	cdn_expression_recalculate_sparsity (expression);
 
 	// We are going to reset the expression completely here
 	expression->priv->prevent_cache_reset = FALSE;
@@ -6273,7 +6268,6 @@ cdn_expression_copy (CdnExpression *expression)
 	ret->priv->modified = expression->priv->modified;
 	ret->priv->has_cache = expression->priv->has_cache;
 	ret->priv->once = expression->priv->once;
-	ret->priv->pinned_sparsity = expression->priv->pinned_sparsity;
 
 	instr = expression->priv->instructions;
 
@@ -6442,85 +6436,6 @@ CdnStackArg *
 cdn_expression_get_stack_arg (CdnExpression *expression)
 {
 	return &expression->priv->retdim;
-}
-
-typedef struct
-{
-	guint *sparsity;
-	guint num_sparse;
-} SparsityInfo;
-
-void
-cdn_expression_set_pinned_sparsity (CdnExpression *expression,
-                                    gboolean       pinned)
-{
-	g_return_if_fail (CDN_IS_EXPRESSION (expression));
-
-	expression->priv->pinned_sparsity = pinned;
-}
-
-gboolean
-cdn_expression_get_pinned_sparsity (CdnExpression *expression)
-{
-	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
-
-	return expression->priv->pinned_sparsity;
-}
-
-void
-cdn_expression_recalculate_sparsity (CdnExpression *expression)
-{
-	GQueue q;
-	GSList const *instr;
-	SparsityInfo *info;
-
-	if (!expression || expression->priv->pinned_sparsity)
-	{
-		return;
-	}
-
-	g_queue_init (&q);
-
-	for (instr = expression->priv->instructions; instr; instr = g_slist_next (instr))
-	{
-		CdnInstruction *i = instr->data;
-		CdnStackManipulation const *smanip;
-
-		smanip = cdn_instruction_get_stack_manipulation (i, NULL);
-
-		if (smanip->pop.num > 0)
-		{
-			guint idx;
-
-			for (idx = 0; idx < smanip->pop.num; ++idx)
-			{
-				info = g_queue_pop_head (&q);
-
-				cdn_stack_arg_set_sparsity (&smanip->pop.args[idx],
-				                            info->sparsity,
-				                            info->num_sparse);
-
-				g_slice_free (SparsityInfo, info);
-			}
-		}
-
-		cdn_instruction_recalculate_sparsity (i);
-
-		info = g_slice_new (SparsityInfo);
-
-		info->sparsity = smanip->push.sparsity;
-		info->num_sparse = smanip->push.num_sparse;
-
-		g_queue_push_head (&q, info);
-	}
-
-	info = g_queue_pop_head (&q);
-
-	cdn_stack_arg_set_sparsity (&expression->priv->retdim,
-	                            info->sparsity,
-	                            info->num_sparse);
-
-	g_slice_free (SparsityInfo, info);
 }
 
 void

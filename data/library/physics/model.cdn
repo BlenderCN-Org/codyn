@@ -15,6 +15,16 @@ node "model"
     dq = "[{@bodies|@1.dq||@0;@1}]"
 }
 
+node | "@cbodies"
+     | if(  outputs
+          | has-template(physics.cjoint)
+          | output
+          | name)
+{
+    coordinateTransformSucc = "Spatial.Inverse(@@0.baseToLocalTransform * localToBaseTransformPred)" | once
+}
+
 include "jacobian.cdn"
+include "algorithms/transformations.cdn"
 
 # vi:ts=4:et

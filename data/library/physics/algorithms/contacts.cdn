@@ -1,19 +1,22 @@
-node | "@bodies" . has-template(physics.contacts.soft)
+node | "@bodies" . has-template(physics.contacts.contact)
 {
-    event "air" to "ground" when "min(pN) < 0" within 0.001
+    event "inactive" to "active" when "min(pN) <= 0 && max(dpN) < 0" within 0.001
     {
         contactLocation = "csum((pN < 0) .* p) / (max(1, sum(pN < 0)))"
-        contactJacobian = "Spatial.Translation(p) * J0"
-        contactVelocity = "contactJacobian ∙ model.dq"
+        contactJacobian = "(Spatial.Translation(p) * J0)[3:6, :]"
 
-        invH = "inv(dynamics.H)"
-        contactJacobianT = "transpose(contactJacobian)"
+        Jc = "[contactJacobian; dynamics.K]"
+        JcT = "Jcᵀ"
+
+        contactVelocity = "Jc ∙ model.dq"
+
+        invHJcT = "dynamics.InvH(JcT)"
 
         # The operational space inertia: Λ = (J H⁻¹ Jᵀ)⁻¹
-        operationalSpaceInertia = "pinv(contactJacobian ∙ invH ∙ contactJacobianT)"
+        operationalSpaceInertia = "pinv(Jc ∙ invHJcT)"
 
         # The inertia weighted jacobian pseudo inverse: J̄ = H⁻¹ Jᵀ Λ
-        inertiaWeightedJacobianPseudoInverse = "invH ∙ contactJacobianᵀ ∙ operationalSpaceInertia"
+        inertiaWeightedJacobianPseudoInverse = "invHJcT ∙ operationalSpaceInertia"
 
         # Velocity difference in operational space
         dv = "-(1 + coefficientOfRestitution) ∙ contactVelocity"
@@ -21,14 +24,91 @@ node | "@bodies" . has-template(physics.contacts.soft)
         # The system output velocity after impulse: q̇⁺ = H⁻¹ Jᵀ F + q̇⁻
         dqAfterImpulse = "inertiaWeightedJacobianPseudoInverse ∙ dv + model.dq"
 
-        set active = "1"
-        set contactPoint = "p"
-
         set   recurse(parent)
             | has-template(physics.system)
             | first .
                 "@bodies".dq = "dqAfterImpulse[[{@bodydofex[$(@@1[!] + 1)]||@0\, @1}]]"
+
+        set parent | first . baseToLocalTransformSucc = "Spatial.Translate(baseToLocalTransformPred, [0; 0; -pN])"
+
+        set active = "1"
+        set contactPoint = "[p[0]; p[1]; 0]"
     }
+
+    event "active" to "inactive" when "min(forceAtLocationsN) < 0" within 0.001
+    {
+        set active = 0
+    }
+}
+
+node | has-template(physics.body) . has-template(physics.contacts.hardbase) | <cname>:name | parent | <oname>:name | <cc>:append-context("@0_@@0")
+{
+    defines
+    {
+        ci = "$(@ccontactnames[!@cc] + 1)"
+    }
+
+    interface
+    {
+        "{K,λ}_@ci" = "@1" in "@cname"
+    }
+}
+
+edge from   has-template(physics.body)
+          . has-template(physics.contacts.hardbase)
+          | name
+          | parent
+          | <oname>:name
+          | <cname>:append-context("@0_@@0")
+          | recurse(inputs | has-template(physics.joint) | input)
+          | <ojoint>:name
+          | parent . "@oname"
+       to   dynamics
+{
+    defines
+    {
+        bi = "$(@bodies[!@ojoint] + 1)"
+        ci = "$(@ccontactnames[!@cname] + 1)"
+
+        c = "@{@bodydofidx[@bi]:+$(@bodydof[@bi] - 1)||@0\,@1}"
+        r = "@{@ccontactconsidx[@ci]:+$(@ccontactcons[@ci] - 1)||@0;@1}"
+    }
+
+    "K[[@r], [@c]]" <= "-K_@ci * @ojoint.baseMotionSubspace"
+}
+
+edge from   has-template(physics.body)
+          . has-template(physics.contacts.hardbase)
+          | <ccname>:name
+          | parent
+          | <oname>:name
+          | <cname>:append-context("@0_@@0")
+       to   dynamics
+{
+    defines
+    {
+        ci = "$(@ccontactnames[!@cname] + 1)"
+        r = "@{@ccontactconsidx[@ci]:+$(@ccontactcons[@ci] - 1)||@0;@1}"
+    }
+
+    "k[@r]" <= "@ccname.k"
+}
+
+edge from   dynamics
+       to   has-template(physics.body)
+          . has-template(physics.contacts.hardbase)
+          | <ccname>:name
+          | parent
+          | <oname>:name
+          | <cname>:append-context("@0_@@0")
+{
+    defines
+    {
+        ci = "$(@ccontactnames[!@cname] + 1)"
+        r = "@{@ccontactconsidx[@ci]:+$(@ccontactcons[@ci] - 1)||@0;@1}"
+    }
+
+    "λ_@ci" <= "λ[[@r]]"
 }
 
 # vi:ts=4:et

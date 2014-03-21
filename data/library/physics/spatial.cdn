@@ -219,6 +219,33 @@ node "Spatial"
         v[5, 0] - v[3, 2];
         v[3, 1] - v[4, 0]
     ]"
+
+    ## Calculate the force transform corresponding to the given motion transform
+    ## Xf = X^(-T)
+    MotionToForceTransform(X) = "[
+        X[0:3, 0:3], X[3:6, 0:3];
+        X[0:3, 3:6], X[3:6, 3:6]
+    ]"
+
+    ## Calculate the inverse force transform corresponding to the given motion
+    ## transform Xf = (X^-1)^(-T) = X^T
+    MotionToForceInverseTransform(X) = "transpose(X)"
+
+    ## Calculate the inverse motion transform corresponding to the given force
+    ## transform Xf = (X^-1)^(-T) = X^T
+    ForceToMotionInverseTransform(X) = "transpose(X)"
+
+    ## Create a spatial transform from a 3d translation. This implements what
+    ## is referred to in Featherstone by the 'xlt' function, defined as
+    ## xlt(r) = [1, 0; -rx, 1] with rx being the tilde matrix of r.
+    ForceTranslation(v) = "[
+         1, 0, 0,  0,     v[2], -v[1];
+         0, 1, 0, -v[2],  0,     v[0];
+         0, 0, 1,  v[1], -v[0],  0;
+         0, 0, 0,  1,     0,     0;
+         0, 0, 0,  0,     1,     0;
+         0, 0, 0,  0,     0,     1
+    ]"
 }
 
 # vi:ex:ts=4:et

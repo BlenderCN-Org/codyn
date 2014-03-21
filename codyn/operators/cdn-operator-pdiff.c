@@ -59,11 +59,15 @@ cdn_operator_pdiff_responds_to (gchar const *name)
 }
 
 static CdnFunction *
-derived_function (CdnExpression      *expr,
-                  CdnStackArgs const *argdim)
+derived_function (CdnExpression       *expr,
+                  CdnStackArgs const  *argdim,
+                  GError             **error)
 {
 	GSList const *instr;
 	CdnFunction *ret = NULL;
+	gint nargs;
+	gint nimpl;
+	gint nopt;
 
 	instr = cdn_expression_get_instructions (expr);
 
@@ -85,8 +89,34 @@ derived_function (CdnExpression      *expr,
 	}
 	else
 	{
+		g_set_error (error,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
+		             "Expected function reference but got `%s'. Use the dt[] operator for deriving expressions",
+		             cdn_expression_get_as_string (expr));
+
 		return NULL;
 	}
+
+	// Verify if we could actually call the resulting function with
+	// the provided number of arguments
+	nargs = cdn_function_get_n_arguments (ret);
+	nimpl = cdn_function_get_n_implicit (ret);
+	nopt = cdn_function_get_n_optional (ret);
+
+	if (argdim->num < (nargs - nimpl - nopt))
+	{
+		g_set_error (error,
+		             CDN_COMPILE_ERROR_TYPE,
+		             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		             "Expected at least %d function arguments but only got %d for partial derivative of function `%s'",
+		             nargs - nimpl - nopt,
+		             argdim->num,
+		             cdn_object_get_id (CDN_OBJECT (ret)));
+
+		return NULL;
+	}
+
 
 	return cdn_function_for_dimension (ret, argdim);
 }
@@ -118,16 +148,10 @@ validate_arguments (GSList const        *expressions,
                     gint                *order,
                     GError             **error)
 {
-	*func = derived_function (expressions->data, argdim);
+	*func = derived_function (expressions->data, argdim, error);
 
 	if (!*func)
 	{
-		g_set_error (error,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
-		             cdn_expression_get_as_string (expressions->data));
-
 		return FALSE;
 	}
 
@@ -200,7 +224,7 @@ create_symbols (CdnFunction *function)
 		arg = args->data;
 
 		ret = g_slist_prepend (ret,
-		                       g_object_ref (_cdn_function_argument_get_variable (arg)));
+		                       g_object_ref (cdn_function_argument_get_variable (arg)));
 
 		args = g_list_next (args);
 	}
@@ -230,10 +254,10 @@ replace_args (CdnExpressionTreeIter *iter,
 		gchar const *nm;
 		CdnVariable *v2;
 
-		v = _cdn_function_argument_get_variable (args->data);
+		v = cdn_function_argument_get_variable (args->data);
 		nm = cdn_function_argument_get_name (args->data);
 
-		v2 = _cdn_function_argument_get_variable (cdn_function_get_argument (newf,
+		v2 = cdn_function_argument_get_variable (cdn_function_get_argument (newf,
 		                                                                     nm));
 
 		it = cdn_expression_tree_iter_new_from_instruction_take (cdn_instruction_variable_new (v2));
@@ -279,7 +303,7 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 	fsmanip = cdn_function_get_stack_manipulation (func);
 
 	cdn_function_argument_get_dimension (arg, &dim);
-	argv = _cdn_function_argument_get_variable (arg);
+	argv = cdn_function_argument_get_variable (arg);
 
 	dummy = cdn_variable_new (cdn_variable_get_name (argv),
 	                          cdn_expression_new0 (),
@@ -297,7 +321,7 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 	nf = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (func)));
 	nfarg = cdn_function_get_argument (nf, cdn_function_argument_get_name (arg));
-	nfargv = _cdn_function_argument_get_variable (nfarg);
+	nfargv = cdn_function_argument_get_variable (nfarg);
 
 	replace_args (iter, func, nf);
 
@@ -308,12 +332,6 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 	cdn_stack_args_init (&popargs, num);
 	cdn_stack_args_init (&matargs, num);
-
-	// Make all sparse
-	for (i = 0; i < num; ++i)
-	{
-		cdn_stack_arg_set_sparsity_one (&matargs.args[i], 0);
-	}
 
 	for (i = 0; i < num; ++i)
 	{
@@ -329,15 +347,9 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 		popargs.args[i].dimension = fsmanip->push.dimension;
 
-		// Set i to not be sparse
-		cdn_stack_arg_set_sparsity (&matargs.args[i], NULL, 0);
-
 		instrs = g_slist_prepend (instrs,
 		                          cdn_instruction_matrix_new (&matargs,
 		                                                      &fsmanip->push.dimension));
-
-		// reset i to be sparse
-		cdn_stack_arg_set_sparsity_one (&matargs.args[i], 0);
 
 		for (j = num - 1; j >= 0; --j)
 		{
@@ -525,7 +537,7 @@ cdn_operator_pdiff_initialize (CdnOperator         *op,
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-		             "The operator `pdiff' expects arguments [Func{, order};variable] {optional} <list>");
+		             "The operator `pdiff' expects arguments [Func{, order};variable] {optional}");
 
 		return FALSE;
 	}

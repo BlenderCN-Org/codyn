@@ -52,11 +52,6 @@ cdn_instruction_copy_impl (CdnMiniObject *object)
 }
 
 static void
-cdn_instruction_recalculate_sparsity_impl (CdnInstruction  *instruction)
-{
-}
-
-static void
 cdn_instruction_class_init (CdnInstructionClass *klass)
 {
 	CdnMiniObjectClass *mini_object_class;
@@ -67,7 +62,6 @@ cdn_instruction_class_init (CdnInstructionClass *klass)
 	klass->get_stack_manipulation = cdn_instruction_get_stack_manipulation_impl;
 	klass->get_dependencies = cdn_instruction_get_dependencies_impl;
 	klass->get_is_commutative = cdn_instruction_get_is_commutative_impl;
-	klass->recalculate_sparsity = cdn_instruction_recalculate_sparsity_impl;
 
 	mini_object_class->copy = cdn_instruction_copy_impl;
 
@@ -261,12 +255,4 @@ cdn_instruction_get_location (CdnInstruction *instruction,
 	{
 		*end = instruction->priv->end;
 	}
-}
-
-void
-cdn_instruction_recalculate_sparsity (CdnInstruction  *instruction)
-{
-	g_return_if_fail (CDN_IS_INSTRUCTION (instruction));
-
-	return CDN_INSTRUCTION_GET_CLASS (instruction)->recalculate_sparsity (instruction);
 }

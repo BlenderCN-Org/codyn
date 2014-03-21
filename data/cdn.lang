@@ -150,6 +150,7 @@
             <keyword>edges</keyword>
             <keyword>first</keyword>
             <keyword>from-set</keyword>
+            <keyword>functions</keyword>
             <keyword>has-flag</keyword>
             <keyword>has-template</keyword>
             <keyword>if</keyword>
@@ -170,17 +171,18 @@
             <keyword>parent</keyword>
             <keyword>recurse</keyword>
             <keyword>reduce</keyword>
-            <keyword>sort</keyword>
             <keyword>reverse</keyword>
             <keyword>root</keyword>
             <keyword>self</keyword>
             <keyword>siblings</keyword>
+            <keyword>sort</keyword>
             <keyword>subset</keyword>
             <keyword>templates</keyword>
             <keyword>templates-root</keyword>
             <keyword>type</keyword>
             <keyword>unique</keyword>
             <keyword>variables</keyword>
+            <keyword>xor</keyword>
         </context>
 
         <context id="keywords" style-ref="keyword">
@@ -195,10 +197,10 @@
             <keyword>debug-print</keyword>
             <keyword>defines</keyword>
             <keyword>delete</keyword>
+            <keyword>discrete</keyword>
             <keyword>edge</keyword>
             <keyword>event</keyword>
             <keyword>from</keyword>
-            <keyword>functions</keyword>
             <keyword>import</keyword>
             <keyword>in</keyword>
             <keyword>include</keyword>
@@ -209,8 +211,8 @@
             <keyword>io</keyword>
             <keyword>layout</keyword>
             <keyword>link-library</keyword>
-            <keyword>node</keyword>
             <keyword>no-self</keyword>
+            <keyword>node</keyword>
             <keyword>object</keyword>
             <keyword>of</keyword>
             <keyword>on</keyword>

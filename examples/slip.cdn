@@ -1,0 +1,71 @@
+
+## Model implementing SLIP (spring loaded inverted pendulum).
+## This example makes use of defines to allow specifying
+## values through the environment, making it easy to run a
+## systematic search on the model using a script.
+
+integrator {
+    method = "runge-kutta"
+}
+
+## Gravity
+g = 9.81
+
+defines {
+	AOA $= "AOA"
+	AOA ?= "(90 - 68) / 180 * pi"
+	
+	KSPRING $= "KSPRING"
+	KSPRING ?= "20"
+}
+
+node "slip"
+{
+    initial-state "air"
+
+      l = 1                         # Spring rest length
+    aoa = "@AOA"    # Angle of attack
+      m = 80                        # Mass
+      k = "@KSPRING * 1000"                   # Spring stiffness
+
+      x = 0
+      y = l
+
+     dx = 5
+     dy = 0
+
+    x'' = 0
+    y'' = "-g"
+
+    # Ground contact position. This gets updated when we switch from
+    # air to ground
+    xc = 0
+
+    leglength = "hypot(x - xc, y)"    # Current leg length
+      fspring = "k * (l - leglength)" # Force of the spring
+           aol = "atan2(xc - x, y)"   # Current angle of attack
+
+    steps = 0 # Number of steps taken
+
+    # Transition from air to ground when the end point of the leg
+    # (considering the desired angle of attack, aoa) would go through the
+    # ground.
+    event "air" to "ground" when "y < l * cos(aoa)" within 0.001 {
+        set xc = "x + l * sin(aoa)" # New contact position
+        set steps = "steps + 1"
+    }
+
+    event any to terminate when "y < 0 || steps >= 24" {}
+
+    # Transition from ground to air when the calculated leglength becomes
+    # larger than the zero leg length (i.e. the spring is fully extended).
+    event "ground" to "air" when "leglength > l" within 0.001 {}
+
+    # x'' = projected(FSpring, X) / m
+    dx' = "(-sin(aol) * fspring) / m" state "ground"
+
+    # y'' = projected(FSpring, Y) / m
+    dy' = "(cos(aol) * fspring) / m" state "ground"
+}
+
+# vi:ts=4:et

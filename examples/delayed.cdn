@@ -1,0 +1,40 @@
+## Simple example of using the delayed operator. In this example
+## two oscillators are phase coupled together, but observed
+## phase of one of the oscillators is delayed.
+
+## Create two oscillator nodes
+node "n{1:2}" {
+    ## Convergence constant
+    g = 1
+
+    ## Desired amplitude
+    R = 1
+
+    ## Phase of oscillation
+    p = "rand(-pi, pi)"
+
+    ## Radius of oscillation
+    r = 0
+
+    ## Differential equation of the phase
+    p' = "2 * pi"
+
+    ## Differential equation of the radius
+    r' = "g * (R - r)"
+
+    ## Output of the system
+    x = "r * cos(p)" | out
+
+    ## Half second delayed version of the output
+    xd = "delayed[r * cos(p), t](0.5)" | out
+}
+
+edge from "n1" to "n2" {
+    ## Phase delay (in seconds)
+    delay = "0.1"
+
+    ## Couple the phase of n1 to the phase of n2, but with a delayed
+    p' += "sin(delayed[input.p](delay) - output.p)"
+}
+
+# vi:ts=4:et

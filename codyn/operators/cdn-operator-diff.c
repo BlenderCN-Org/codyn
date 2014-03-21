@@ -59,8 +59,9 @@ cdn_operator_diff_get_name ()
 }
 
 static CdnFunction *
-derived_function (CdnExpression *expr,
-                  CdnStackArgs const *argdim)
+derived_function (CdnExpression       *expr,
+                  CdnStackArgs const  *argdim,
+                  GError             **error)
 {
 	GSList const *instr;
 	CdnFunction *func = NULL;
@@ -86,7 +87,58 @@ derived_function (CdnExpression *expr,
 
 	if (func)
 	{
+		gint nargs;
+		gint nopt;
+		gint nimpl;
+
+		if (!cdn_object_is_compiled (CDN_OBJECT (func)))
+		{
+			CdnCompileError *err;
+
+			err = cdn_compile_error_new ();
+
+			if (!cdn_object_compile (CDN_OBJECT (func), NULL, err))
+			{
+				if (error)
+				{
+					*error = g_error_copy (cdn_compile_error_get_error (err));
+				}
+
+				g_object_unref (err);
+				return NULL;
+			}
+
+			g_object_unref (err);
+		}
+
+		// Verify if we could actually call the resulting function with
+		// the provided number of arguments
+		nargs = cdn_function_get_n_arguments (func);
+		nimpl = cdn_function_get_n_implicit (func);
+		nopt = cdn_function_get_n_optional (func);
+
+		if (argdim->num < (nargs - nimpl - nopt))
+		{
+			g_set_error (error,
+			             CDN_COMPILE_ERROR_TYPE,
+			             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			             "Expected at least %d function arguments but only got %d for derivative of function `%s'",
+			             nargs - nimpl - nopt,
+			             argdim->num,
+			             cdn_object_get_id (CDN_OBJECT (func)));
+
+			return NULL;
+		}
+
 		func = cdn_function_for_dimension (func, argdim);
+	}
+	else
+	{
+		g_set_error (error,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
+		             "Expected function reference but got `%s'. Use the dt[] operator for deriving expressions",
+		             cdn_expression_get_as_string (expr));
 	}
 
 	return func;
@@ -123,16 +175,10 @@ validate_arguments (GSList const  *expressions,
 
 	expr = expressions->data;
 
-	*func = derived_function (expressions->data, argdim);
+	*func = derived_function (expressions->data, argdim, error);
 
 	if (!*func)
 	{
-		g_set_error (error,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
-		             cdn_expression_get_as_string (expressions->data));
-
 		return FALSE;
 	}
 

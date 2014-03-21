@@ -21,22 +21,24 @@ node "dynamics"
     ## Mass matrix
     H = "zeros(@numdof, @numdof)"
 
+    ## Constraint matrix
+    K = "zeros(@numcons, @numdof)"
+
+    ## k
+    k = "zeros(@numcons, 1)"
+
+    ## LᵀDL factorization of H
+    ltdl = "sltdl(H, pλ)"
+
     ## Generalized accelerations
-    ddq = "slinsolve(H, τ - C, parents)"
-    ddqs = "linsolve(H, τ - C)"
+    ddq = "InvH(τ - C)"
 
     ## Parent indices. This is used only for solving the linear system by
     ## exploiting the branch induced sparsity (slinsolve).
-    parents = "[{@parentsdof||@0;@1}]"
-}
+    pλ = "[{@parentsdof||@0;@1}]"
 
-include "algorithms/contacts.cdn"
-
-node "@bodies"
-{
-    ## Generalized coordinate accelerations differential equation
-    q̇ = "dqdot"
-    q̈ = "ddq"
+    ## Compute H⁻¹ x using the LᵀDL factorization
+    InvH(x) = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, x, pλ), pλ)"
 }
 
 # Fill in H and C for all relevant body relationships
@@ -66,7 +68,8 @@ edge "HC_@bodies" from   @1
         defines
         {
             # Compute the indices of this childs' DOF (in column and row)
-            ic = "@{@bodydofidx[$(@fh[1] + 1)]:+$(@bodydof[$(@fh[1] + 1)] - 1)||@0\,@1}"
+            fi = "$(@fh[1] + 1)"
+            ic = "@{@bodydofidx[@fi]:+$(@bodydof[@fi] - 1)||@0\,@1}"
             ir = "@{@ic||@0;@1}"
         }
 
@@ -82,11 +85,19 @@ edge "HC_@bodies" from   @1
 }
 
 # Integrate accelerations on bodies
+node "@bodies"
+{
+    ## Generalized coordinate accelerations differential equation
+    q̇ = "dqdot"
+    q̈ = "ddq"
+}
+
 node | <body>:@bodies | sort | parent
 {
     defines
     {
-        j = "@{@bodydofidx[$(@body[!] + 1)]:+$(@bodydof[$(@body[!] + 1)] - 1)||@0;@1}"
+        bi = "$(@body[!] + 1)"
+        j = "@{@bodydofidx[@bi]:+$(@bodydof[@bi] - 1)||@0;@1}"
     }
 
     edge "acceleration_@0" from "dynamics" to "@body"
@@ -101,5 +112,8 @@ node | <body>:@bodies | sort | parent
         "τ[[@j], 0]" <= "τ"
     }
 }
+
+include "algorithms/contacts.cdn"
+include "loopdynamics.cdn"
 
 # vi:ex:ts=4:et

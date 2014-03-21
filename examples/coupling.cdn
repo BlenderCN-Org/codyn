@@ -1,0 +1,50 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.01:5 -m n1.y -m n2.y
+
+## Construct a simple system of two point masses, coupled
+## through a massless and ideal spring.
+
+## Gravity
+g = 9.81
+
+## The first point mass
+node "n1" {
+    ## Mass of the point mass
+    m = 0.6
+
+    ## Initial value of the point mass position
+    y = 10
+
+    ## Acceleration differential equation
+    y'' = "-m * g"
+}
+
+## The second point mass
+node "n2" {
+    ## Mass of the point mass
+    m = 0.4
+
+    ## Initial value of the point mass position
+    y = 8
+
+    ## Acceleration differential equation
+    y'' = "-m * g"
+}
+
+# Create a bidirectional edge between the two nodes implementing
+# a simple, bidirectional spring, applying a force resulting in
+# additional acceleration
+<bidirectional>
+edge from "n1" to "n2" {
+    ## Stiffness of the spring. Variables can be defined inside edges
+    ## as well and allow for convenient definitions of constants and
+    ## temporary expressions.
+    K = "5"
+
+    ## Additional acceleration due to the force of the spring. Note
+    ## that we have to apply the acceleration to the differential
+    ## equation of the velocity from inside the edge.
+    dy' += "K * (input.y - output.y)"
+}
+
+# vi:ts=4:et

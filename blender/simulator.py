@@ -2,7 +2,7 @@ import os, platform, tempfile, shutil, mathutils
 
 import codyn, camera, gui
 
-from gi.repository import Cdn
+from gi.repository import Cdn, Gio
 import cdnrawc
 
 def find_and_load_rawc(data):
@@ -47,9 +47,10 @@ def find_and_load_rawc(data):
 
 class Simulator:
     class Force:
-        def __init__(self, gobj, idx):
+        def __init__(self, gobj, vname, idx):
             self.gobj = gobj
             self.idx = idx
+            self.vname = vname
 
             for child in self.gobj.children:
                 if 'bottom' in child.name:
@@ -111,7 +112,7 @@ class Simulator:
                 self.nodes[child['cdn_node']] = child
             elif 'cdn_force' in child:
                 parts = child['cdn_force'].split(':')
-                self.forces[child['cdn_force']] = [child, parts[0], int(parts[1])]
+                self.forces[child['cdn_force']] = [child, parts[0], parts[1], int(parts[2])]
 
             self._find_nodes(child)
 
@@ -128,11 +129,11 @@ class SimulatorCodyn(Simulator):
             self.gobj.localTransform = m
 
     class Force(Simulator.Force):
-        def __init__(self, node, gobj, idx):
-            Simulator.Force.__init__(self, gobj, idx)
+        def __init__(self, node, gobj, vname, idx):
+            Simulator.Force.__init__(self, gobj, vname, idx)
 
             self.node = node
-            self.force = self.node.get_variable("forceAtLocations")
+            self.force = self.node.get_variable(vname)
 
         def update(self):
             v = self.force.get_values()
@@ -154,7 +155,7 @@ class SimulatorCodyn(Simulator):
 
         for n in self.forces:
             f = self.forces[n]
-            self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(f[1]), f[0], f[2]))
+            self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(f[1]), f[0], f[2], f[3]))
 
     def step(self, t=None):
         dt = self.data.cdn.get_integrator().get_default_timestep()
@@ -277,6 +278,24 @@ def setup_gui(data):
     data.gui.add(b)
     data.lbl_time = l
 
+def needs_reload(owner):
+    network = codyn.data.networks[owner.name]
+    mtime = os.path.getmtime(owner['cdn_filename'])
+
+    if not owner.name in codyn.data.networks:
+        return [True, mtime]
+
+    for f in network.files:
+        try:
+            fmtime = os.path.getmtime(f)
+
+            if fmtime > mtime:
+                mtime = fmtime
+        except:
+            pass
+
+    return [mtime > network.mtime, mtime]
+
 def init():
     import bge
 
@@ -284,12 +303,26 @@ def init():
     owner = cont.owner
 
     filename = owner['cdn_filename']
-    mtime = os.path.getmtime(filename)
 
-    if not owner.name in codyn.data.networks or \
-       mtime > codyn.data.networks[owner.name].mtime:
+    try:
+        [rel, mtime] = needs_reload(owner)
+    except:
+        rel = True
+        mtime = os.path.getmtime(filename)
+
+    if rel:
         # Load network from property
-        network = Cdn.Network.new_from_path(filename)
+        network = Cdn.Network()
+
+        ctx = Cdn.ParserContext.new(network)
+
+        files = []
+
+        ctx.connect('file-used', lambda x, y, z: files.append(y.get_path()))
+        ctx.push_input(Gio.File.new_for_path(filename), None, False)
+
+        ctx.parse(True)
+
         network.compile(None, None)
 
         data = codyn.data.networks[owner.name]
@@ -298,6 +331,7 @@ def init():
         data.filename = filename
         data.mtime = mtime
         data.rawc = None
+        data.files = files
 
     # Load rawc version if it's there
     data = codyn.data.networks[owner.name]
@@ -312,6 +346,7 @@ def init():
     data.simulator.update()
     data.paused = True
     data.single_step = False
+    data.single_step_prev = None
     data.gui = gui.Screen()
     data.i = 0
     data.nt = 1
@@ -350,9 +385,17 @@ def loop():
     if not record:
         fps /= data.nt
 
+    if not data.single_step:
+        data.single_step_cnt = 0
+
     if data.single_step:
-        data.simulator.step()
-        data.simulator.update()
+        data.single_step_cnt += 1
+
+        if data.single_step_cnt / fps > 0.01:
+            data.single_step_cnt = 0
+
+            data.simulator.step()
+            data.simulator.update()
 
         data.paused = True
         data.single_step = False

@@ -45,6 +45,7 @@ struct _CdnIntegratorStatePrivate
 	GSList *direct_edge_actions;
 	GSList *discrete_edge_actions;
 
+	GSList *nodes;
 	GSList *operators;
 	GSList *functions;
 
@@ -180,6 +181,7 @@ clear_lists (CdnIntegratorState *state)
 	clear_list (&(state->priv->functions));
 	clear_list (&(state->priv->events));
 	clear_list (&(state->priv->phase_events));
+	clear_list (&(state->priv->nodes));
 
 	// Clear the table
 	g_hash_table_remove_all (state->priv->direct_variables_hash);
@@ -347,9 +349,18 @@ release_state_node (CdnNode *node)
 }
 
 static void
+object_unref0 (gpointer ptr)
+{
+	if (ptr != NULL)
+	{
+		g_object_unref (ptr);
+	}
+}
+
+static void
 release_state_list (GSList *list)
 {
-	g_slist_foreach (list, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (list, (GFunc)object_unref0, NULL);
 	g_slist_free (list);
 }
 
@@ -552,6 +563,10 @@ collect (CdnIntegratorState *state,
 
 	if (CDN_IS_NODE (object))
 	{
+		state->priv->nodes =
+			g_slist_prepend (state->priv->nodes,
+			                 object);
+
 		collect_actors (state, CDN_NODE (object));
 
 		if (cdn_node_has_self_edge (CDN_NODE (object)))
@@ -833,6 +848,15 @@ update_direct_phase (CdnIntegratorState *state,
 	}
 }
 
+static gint
+compare_events (CdnEvent *a, CdnEvent *b)
+{
+	CdnNode *pa = cdn_object_get_parent (CDN_OBJECT (a));
+	CdnNode *pb = cdn_object_get_parent (CDN_OBJECT (b));
+
+	return (pa < pb ? -1 : (pa > pb ? 1 : 0));
+}
+
 static void
 add_to_state_hash (CdnIntegratorState *state,
                    CdnPhaseable       *ph,
@@ -873,7 +897,16 @@ add_to_state_hash (CdnIntegratorState *state,
 					                     TRUE);
 				}
 
-				*ptr = g_slist_prepend (*ptr, ph);
+				if (ptr == &state->priv->phase_events)
+				{
+					*ptr = g_slist_insert_sorted (*ptr,
+					                              ph,
+					                              (GCompareFunc)compare_events);
+				}
+				else
+				{
+					*ptr = g_slist_prepend (*ptr, ph);
+				}
 			}
 		}
 	}
@@ -892,6 +925,18 @@ add_to_state_hash (CdnIntegratorState *state,
 
 		*ptr = g_slist_prepend (*ptr, ph);
 	}
+}
+
+static CdnNode *
+state_root_for_edge_action (CdnEdgeAction *action)
+{
+	CdnEdge *edge;
+	CdnNode *input;
+
+	edge = cdn_edge_action_get_edge (action);
+	input = cdn_edge_get_input (edge);
+
+	return input;
 }
 
 static void
@@ -927,12 +972,26 @@ extract_state_hash (CdnIntegratorState *state)
 		}
 	}
 
+	// Also collect all nodes with have an initial state
+	for (item = state->priv->nodes; item; item = g_slist_next (item))
+	{
+		CdnNode *node = item->data;
+
+		if (cdn_node_get_initial_state (node) != NULL &&
+		    !g_hash_table_lookup (state->priv->state_hash, node))
+		{
+			g_hash_table_insert (state->priv->state_hash,
+			                     g_object_ref (node),
+			                     g_slist_prepend (NULL, NULL));
+		}
+	}
+
 	// Now, collect phaseables
 	for (item = state->priv->integrated_edge_actions; item; item = g_slist_next (item))
 	{
 		CdnNode *parent;
 
-		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		parent = state_root_for_edge_action (item->data);
 		add_to_state_hash (state, item->data, parent);
 	}
 
@@ -940,7 +999,7 @@ extract_state_hash (CdnIntegratorState *state)
 	{
 		CdnNode *parent;
 
-		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		parent = state_root_for_edge_action (item->data);
 		add_to_state_hash (state, item->data, parent);
 	}
 
@@ -948,7 +1007,7 @@ extract_state_hash (CdnIntegratorState *state)
 	{
 		CdnNode *parent;
 
-		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		parent = state_root_for_edge_action (item->data);
 		add_to_state_hash (state, item->data, parent);
 	}
 
@@ -959,6 +1018,16 @@ extract_state_hash (CdnIntegratorState *state)
 		parent = CDN_NODE (cdn_object_get_parent (item->data));
 		add_to_state_hash (state, item->data, parent);
 	}
+}
+
+static void
+sort_events (CdnIntegratorState *state)
+{
+	state->priv->events =
+		g_slist_reverse (state->priv->events);
+
+	state->priv->events =
+		g_slist_sort (state->priv->events, (GCompareFunc)compare_events);
 }
 
 /**
@@ -994,8 +1063,7 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 	state->priv->io =
 		g_slist_reverse (state->priv->io);
 
-	state->priv->events =
-		g_slist_reverse (state->priv->events);
+	sort_events (state);
 
 	/* order the direct link actions based on their dependencies */
 	sort_edge_actions (state);
@@ -1406,7 +1474,16 @@ cdn_integrator_state_set_state (CdnIntegratorState  *state,
 				update_direct_phase (state, item->data, TRUE);
 			}
 
-			*ptr = g_slist_prepend (*ptr, ph);
+			if (ptr == &state->priv->phase_events)
+			{
+				*ptr = g_slist_insert_sorted (*ptr,
+				                              ph,
+				                              (GCompareFunc)compare_events);
+			}
+			else
+			{
+				*ptr = g_slist_prepend (*ptr, ph);
+			}
 
 			if (events_added && CDN_IS_EVENT (item->data))
 			{

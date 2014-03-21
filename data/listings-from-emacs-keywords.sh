@@ -5,8 +5,7 @@ file=cdn-listings.tex
 echo '\lstdefinelanguage{cdn}{%
   morekeywords={%' > $file
 
-keywords=$(cat codyn-mode.el | grep regexp-opt | sed "s/[()\"']/\n/g" | grep -v 'concat\|regexp' |
-grep '[a-z]' | sort)
+keywords=$(./list-emacs-keywords.sh)
 
 n=0
 for i in $keywords; do

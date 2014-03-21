@@ -105,7 +105,7 @@ void cdn_parser_lex_destroy (gpointer scanner);
 void cdn_parser_lex_init_extra (gpointer context, gpointer *scanner);
 void cdn_parser_tokens_push_input (gpointer scanner);
 
-int cdn_parser_parse (gpointer context);
+int cdn_parser_parse (CdnParserContext *context);
 
 static void expansion_context_pop (CdnParserContext *context);
 
@@ -1148,8 +1148,12 @@ generate_name_value_pairs (CdnParserContext  *context,
 			CdnExpansionContext *pctx;
 
 			pctx = expansion_context_push_base (context);
-			cdn_expansion_context_shared_defines (pctx,
-			                                      cdn_selection_get_context (sel));
+
+			if (sel)
+			{
+				cdn_expansion_context_shared_defines (pctx,
+				                                      cdn_selection_get_context (sel));
+			}
 
 			cdn_expansion_context_add_expansion (pctx,
 			                                     nameit->data);
@@ -4833,10 +4837,10 @@ cdn_parser_context_define (CdnParserContext  *context,
 
 /**
  * cdn_parser_context_push_input:
- * @context the parser context.
- * @file the file.
- * @stream the input stream.
- * @isonce whether only to process it once.
+ * @context: the parser context.
+ * @file: (allow-none): the file.
+ * @stream: (allow-none): the input stream.
+ * @isonce: whether only to process it once.
  *
  **/
 void

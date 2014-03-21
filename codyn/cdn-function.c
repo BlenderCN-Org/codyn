@@ -180,7 +180,7 @@ extract_dependencies (CdnFunction *function)
 		{
 			CdnVariable *v;
 
-			v = _cdn_function_argument_get_variable (args->data);
+			v = cdn_function_argument_get_variable (args->data);
 			args = g_list_next (args);
 
 			if (!v)
@@ -301,7 +301,7 @@ argument_is_unused (CdnFunction         *f,
 	GSList const *dep;
 	CdnExpression *ex;
 
-	v = _cdn_function_argument_get_variable (argument);
+	v = cdn_function_argument_get_variable (argument);
 
 	if (!v)
 	{
@@ -418,7 +418,7 @@ promote_rand_instructions (CdnFunction *self)
 			                                 cdn_expression_new ("rand()"));
 
 			cdn_function_add_argument (self, arg);
-			varg = _cdn_function_argument_get_variable (arg);
+			varg = cdn_function_argument_get_variable (arg);
 			vinstr = cdn_instruction_variable_new (varg);
 
 			smanip = cdn_instruction_get_stack_manipulation (instrs->data,
@@ -690,7 +690,7 @@ cdn_function_execute_impl (CdnFunction *function,
 
 		argument = item->data;
 
-		v = _cdn_function_argument_get_variable (argument);
+		v = cdn_function_argument_get_variable (argument);
 		dim = &function->priv->smanip.pop.args[i].dimension;
 
 		tmp = cdn_matrix_init (cdn_stack_popn (stack, cdn_dimension_size (dim)),
@@ -1136,7 +1136,7 @@ on_argument_invalidate_name (CdnFunctionArgument *argument,
 	CdnVariable *property = cdn_object_get_variable (CDN_OBJECT (function),
 	                                                 name);
 
-	CdnVariable *current = _cdn_function_argument_get_variable (argument);
+	CdnVariable *current = cdn_function_argument_get_variable (argument);
 
 	return property && current != property;
 }
@@ -1150,7 +1150,7 @@ on_argument_name_changed (CdnFunctionArgument *argument,
 	CdnVariable *property = cdn_object_get_variable (CDN_OBJECT (function),
 	                                                 name);
 
-	CdnVariable *current = _cdn_function_argument_get_variable (argument);
+	CdnVariable *current = cdn_function_argument_get_variable (argument);
 
 	if (property == current)
 	{
@@ -1253,8 +1253,8 @@ cdn_function_argument_added_impl (CdnFunction         *function,
 
 	if (parg)
 	{
-		cdn_variable_set_derivative (_cdn_function_argument_get_variable (parg),
-		                             _cdn_function_argument_get_variable (argument));
+		cdn_variable_set_derivative (cdn_function_argument_get_variable (parg),
+		                             cdn_function_argument_get_variable (argument));
 	}
 
 	g_hash_table_insert (function->priv->arguments_hash,
@@ -1518,7 +1518,7 @@ create_towards_map (CdnFunction                       *function,
 		CdnVariable *v;
 
 		arg = towards->data;
-		v = _cdn_function_argument_get_variable (arg);
+		v = cdn_function_argument_get_variable (arg);
 
 		if (!v)
 		{
@@ -1568,7 +1568,7 @@ create_towards_map (CdnFunction                       *function,
 				                                  defval);
 
 				cdn_function_add_argument (newfunc, narg);
-				diff = _cdn_function_argument_get_variable (narg);
+				diff = cdn_function_argument_get_variable (narg);
 
 				g_free (argname);
 			}
@@ -1604,7 +1604,7 @@ create_symbols (CdnFunction *function)
 		if (cdn_function_argument_get_explicit (arg))
 		{
 			ret = g_slist_prepend (ret,
-			                       g_object_ref (_cdn_function_argument_get_variable (arg)));
+			                       g_object_ref (cdn_function_argument_get_variable (arg)));
 		}
 
 		arguments = g_list_next (arguments);
@@ -1909,7 +1909,7 @@ cdn_function_add_argument (CdnFunction         *function,
 {
 	g_return_if_fail (CDN_IS_FUNCTION (function));
 	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
-	g_return_if_fail (_cdn_function_argument_get_variable (argument) == NULL);
+	g_return_if_fail (cdn_function_argument_get_variable (argument) == NULL);
 
 	gchar const *name = cdn_function_argument_get_name (argument);
 
@@ -2008,7 +2008,7 @@ cdn_function_remove_argument (CdnFunction          *function,
 
 		if (parg)
 		{
-			cdn_variable_set_derivative (_cdn_function_argument_get_variable (parg),
+			cdn_variable_set_derivative (cdn_function_argument_get_variable (parg),
 			                             NULL);
 		}
 

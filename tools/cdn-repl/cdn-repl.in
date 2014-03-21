@@ -1,0 +1,7 @@
+#!/usr/bin/env cdn-python
+
+import sys
+sys.path.insert(0, '@EXPANDED_PYTHONDIR@')
+
+import cdnrepl
+cdnrepl.run()

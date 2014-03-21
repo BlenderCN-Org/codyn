@@ -1,6 +1,7 @@
 require "spatial.cdn"
 require "sensors.cdn"
 require "physics.cdn"
+require "cjoints.cdn"
 
 templates
 {
@@ -8,26 +9,11 @@ templates
     {
         node "contacts"
         {
-            node "contact" {}
-
-            node "soft" : contact, physics.sensors.velocity
+            node "contact" : physics.sensors.velocity
             {
-                initial-state "air"
+                initial-state "inactive"
 
-                # contact parameters
-                maxNormalForce = "50 * model.totalMass"
-
-                normalζ = "0.001"
-                normalStiffness = "1e6 * model.totalMass"
-                normalDamping = "normalζ * 2 * sqrt(model.totalMass * normalStiffness)"
-
-                frictionCoefficient = "0.6"
-
-                frictionζ = "0.0001"
-                frictionStiffness = "1e7 * model.totalMass"
-                frictionDamping = "frictionζ * 2 * sqrt(model.totalMass * frictionStiffness)"
-
-                coefficientOfRestitution = "0"
+                location = "com"
 
                 # calculate locations in base.
                 #
@@ -48,10 +34,76 @@ templates
                 # [1-by-N]
                 pN = "p[2, :]"
 
+                forceAtLocationsN = "forceAtLocations[5, :]"
+
                 # the contact velocity in the normal direction
                 #
                 # [1-by-N]
                 dpN = "dp[2, :]"
+
+                active = 0
+                contactPoint = "zeros(3, size(location, 1))"
+
+                coefficientOfRestitution = "0"
+
+                # Add a jacobian node which will calculate the contact jacobian
+                # needed to calculate the contact impulse on impact
+                node "jacobian" : physics.jacobian
+                {
+                    locationInBase = "contactPoint"
+                }
+            }
+
+            node "hardbase" : contact
+            {
+                baseToLocalTransformPred = "coordinateTransformPred ∙ baseToLocalTransform"
+
+                baseVelocityPred = "localToBaseTransform ∙ velocity"
+                baseAccelerationPred = "localToBaseTransform ∙ acceleration"
+
+                tr = "location"
+                K = "cfnullT"
+
+                forceAtLocations = "Spatial.MotionToForceInverseTransform(Spatial.RotationPart(baseToLocalTransformSucc)) ∙ force"
+
+                force = "-constraintForceSubspace ∙ λ"
+
+                edge self
+                {
+                    K <= "baseConstraintForceMotionSubspace" state "active"
+                    K <= "cfnullT" state "inactive"
+                }
+            }
+
+            node "hard" : physics.cjoints.spherical, hardbase
+            {
+                initial-state "inactive"
+            }
+
+            node "hardRevolute{X,Y,Z}" : physics.cjoints."revolute@@@1", hardbase
+            {
+                initial-state "inactive"
+            }
+
+            node "hardPlanar{X,Y,Z}" : physics.cjoints."planar@@@1", hardbase
+            {
+                initial-state "inactive"
+            }
+
+            node "soft" : contact
+            {
+                # contact parameters
+                maxNormalForce = "50 * model.totalMass"
+
+                normalζ = "0.001"
+                normalStiffness = "1e6 * model.totalMass"
+                normalDamping = "normalζ * 2 * sqrt(model.totalMass * normalStiffness)"
+
+                frictionCoefficient = "0.6"
+
+                frictionζ = "0.0001"
+                frictionStiffness = "1e7 * model.totalMass"
+                frictionDamping = "frictionζ * 2 * sqrt(model.totalMass * frictionStiffness)"
 
                 # the contact force due to the contact model stiffness
                 #
@@ -71,8 +123,8 @@ templates
                 # tangential forces due to friction (in X and Y)
                 #
                 # [1-by-N]
-                ep = "contactPoint[@1[!], :] - p[@1[!], :]"
-                "forceTangential{X,Y}" = "(frictionStiffness * csign(ep^3, ep) - frictionDamping * dp[@1[!], :])  .* (pN < 0)"
+                ep = "sticking * (contactPoint[@1[!], :] - p[@1[!], :])"
+                "forceTangential{X,Y}" = "(frictionStiffness * csign(ep^3, ep) - frictionDamping * dp[@1[!], :]) .* (pN < 0)"
 
                 # maximum tangential force by simple coulomb friction
                 #
@@ -96,10 +148,6 @@ templates
 
                 force = "zeros(6, 1)"
 
-                # Add a jacobian node which will calculate the contact jacobian
-                # needed to calculate the contact impulse on impact
-                node "jacobian" : physics.jacobian {}
-
                 # finally, the contact force is calculated in body coordinates
                 # whereas all the previous quantities are calculated in base
                 # coordinates. Here we first transform each force to the base
@@ -108,13 +156,27 @@ templates
                 edge self | first
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
-                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
+                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "{active,slip}"
                 }
 
-                      active = 0
-                contactPoint = "zeros(3, size(location, 1))"
+                sticking = 1
 
-                event "ground"    to "air"    when "min(pN)   > 0" within 0.001                 { set active = 0 }
+                event "{active,slip}" to "inactive" when "min(pN) > 0" within 0.001
+                {
+                    set active = 0
+                    set sticking = 1
+                }
+
+                event "active" to "slip" when "abs(forceTangentialX) > forceTangentialMax || abs(forceTangentialY) > forceTangentialMax"
+                {
+                    set sticking = 0
+                }
+
+                event "slip" to "active" when "abs(forceTangentialX) <= forceTangentialMax || abs(forceTangentialY) <= forceTangentialMax"
+                {
+                    set sticking = 1
+                    set contactPoint = "p"
+                }
             }
         }
     }

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<language id="cdn" _name="Codyn" version="2.0" _section="Sources">
+    <metadata>
+      <property name="mimetypes">text/x-cdn</property>
+      <property name="globs">*.cdn</property>
+      <property name="line-comment-start">#</property>
+    </metadata>
+
+    <styles>
+        <style id="comment"           _name="Comment"             map-to="def:comment"/>
+        <style id="error"             _name="Error"               map-to="def:error"/>
+        <style id="string"            _name="String"              map-to="def:string"/>
+        <style id="keyword"           _name="Keyword"             map-to="def:keyword"/>
+        <style id="preprocessor"      _name="Preprocessor"        map-to="def:preprocessor"/>
+        <style id="specifiers"        _name="Specifiers"          map-to="def:keyword"/>
+        <style id="regex"             _name="Regex"               map-to="def:builtin"/>
+        <style id="operator"          _name="Operator"            map-to="def:operator"/>
+        <style id="define"            _name="Define"              map-to="def:operator"/>
+        <style id="equation"          _name="Equation"            map-to="def:comment"/>
+        <style id="condition"         _name="Condition"           map-to="def:comment"/>
+        <style id="indirection"       _name="Indirection"         map-to="def:operator"/>
+        <style id="identifier"        _name="Identifier"          map-to="def:identifier"/>
+        <style id="define-context"    _name="Define context"      map-to="def:operator"/>
+        <style id="expansion"         _name="Expansion"           map-to="def:comment"/>
+        <style id="paren"             _name="Paren"               map-to="def:preprocessor"/>
+        <style id="map"               _name="Map"                 map-to="def:function"/>
+        <style id="reduce"            _name="Reduce"              map-to="def:constant"/>
+    </styles>
+
+    <default-regex-options case-sensitive="false"/>
+
+    <definitions>
+        <define-regex id="identifier">[\p{L}_][\p{L}\p{M}0-9_-]*</define-regex>
+        <define-regex id="string">"(\\["]|[^"])*"</define-regex>
+        <define-regex id="regex">/(\\/|[^/])*/</define-regex>
+        <define-regex id="define">@(\%{identifier}|@*([0-9]+))</define-regex>
+        <define-regex id="identifier_or_string">((\%{identifier})|(\%{string}))</define-regex>
+        <define-regex id="string_like">(\%{string}|-?\%{def:decimal}|-?\%{def:float}|\%{define})</define-regex>
+
+        <context id="identifier" style-ref="identifier">
+            <match>\%{identifier}</match>
+        </context>
+
+        <context id="string" style-ref="string" class="string">
+            <start>"</start>
+            <end>"</end>
+            <include>
+                <context id="escape-in-string">
+                    <match>\\["\\]</match>
+                </context>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="paren-inside">
+            <start>[(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+            </include>
+        </context>
+
+        <context id="equation" style-ref="equation" style-inside="true" end-at-line-end="true">
+            <start>[$][(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+                <context ref="identifier"/>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="condition" style-ref="condition" style-inside="true" end-at-line-end="true">
+            <start>[$][$][(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+                <context ref="identifier"/>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="indirection" style-ref="indirection" style-inside="true" end-at-line-end="true">
+            <start>(@+(\%{identifier})?)[[]</start>
+            <end>[]]</end>
+            <include>
+                <context sub-pattern="1" where="start" style-ref="define"/>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="specifiers" style-ref="specifiers">
+            <keyword>integrated</keyword>
+            <keyword>in</keyword>
+            <keyword>out</keyword>
+            <keyword>once</keyword>
+            <keyword>discrete</keyword>
+        </context>
+
+        <context id="preprocessor" style-ref="preprocessor">
+            <keyword>include</keyword>
+            <keyword>require</keyword>
+        </context>
+
+        <context id="regex" style-ref="regex">
+            <start>/</start>
+            <end>/</end>
+            <include>
+                <context ref="stuff_in_string"/>
+            </include>
+        </context>
+
+        <context id="map" style-ref="map" extend-parent="false">
+            <match>([|])\s*([\\],|[^|,}])+</match>
+            <include>
+                <context sub-pattern="1" style-ref="paren"/>
+            </include>
+        </context>
+
+        <context id="reduce" style-ref="reduce" extend-parent="false">
+            <start>[|][|]</start>
+            <end>[^\\][|,}]</end>
+            <include>
+                <context sub-pattern="0" where="start" style-ref="paren"/>
+            </include>
+        </context>
+
+        <context id="attributes" style-ref="keyword">
+            <keyword>bidirectional</keyword>
+            <keyword>probability</keyword>
+            <keyword>no-self</keyword>
+        </context>
+
+        <context id="define-context" style-ref="define-context">
+            <match>&lt;\s*\%{identifier}\s*&gt;\s*:</match>
+        </context>
+
+        <context id="selectors" style-ref="keyword">
+            @SELECTORS@
+        </context>
+
+        <context id="keywords" style-ref="keyword">
+            @KEYWORDS@
+        </context>
+
+        <context id="defined" style-ref="define">
+            <match>\%{define}</match>
+        </context>
+
+        <context id="stuff_in_string">
+            <include>
+                <context ref="indirection" />
+                <context ref="defined" />
+                <context ref="equation" />
+                <context ref="condition" />
+            </include>
+        </context>
+
+        <context id="expansion">
+            <start>{</start>
+            <end>}</end>
+            <include>
+                <context sub-pattern="0" where="start" style-ref="paren"/>
+                <context sub-pattern="0" where="end" style-ref="paren"/>
+                <context ref="reduce" />
+                <context ref="map" />
+                <context ref="stuff_in_string" />
+                <context ref="expansion" />
+                <context id="range" style-ref="operator">
+                  <match>(:[+]?|[*])</match>
+                </context>
+            </include>
+        </context>
+
+        <context id="cdn" class="no-spell-check">
+            <include>
+                <context ref="def:shebang"/>
+                <context ref="def:shell-like-comment"/>
+                <context ref="keywords"/>
+                <context ref="selectors"/>
+                <context ref="attributes"/>
+                <context ref="specifiers"/>
+                <context ref="preprocessor"/>
+                <context ref="regex"/>
+                <context ref="string"/>
+                <context ref="def:decimal"/>
+                <context ref="def:float"/>
+                <context ref="indirection"/>
+                <context ref="equation"/>
+                <context ref="defined"/>
+                <context ref="identifier"/>
+                <context ref="define-context"/>
+            </include>
+        </context>
+    </definitions>
+</language>
+
+<!-- vi:ex:ts=4:et -->

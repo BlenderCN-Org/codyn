@@ -69,14 +69,6 @@ templates
                 ## S = ∂v_j / ∂q̇
                 MotionSubspace(q, dq) = "∂[JointVelocity; dq](q, dq)"
 
-                ## The constraint force subspace. This only need to be defined
-                ## when using kinematic loops or when calculating joint
-                ## constraint forces. The constraint force subspace is the
-                ## dual of the motion subspace S. It spans the 6 - N degrees
-                ## of freedom that are subject to constraints.
-                ## Tᵀ ∙ v_j = 0
-                ConstraintForceSubspace(q, dq) = "eye(6)"
-
                 ## Joint bias velocity product term. This term is non zero
                 ## when the motion subspace is not a constant (i.e. depends on
                 ## q).
@@ -93,6 +85,9 @@ templates
 
             ## Helper variable to calculate the joint motion subspace
             motionSubspace = "joint.MotionSubspace(q, dq)"
+
+            ## The motion subspace in base coordinates
+            baseMotionSubspace = "localToBaseTransform ∙ motionSubspace"
 
             ## Helper variable to calculate the velocity product term. See
             ## joint.cJ
@@ -184,6 +179,92 @@ templates
             r = "output.jacobianLocationInBase - input.jacobianLocationInBase"
             J = "output.jacobianJ - Spatial.Translation(r) ∙ input.jacobianJ"
         }
+
+        node "cdof{1:6}"
+        {
+            null = "zeros(@@1, 1)"
+            cfnull = "zeros(6, $(6 - @@1))"
+            cfnullT = "zeros($(6 - @@1), 6)"
+            knull = "zeros($(6 - @@1), 1)"
+
+            constraintForceSubspaceNull = "cfnull"
+            activeForceSubspaceNull = "zeros(6, @@1)"
+        }
+
+        node "cbody" : "cdof1"
+        {
+            initial-state "active"
+
+            ## Active joint loop forces
+            τ = "null"
+
+            ## Coordinate translation from closing loop joint frame to its
+            ## predecessor frame
+            tr = "[0; 0; 0]"
+
+            ## Coordinate transform from closing loop joint frame to its
+            ## predecessor frame. This defaults to a 3d translation
+            ## specified in tr
+            coordinateTransformPred = "Spatial.Translation(tr)"
+
+            ## Coordinate transform from closing loop joint frame to its
+            ## successor frame. Defaults to fixed frame
+            coordinateTransformSucc = "baseToLocalTransformPred" | once
+
+            baseToLocalTransformSucc = "coordinateTransformSucc"
+            baseToLocalTransformPred = "eye(6)"
+
+            "localToBaseTransform{Succ,Pred}" = "Spatial.Inverse(baseToLocalTransform@1)"
+
+            "baseVelocity{Succ,Pred}" = "zeros(6, 1)"
+
+            baseAccelerationPred = "zeros(6, 1)"
+            baseAccelerationSucc = "[0; 0; 0; -g]"
+
+            constraintForceSubspace = "constraintForceSubspaceNull"
+            activeForceSubspace = "activeForceSubspaceNull"
+
+            ## The active loop joint spatial force in successor frame coordinates
+            activeLoopJointForce = "Spatial.MotionToForceInverseTransform(coordinateTransformSucc) ∙ activeForceSubspace ∙ τ"
+
+            ## The constraint force subspace transformed from loop joint in
+            ## successor frame coordinates to base coordinates
+            baseConstraintForceSubspace = "Spatial.MotionToForceInverseTransform(baseToLocalTransformSucc) ∙ constraintForceSubspace"
+
+            ## The base constraint force subspace as to be applied to motion
+            ## vectors (inversed)
+            baseConstraintForceMotionSubspace = "Spatial.ForceToMotionInverseTransform(baseConstraintForceSubspace)"
+
+            # Constraint stabilization
+            node "stabilization"
+            {
+                T = "0.05"
+
+                kα = "1 / T"
+                kβ = "1 / T"
+
+                Xstab = "baseToLocalTransformSucc * localToBaseTransformPred"
+                kδ = "δ(Xstab)"
+
+                k = "2 ∙ kα ∙ baseConstraintForceMotionSubspace ∙ (baseVelocitySucc - baseVelocityPred) +
+                         kβ² ∙ kδ"
+            }
+
+            loopAcceleration = "baseAccelerationSucc - baseAccelerationPred"
+            loopVelocity = "Spatial.CrossMotion(baseVelocitySucc) ∙ baseVelocityPred"
+            loopMotionSubspace = "baseConstraintForceMotionSubspace"
+
+            k = "knull"
+            λ = "knull"
+
+            edge self
+            {
+                k <= "-loopMotionSubspace ∙ (loopAcceleration + loopVelocity) - stabilization.k" state "active"
+                k <= "knull" state "inactive"
+            }
+        }
+
+        edge "cjoint" {}
     }
 }
 

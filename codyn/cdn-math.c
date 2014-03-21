@@ -30,7 +30,7 @@
 
 #ifdef HAVE_LAPACK
 #ifdef PLATFORM_OSX
-#include <vecLib/clapack.h>
+#include <Accelerate/Accelerate.h>
 #else
 #include <clapack.h>
 #endif
@@ -1493,6 +1493,8 @@ op_pseudo_inverse (CdnStack           *stack,
 		bptr += lb + 1;
 	}
 
+	rcond = 1e-6;
+
 	dgelsd_ (&m,
 	         &n,
 	         &lb,
@@ -1629,21 +1631,16 @@ op_qr (CdnStack           *stack,
 }
 #endif
 
-/* slinsolve_factorize factorizes a matrix A into LᵀDL. It computes the lower
- * unit triangular matrix L and the diagonal matrix D in place in the matrix
- * A. L is a list of indices describing the kinematic tree from which the
- * sparsity of A is induced.
- */
 static void
-slinsolve_factorize (gdouble *A,
-                     gdouble *L,
-                     gint     n)
+sltdl_impl (gdouble *ptrA,
+            gdouble *ptrL,
+            gint     n)
 {
 	gint k;
 
 	for (k = n - 1; k >= 0; --k)
 	{
-		gint i = (gint)L[k];
+		gint i = (gint)ptrL[k];
 		gint kk = k * (n + 1);
 
 		while (i >= 0)
@@ -1655,7 +1652,7 @@ slinsolve_factorize (gdouble *A,
 			ki = k + i * n;
 
 			// a = A_{ki} / A_{kk}
-			a = A[ki] / A[kk];
+			a = ptrA[ki] / ptrA[kk];
 
 			j = i;
 
@@ -1666,31 +1663,61 @@ slinsolve_factorize (gdouble *A,
 				gint kj = k + jn;
 
 				// A_{ij} = A_{ij} - a A_{kj}
-				A[ij] -= a * A[kj];
+				ptrA[ij] -= a * ptrA[kj];
 
-				j = (gint)L[j];
+				j = (gint)ptrL[j];
 			}
 
 			// H_{ki} = a
-			A[ki] = a;
-			i = (gint)L[i];
+			ptrA[ki] = a;
+			i = (gint)ptrL[i];
 		}
 	}
 }
 
+/* sltdl factorizes a matrix A into LᵀDL. It computes the lower
+ * unit triangular matrix L and the diagonal matrix D in place in the matrix
+ * A. L is a list of indices describing the kinematic tree from which the
+ * sparsity of A is induced.
+ */
 static void
-slinsolve_backsubs (gdouble *ptrA,
-                    gdouble *ptrB,
-                    gdouble *ptrL,
-                    gint     n)
+op_sltdl (CdnStack           *stack,
+          CdnStackArgs const *argdim,
+          gpointer            userdata)
+{
+	gdouble *ptrA;
+	gdouble *ptrL;
+	gint numa;
+	gint numl;
+	gint n;
+
+	numl = cdn_stack_arg_size (&argdim->args[0]);
+	numa = cdn_stack_arg_size (&argdim->args[1]);
+
+	ptrL = cdn_stack_output_ptr (stack) - numl;
+	ptrA = ptrL - numa;
+
+	n = argdim->args[1].rows;
+
+	sltdl_impl (ptrA, ptrL, n);
+
+	// Then, pop lambda
+	cdn_stack_popn (stack, numl);
+}
+
+static void
+sltdl_dinvlinvt_impl (gdouble *ptrLTDL,
+                      gdouble *ptrL,
+                      gdouble *ptrB,
+                      gint     n)
 {
 	gint i;
 	gint diag;
 
 	diag = n * n - 1;
 
-	// First solve for b = D^-1 L^-T b
-	// see Sparce Factorization Algorithms, page 115
+	// Solve for b = D⁻¹ L⁻ᵀ b
+	// see Sparse Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
 		gint j;
@@ -1702,17 +1729,120 @@ slinsolve_backsubs (gdouble *ptrA,
 			gint ij = i + j * n;
 
 			// x_j = x_j - L_{ij} x_i
-			ptrB[j] -= ptrA[ij] * ptrB[i];
+			ptrB[j] -= ptrLTDL[ij] * ptrB[i];
 			j = (gint)ptrL[j];
 		}
 
-		// Apply D-1 from the diagonal elements if ptrA
-		ptrB[i] /= ptrA[diag];
+		// Apply D⁻¹ from the diagonal elements in ptrLTDL
+		ptrB[i] /= ptrLTDL[diag];
 		diag -= n + 1;
 	}
+}
 
-	// Then finally solve for L^-1 b
-	// see Sparce Factorization Algorithms, page 115
+/* sltdl_dinvlinvt computes x = D⁻¹ L⁻ᵀ b, given LᵀDL as computed by sltdl
+ * (i.e. L being the lower unit triangular matrix and D the diagonal).
+ */
+static void
+op_sltdl_dinvlinvt (CdnStack           *stack,
+                    CdnStackArgs const *argdim,
+                    gpointer            userdata)
+{
+	gdouble *ptrLTDL;
+	gdouble *ptrB;
+	gdouble *ptrL;
+	gint numltdl;
+	gint numl;
+	gint numb;
+	gint k;
+	gint n;
+
+	// args = [LᵀDL, λ, B]
+	numltdl = cdn_stack_arg_size (&argdim->args[0]);
+	numl = cdn_stack_arg_size (&argdim->args[1]);
+	numb = cdn_stack_arg_size (&argdim->args[2]);
+
+	ptrLTDL = cdn_stack_output_ptr (stack) - numltdl;
+	ptrL = ptrLTDL - numl;
+	ptrB = ptrL - numb;
+
+	n = argdim->args[0].rows;
+
+	// Then b = D⁻¹ L⁻ᵀ b in place
+	for (k = 0; k < argdim->args[2].columns; ++k)
+	{
+		sltdl_dinvlinvt_impl (ptrLTDL, ptrL, ptrB, n);
+		ptrB += n;
+	}
+
+	// Finally pop lambda and LTDL
+	cdn_stack_popn (stack, numltdl + numl);
+}
+
+static void
+sltdl_dinv_impl (gdouble *ptrLTDL,
+                 gdouble *ptrB,
+                 gint     n)
+{
+	gint i;
+	gint diag;
+
+	diag = n * n - 1;
+
+	// First solve for b = D⁻¹ b
+	// see Sparse Factorization Algorithms, page 115
+	for (i = n - 1; i >= 0; --i)
+	{
+		// Apply D⁻¹ from the diagonal elements if ptrA
+		ptrB[i] /= ptrLTDL[diag];
+		diag -= n + 1;
+	}
+}
+
+/* sltdl_dinv computes x = D⁻¹ b, given LᵀDL as computed by sltdl (i.e. D
+ * being the diagonal elements of LTDL)
+ */
+static void
+op_sltdl_dinv (CdnStack           *stack,
+               CdnStackArgs const *argdim,
+               gpointer            userdata)
+{
+	gdouble *ptrLTDL;
+	gdouble *ptrB;
+	gint numltdl;
+	gint numb;
+	gint k;
+	gint n;
+
+	numltdl = cdn_stack_arg_size (&argdim->args[0]);
+	numb = cdn_stack_arg_size (&argdim->args[1]);
+
+	ptrLTDL = cdn_stack_output_ptr (stack) - numltdl;
+	ptrB = ptrLTDL - numb;
+
+	n = argdim->args[0].rows;
+
+	// computes b = D⁻¹ b in place
+	for (k = 0; k < argdim->args[1].columns; ++k)
+	{
+		sltdl_dinv_impl (ptrLTDL, ptrB, n);
+		ptrB += n;
+	}
+
+	// Finally pop LTDL
+	cdn_stack_popn (stack, numltdl);
+}
+
+
+static void
+sltdl_linv_impl (gdouble *ptrLTDL,
+                 gdouble *ptrL,
+                 gdouble *ptrB,
+                 gint     n)
+{
+	gint i;
+
+	// Then finally solve for L⁻¹ b
+	// see Sparse Factorization Algorithms, page 115
 	for (i = 0; i < n; ++i)
 	{
 		gint j;
@@ -1724,20 +1854,109 @@ slinsolve_backsubs (gdouble *ptrA,
 			gint ij = i + j * n;
 
 			// x_i = x_i - L_{ij} x_j
-			ptrB[i] -= ptrA[ij] * ptrB[j];
+			ptrB[i] -= ptrLTDL[ij] * ptrB[j];
 			j = (gint)ptrL[j];
 		}
 	}
 }
 
-/*
- * op_slinsolve is a specialized form of solving a linear system of equations
- * representing the system H(q)q'' = C given a specific kinematic chain. The
- * chain can be used to more efficiently solve the system since DOFs which are
- * not in the same chain do not have corresponding terms in H. This is a
- * straightforward implementation from the algorithm given in
- * "Rigid body dynamics algorithms - Featherstone, 2008".
- */
+static void
+op_sltdl_linv (CdnStack           *stack,
+               CdnStackArgs const *argdim,
+               gpointer            userdata)
+{
+	gdouble *ptrLTDL;
+	gdouble *ptrB;
+	gdouble *ptrL;
+	gint numltdl;
+	gint numl;
+	gint numb;
+	gint k;
+	gint n;
+
+	numltdl = cdn_stack_arg_size (&argdim->args[0]);
+	numl = cdn_stack_arg_size (&argdim->args[1]);
+	numb = cdn_stack_arg_size (&argdim->args[2]);
+
+	ptrLTDL = cdn_stack_output_ptr (stack) - numltdl;
+	ptrL = ptrLTDL - numl;
+	ptrB = ptrL - numb;
+
+	n = argdim->args[0].rows;
+
+	// Then b = L⁻¹ b in place
+	for (k = 0; k < argdim->args[2].columns; ++k)
+	{
+		sltdl_linv_impl (ptrLTDL, ptrL, ptrB, n);
+		ptrB += n;
+	}
+
+	// Finally pop lambda and LTDL
+	cdn_stack_popn (stack, numltdl + numl);
+}
+
+static void
+sltdl_linvt_impl (gdouble *ptrLTDL,
+                  gdouble *ptrL,
+                  gdouble *ptrB,
+                  gint     n)
+{
+	gint i;
+
+	// Then finally solve for L⁻ᵀ b
+	// see Sparse Factorization Algorithms, page 115
+	for (i = n - 1; i >= 0; --i)
+	{
+		gint j;
+
+		j = (gint)ptrL[i];
+
+		while (j >= 0)
+		{
+			gint ij = i + j * n;
+
+			// x_i = x_i - L_{ij} x_i
+			ptrB[j] -= ptrLTDL[ij] * ptrB[i];
+			j = (gint)ptrL[j];
+		}
+	}
+}
+
+static void
+op_sltdl_linvt (CdnStack           *stack,
+                CdnStackArgs const *argdim,
+                gpointer            userdata)
+{
+	gdouble *ptrLTDL;
+	gdouble *ptrB;
+	gdouble *ptrL;
+	gint numltdl;
+	gint numl;
+	gint numb;
+	gint k;
+	gint n;
+
+	numltdl = cdn_stack_arg_size (&argdim->args[0]);
+	numl = cdn_stack_arg_size (&argdim->args[1]);
+	numb = cdn_stack_arg_size (&argdim->args[2]);
+
+	ptrLTDL = cdn_stack_output_ptr (stack) - numltdl;
+	ptrL = ptrLTDL - numl;
+	ptrB = ptrL - numb;
+
+	n = argdim->args[0].rows;
+
+	// Then b = L⁻ᵀ b in place
+	for (k = 0; k < argdim->args[2].columns; ++k)
+	{
+		sltdl_linvt_impl(ptrLTDL, ptrL, ptrB, n);
+		ptrB += n;
+	}
+
+	// Finally pop lambda and LTDL
+	cdn_stack_popn (stack, numltdl + numl);
+}
+
 static void
 op_slinsolve (CdnStack           *stack,
               CdnStackArgs const *argdim,
@@ -1749,7 +1968,6 @@ op_slinsolve (CdnStack           *stack,
 	gint numa;
 	gint numl;
 	gint numb;
-	gint i;
 	gint n;
 
 	numa = cdn_stack_arg_size (&argdim->args[0]);
@@ -1762,21 +1980,16 @@ op_slinsolve (CdnStack           *stack,
 
 	n = argdim->args[0].rows;
 
-	// Factorized A in place using LTDL factorization
-	slinsolve_factorize (ptrA, ptrL, n);
+	// first compute ltdl in place of A
+	sltdl_impl (ptrA, ptrL, n);
 
-	// Then backsubstitute
-	for (i = 0; i < argdim->args[2].columns; ++i)
-	{
-		slinsolve_backsubs (ptrA,
-		                    ptrB,
-		                    ptrL,
-		                    n);
+	// then compute b = D⁻¹ L⁻ᵀ b
+	sltdl_dinvlinvt_impl (ptrA, ptrL, ptrB, n);
 
-		ptrB += n;
-	}
+	// finally compute b = L⁻¹ b
+	sltdl_linv_impl (ptrA, ptrL, ptrB, n);
 
-	// Finally pop lambda and A
+	// Finally pop lambda and LTDL
 	cdn_stack_popn (stack, numa + numl);
 }
 
@@ -2121,6 +2334,11 @@ static FunctionEntry function_entries[] = {
 	{"qr", op_noop, 1, FALSE},
 #endif
 	{"slinsolve", op_slinsolve, 3, FALSE},
+	{"sltdl", op_sltdl, 2, FALSE},
+	{"sltdldinv", op_sltdl_dinv, 2, FALSE},
+	{"sltdldinvlinvt", op_sltdl_dinvlinvt, 3, FALSE},
+	{"sltdllinvt", op_sltdl_linvt, 3, FALSE},
+	{"sltdllinv", op_sltdl_linv, 3, FALSE},
 	{"sum", op_sum, -1, FALSE},
 	{"product", op_product, -1, FALSE},
 	{"length", op_length, 1, FALSE},
@@ -2510,321 +2728,6 @@ cdn_math_constant_lookup (gchar const  *name,
 	return 0.0;
 }
 
-static void
-sparsity_intersect (CdnStackArg const *arg1,
-                    CdnStackArg const *arg2,
-                    CdnStackArg       *outarg)
-{
-	gint i1 = 0;
-	gint i2 = 0;
-
-	// Sets the sparsity in outarg to the intersection of the sparsity
-	// in arg1 and arg2
-	cdn_stack_arg_set_sparsity (outarg, NULL, 0);
-
-	while (i1 < arg1->num_sparse && i2 < arg2->num_sparse)
-	{
-		guint s1;
-		guint s2;
-
-		s1 = arg1->sparsity[i1];
-		s2 = arg2->sparsity[i2];
-
-		if (s1 == s2)
-		{
-			if (!outarg->sparsity)
-			{
-				outarg->sparsity = g_new (guint, MIN (arg1->num_sparse - i1,
-				                                      arg2->num_sparse - i2));
-			}
-
-			outarg->sparsity[outarg->num_sparse++] = s1;
-
-			++i1;
-			++i2;
-		}
-		else if (s1 > s2)
-		{
-			++i2;
-		}
-		else
-		{
-			++i1;
-		}
-	}
-}
-
-static int
-cmp_sparsity (const void *a, const void *b)
-{
-	guint const *aa = (guint const *)a;
-	guint const *bb = (guint const *)b;
-
-	if (*aa < *bb)
-	{
-		return -1;
-	}
-	else if (*aa > *bb)
-	{
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
-static void
-sparsity_transpose (CdnStackArg const *inarg,
-                    CdnStackArg       *outarg)
-{
-	guint *sparsity;
-	guint i;
-
-	if (!inarg->num_sparse)
-	{
-		return;
-	}
-
-	sparsity = g_new (guint, inarg->num_sparse);
-
-	for (i = 0; i < inarg->num_sparse; ++i)
-	{
-		guint idx;
-		guint r;
-		guint c;
-
-		idx = inarg->sparsity[i];
-
-		r = idx / inarg->rows;
-		c = idx % inarg->rows;
-
-		sparsity[i] = c * inarg->rows + r;
-	}
-
-	// Sort sparsity indices
-	qsort(sparsity, inarg->num_sparse, sizeof(guint), cmp_sparsity);
-
-	cdn_stack_arg_set_sparsity (outarg,
-	                            sparsity,
-	                            inarg->num_sparse);
-
-	g_free (sparsity);
-}
-
-static void
-sparsity_first (CdnStackArg const *arg1,
-                CdnStackArg const *arg2,
-                CdnStackArg       *outarg)
-{
-	if (cdn_stack_arg_size (arg1) == 1 && arg1->num_sparse > 0)
-	{
-		guint *sparsity;
-		guint num_sparse;
-		guint i;
-
-		num_sparse = cdn_stack_arg_size (outarg);
-		sparsity = g_new (guint, num_sparse);
-
-		for (i = 0; i < num_sparse; ++i)
-		{
-			sparsity[i] = i;
-		}
-
-		cdn_stack_arg_set_sparsity (outarg, sparsity, num_sparse);
-	}
-	else if (cdn_stack_arg_size (arg1) == cdn_stack_arg_size (outarg))
-	{
-		cdn_stack_arg_set_sparsity (outarg,
-		                            g_memdup (arg1->sparsity,
-		                                      sizeof (guint) * arg1->num_sparse),
-		                            arg1->num_sparse);
-	}
-}
-
-static guint *
-sparsity_make_full (guint n)
-{
-	guint *ret;
-	guint i;
-
-	if (n == 0)
-	{
-		return NULL;
-	}
-
-	ret = g_new (guint, n);
-
-	for (i = 0; i < n; ++i)
-	{
-		ret[i] = i;
-	}
-
-	return ret;
-}
-
-static void
-sparsity_union (CdnStackArg const *arg1,
-                CdnStackArg const *arg2,
-                CdnStackArg       *outarg)
-{
-	if ((cdn_stack_arg_size (arg1) == 1 &&
-	     (arg1->num_sparse > 0 || arg2->num_sparse == cdn_stack_arg_size (arg2))) ||
-	    (cdn_stack_arg_size (arg2) == 1 &&
-	     (arg2->num_sparse > 0 || arg1->num_sparse == cdn_stack_arg_size (arg1))))
-	{
-		guint n;
-
-		n = cdn_stack_arg_size (outarg);
-
-		cdn_stack_arg_set_sparsity (outarg,
-		                            sparsity_make_full (n),
-		                            n);
-	}
-	else if (cdn_stack_arg_size (arg1) == cdn_stack_arg_size (arg2))
-	{
-		gint i1 = 0;
-		gint i2 = 0;
-
-		// Sets the sparsity in outarg to the union of the sparsity
-		// in arg1 and arg2
-		cdn_stack_arg_set_sparsity (outarg, NULL, 0);
-
-		while (i1 < arg1->num_sparse || i2 < arg2->num_sparse)
-		{
-			gint s1 = -1;
-			gint s2 = -1;
-
-			if (i1 < arg1->num_sparse)
-			{
-				s1 = arg1->sparsity[i1];
-			}
-
-			if (i2 < arg2->num_sparse)
-			{
-				s2 = arg2->sparsity[i2];
-			}
-
-			if (!outarg->sparsity)
-			{
-				gint num;
-
-				num = MIN (arg1->num_sparse + arg2->num_sparse,
-				           cdn_stack_arg_size (outarg));
-
-				outarg->sparsity = g_new (guint, num);
-				outarg->num_sparse = 0;
-			}
-
-			if (s1 == s2)
-			{
-				outarg->sparsity[outarg->num_sparse++] = s1;
-
-				++i1;
-				++i2;
-			}
-			else if (s1 == -1 || (s2 != -1 && s1 > s2))
-			{
-				outarg->sparsity[outarg->num_sparse++] = s2;
-				++i2;
-			}
-			else if (s2 == -1 || s2 > s1)
-			{
-				outarg->sparsity[outarg->num_sparse++] = s1;
-				++i1;
-			}
-		}
-	}
-}
-
-static guchar *
-make_sparse_matrix (CdnStackArg const *arg)
-{
-	guchar *ret;
-	gint num;
-	gint i;
-
-	num = cdn_dimension_size (&arg->dimension);
-
-	ret = g_new0 (guchar, num);
-
-	for (i = 0; i < arg->num_sparse; ++i)
-	{
-		ret[arg->sparsity[i]] = 1;
-	}
-
-	return ret;
-}
-
-static void
-sparsity_multiply (CdnStackArg const *arg1,
-                   CdnStackArg const *arg2,
-                   CdnStackArg       *outarg)
-{
-	if (arg1->columns == arg2->rows &&
-	    !(cdn_stack_arg_size (arg1) == 1 && cdn_stack_arg_size (arg2) == 1))
-	{
-		guchar *s1;
-		guchar *s2;
-		guint sidx = 0;
-		guint *sparsity;
-		gint c;
-		guchar *s2ptr;
-
-		// This is matrix multiplication
-		s1 = make_sparse_matrix (arg1);
-		s2 = make_sparse_matrix (arg2);
-
-		s2ptr = s2;
-		sparsity = g_new0 (guint, arg1->rows * arg2->columns);
-
-		for (c = 0; c < arg2->dimension.columns; ++c)
-		{
-			gint r;
-
-			for (r = 0; r < arg1->dimension.rows; ++r)
-			{
-				gboolean issparse = TRUE;
-				gint k;
-				guchar *s1ptr;
-
-				// pointer to first element of row in arg1
-				s1ptr = s1 + r;
-
-				for (k = 0; k < arg1->columns; ++k)
-				{
-					if (!s2ptr[k] && !*s1ptr)
-					{
-						issparse = FALSE;
-						break;
-					}
-
-					// next column in arg1
-					s1ptr += arg1->rows;
-				}
-
-				if (issparse)
-				{
-					sparsity[sidx++] = r + c * arg1->rows;
-				}
-			}
-
-			// next column in arg2
-			s2ptr += arg2->rows;
-		}
-
-		cdn_stack_arg_set_sparsity (outarg, sparsity, sidx);
-
-		g_free (sparsity);
-		g_free (s1);
-		g_free (s2);
-	}
-	else
-	{
-		sparsity_union (arg1, arg2, outarg);
-	}
-}
-
 #ifdef HAVE_LAPACK
 static LP_int
 inverse_work_space (CdnDimension const *dim)
@@ -2984,79 +2887,6 @@ qr_work_space (CdnDimension const *dim)
 	return mindim + (LP_int)work + dim->rows * dim->rows;
 }
 #endif
-
-void
-cdn_math_compute_sparsity (CdnMathFunctionType  type,
-                           CdnStackArgs const  *inargs,
-                           CdnStackArg         *outarg)
-{
-	return;
-
-	if (type >= CDN_MATH_FUNCTION_TYPE_NUM)
-	{
-		return;
-	}
-
-	switch (type)
-	{
-		case CDN_MATH_FUNCTION_TYPE_FLOOR:
-		case CDN_MATH_FUNCTION_TYPE_CEIL:
-		case CDN_MATH_FUNCTION_TYPE_ROUND:
-		case CDN_MATH_FUNCTION_TYPE_ABS:
-		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
-		case CDN_MATH_FUNCTION_TYPE_SIN:
-		case CDN_MATH_FUNCTION_TYPE_ASIN:
-		case CDN_MATH_FUNCTION_TYPE_TAN:
-		case CDN_MATH_FUNCTION_TYPE_ATAN:
-		case CDN_MATH_FUNCTION_TYPE_SINH:
-		case CDN_MATH_FUNCTION_TYPE_TANH:
-			// Single argument functions which propagate sparsity
-			cdn_stack_arg_set_sparsity (outarg,
-			                            inargs->args[0].sparsity,
-			                            inargs->args[0].num_sparse);
-		break;
-		case CDN_MATH_FUNCTION_TYPE_PLUS:
-		case CDN_MATH_FUNCTION_TYPE_MINUS:
-			// sparse OP sparse = sparse
-			if (cdn_stack_arg_size (inargs->args) == 1 &&
-			    inargs->args[0].num_sparse > 0)
-			{
-				cdn_stack_arg_set_sparsity (outarg,
-				                            inargs->args[1].sparsity,
-				                            inargs->args[1].num_sparse);
-			}
-			else if (cdn_stack_arg_size (inargs->args + 1) == 1 &&
-			         inargs->args[1].num_sparse > 0)
-			{
-				cdn_stack_arg_set_sparsity (outarg,
-				                            inargs->args[0].sparsity,
-				                            inargs->args[0].num_sparse);
-			}
-			else if (cdn_stack_arg_size (inargs->args) ==
-			         cdn_stack_arg_size (inargs->args + 1))
-			{
-				sparsity_intersect (inargs->args,
-				                    inargs->args + 1,
-				                    outarg);
-			}
-		break;
-		case CDN_MATH_FUNCTION_TYPE_DIVIDE:
-		case CDN_MATH_FUNCTION_TYPE_POWER:
-		case CDN_MATH_FUNCTION_TYPE_POW:
-		case CDN_MATH_FUNCTION_TYPE_MODULO:
-			// sparse OP N = sparse
-			sparsity_first (inargs->args + 1, inargs->args, outarg);
-		break;
-		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
-			sparsity_multiply (inargs->args + 1, inargs->args, outarg);
-		break;
-		case CDN_MATH_FUNCTION_TYPE_TRANSPOSE:
-			sparsity_transpose (inargs->args, outarg);
-		break;
-		default:
-		break;
-	}
-}
 
 gboolean
 cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
@@ -3496,9 +3326,41 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			*extra_space = qr_work_space (&inargs->args[0].dimension);
 		break;
 #endif
+		case CDN_MATH_FUNCTION_TYPE_SLTDL_DINV:
+			// arguments order, B, LTDL
+			if (inargs->args[0].rows != inargs->args[0].columns)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Cannot compute sltdldinv of a system which is not square (%d, %d)",
+				             inargs->args[0].rows, inargs->args[0].columns);
+
+				return FALSE;
+			}
+
+			if (inargs->args[0].rows != inargs->args[1].rows)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Invalid dimensions of B in sltdldinv, expected `%d' rows but got `%d' rows",
+				             inargs->args[0].rows, inargs->args[1].rows);
+
+				return FALSE;
+			}
+
+			cdn_stack_arg_copy (outarg, inargs->args + 1);
+		break;
 		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
-			// A x = B, λ
-			// with order of arguments: B, λ, A
+			// [A x = B : λ] for x, with: B, λ, A
+		case CDN_MATH_FUNCTION_TYPE_SLTDL_DINV_LINVT:
+			// [x = D⁻¹ L⁻ᵀ B] with: B, λ, LTDL
+		case CDN_MATH_FUNCTION_TYPE_SLTDL_LINVT:
+			// [x = L⁻ᵀ B] with: B, λ, LTDL
+		case CDN_MATH_FUNCTION_TYPE_SLTDL_LINV:
+			// [x = L⁻¹ B] with: B, λ, LTDL
+
 			if (inargs->args[0].rows != inargs->args[0].columns)
 			{
 				g_set_error (error,
@@ -3532,13 +3394,51 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				return FALSE;
 			}
 
-			if (inargs->args[2].columns != 1)
+			if (inargs->args[1].columns != 1)
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "The number of columns of λ must 1 (got `%d')",
+				             "The number of columns of λ must be 1 (got `%d')",
 				             inargs->args[2].columns);
+
+				return FALSE;
+			}
+
+			cdn_stack_arg_copy (outarg, inargs->args + 2);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_SLTDL:
+			// A = LTDL, λ
+			// with order of arguments: A, λ
+			if (inargs->args[1].rows != inargs->args[1].columns)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Cannot factorize a matrix which is not square (%d, %d)",
+				             inargs->args[1].rows, inargs->args[1].columns);
+
+				return FALSE;
+			}
+
+			if (inargs->args[0].rows != inargs->args[1].rows)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Invalid dimensions of λ (in A(λ, λ)), expected `%d' rows but got `%d' rows",
+				             inargs->args[1].rows, inargs->args[0].rows);
+
+				return FALSE;
+			}
+
+			if (inargs->args[0].columns != 1)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "The number of columns of λ must be 1 (got `%d')",
+				             inargs->args[1].columns);
 
 				return FALSE;
 			}
@@ -3609,6 +3509,5 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			return FALSE;
 	}
 
-	cdn_math_compute_sparsity (type, inargs, outarg);
 	return TRUE;
 }

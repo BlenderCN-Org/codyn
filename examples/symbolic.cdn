@@ -1,0 +1,57 @@
+## This file contains examples of various symbolic operators supported
+## in codyn. In particular, it shows examples of the various symbolic
+## derivative operators.
+
+## Examples of the use of the dt[] (time derivative) operator.
+node "dt"
+{
+    ## Target value for the x state variable
+    X = "2"
+
+    ## Simple first order filter as differential equation.
+    x' = "X - x"
+
+    ## Obtain the time derivative of x.
+    dx = "x'"
+
+    ## This is the same as dx but without the shorthand syntax.
+    dxdt = "dt[x]()"
+
+    ## This gets the second order time derivative of an arbitrary,
+    ## semi-complex expression.
+    de = "dt[cos(x) + 2 * x * t, 2]()"
+}
+
+## Examples of the diff[] symbolic derivative operator.
+node "diff"
+{
+    ## Some function of two variables.
+    f1(a, b) = "a^2 + b * a + 2"
+
+    ## Get the symbolic derivative of f1 towards a. Note that diff[] will
+    ## calculate the full derivative of f1 towards a, which results in
+    ## a' * b + 2 * a * a'. The default value of a' will be 1 (i.e. assuming
+    ## a is not variant), but can be optionally specified when calling df1
+    ## if the derivative of a happens to be known.
+    df1(a, b, a'=1) = "diff[f1; a](a, b, a')"
+
+    ## Example of calling df1
+    x = "df1(2, 3)"
+}
+
+## Examples of the pdiff[] partial symbolic derivative operator.
+node "pdiff"
+{
+    ## Function to take partial derivative towards
+    f1(a, b) = "a^2 * b + b"
+
+    ## Take partial derivative of f1 towards a
+    pdf1a(a, b) = "pdiff[f1; a](a, b)"
+
+    ## Call the partial derivative of f1 towards a
+    x = "pdf1a(2, 3)"
+}
+
+layout | nodes at $(2 + @x[+3]), 2
+
+# vi:ts=4:et

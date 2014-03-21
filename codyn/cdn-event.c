@@ -330,14 +330,14 @@ logical_node_happened_and (CdnEvent    *event,
 	lhap = logical_node_happened (event, node->left, &lval, update);
 	rhap = logical_node_happened (event, node->right, &rval, update);
 
+	if (update)
+	{
+		return FALSE;
+	}
+
 	if (retval)
 	{
 		*retval = 1;
-	}
-
-	if (update)
-	{
-		node->value = 1;
 	}
 
 	node->last_distance = 0;
@@ -366,11 +366,6 @@ logical_node_happened_and (CdnEvent    *event,
 		{
 			*retval = 0;
 		}
-
-		if (update)
-		{
-			node->value = 0;
-		}
 	}
 
 	return FALSE;
@@ -391,14 +386,14 @@ logical_node_happened_or (CdnEvent    *event,
 	lhap = logical_node_happened (event, node->left, &lval, update);
 	rhap = logical_node_happened (event, node->right, &rval, update);
 
+	if (update)
+	{
+		return FALSE;
+	}
+
 	if (retval)
 	{
 		*retval = 1;
-	}
-
-	if (update)
-	{
-		node->value = 1;
 	}
 
 	node->last_distance = 0;
@@ -426,11 +421,6 @@ logical_node_happened_or (CdnEvent    *event,
 		{
 			*retval = 0;
 		}
-
-		if (update)
-		{
-			node->value = 0;
-		}
 	}
 
 	return FALSE;
@@ -455,14 +445,15 @@ logical_node_happened (CdnEvent    *event,
 
 	val = cdn_expression_evaluate (node->expression);
 
-	if (retval)
-	{
-		*retval = val;
-	}
-
 	if (update)
 	{
 		node->value = val;
+		return FALSE;
+	}
+
+	if (retval)
+	{
+		*retval = val;
 	}
 
 	node->last_distance = -1;

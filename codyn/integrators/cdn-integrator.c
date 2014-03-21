@@ -343,7 +343,7 @@ update_events (CdnIntegrator *integrator)
 	GSList const *events;
 
 	// Here we are going to check our events
-	events = cdn_integrator_state_phase_events (integrator->priv->state);
+	events = cdn_integrator_state_events (integrator->priv->state);
 
 	while (events)
 	{
@@ -423,7 +423,8 @@ execute_events (CdnIntegrator *integrator,
                 GSList        *events)
 {
 	gchar const *state;
-	GSList *execute = NULL;
+
+	update_events (integrator);
 
 	while (events)
 	{
@@ -439,7 +440,7 @@ execute_events (CdnIntegrator *integrator,
 		{
 			state = cdn_event_get_goto_state (ev);
 
-			execute = g_slist_prepend (execute, ev);
+			cdn_event_execute (ev);
 
 			if (state)
 			{
@@ -457,22 +458,13 @@ execute_events (CdnIntegrator *integrator,
 
 		events = g_slist_next (events);
 	}
-
-	update_events (integrator);
-
-	execute = g_slist_reverse (execute);
-
-	while (execute)
-	{
-		cdn_event_execute (execute->data);
-		execute = g_slist_delete_link (execute, execute);
-	}
 }
 
 static GSList *
-append_happened (GSList   *events,
-                 CdnEvent *event,
-                 gdouble  *smallest)
+append_happened (GSList    *events,
+                 CdnEvent  *event,
+                 gdouble   *smallest,
+                 CdnEvent **smallest_event)
 {
 	gdouble dist;
 	gdouble prec = 1e-9;
@@ -480,10 +472,12 @@ append_happened (GSList   *events,
 
 	dist = cdn_event_last_distance (event);
 
-	if (!events)
+	if (*smallest_event != event)
 	{
 		*smallest = dist;
-		return g_slist_prepend (NULL, event);
+		*smallest_event = event;
+
+		return g_slist_prepend (events, event);
 	}
 
 	if (dist > *smallest + prec)
@@ -527,6 +521,7 @@ handle_events (CdnIntegrator *integrator,
 {
 	GSList const *events;
 	GSList *happened = NULL;
+	CdnEvent *smallest_event = NULL;
 	gdouble smallest = 0;
 
 	if (!integrator->priv->inner_event_loop)
@@ -543,7 +538,7 @@ handle_events (CdnIntegrator *integrator,
 
 		if (cdn_event_happened (ev, NULL))
 		{
-			happened = append_happened (happened, ev, &smallest);
+			happened = append_happened (happened, ev, &smallest, &smallest_event);
 		}
 
 		events = g_slist_next (events);

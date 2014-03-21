@@ -200,11 +200,19 @@ cdn_matrix_set (CdnMatrix          *matrix,
 		matrix->value = 0;
 	}
 
-	if (dimsize <= 1)
+	if (dimsize == 0)
+	{
+		matrix->value = 0;
+	}
+	else if (dimsize == 1)
 	{
 		if (values)
 		{
 			matrix->value = *values;
+		}
+		else
+		{
+			matrix->value = 0;
 		}
 	}
 	else if (dimsize == mydimsize)

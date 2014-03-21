@@ -1,0 +1,7 @@
+\lstdefinelanguage{cdn}{%
+  morekeywords={%
+    @KEYWORDS@,%
+    @SELECTORS@},%
+   morecomment=[l]\#,%
+   morestring=[b]"%
+  }[keywords,comments,strings]

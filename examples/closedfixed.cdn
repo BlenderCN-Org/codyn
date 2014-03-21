@@ -1,0 +1,70 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.001:6 -m system./p.*/.q
+
+## An example of closing loop joints with the fixed base.
+## A simple parallel structure is created and closed back on
+## the fixed base, resulting in single degree of freedom
+## parallelogram dynamics.
+
+include "physics/physics.cdn"
+include "physics/cjoints.cdn"
+
+integrator {
+	method = "runge-kutta"
+}
+
+defines {
+	offset = "0.2 * pi"
+}
+
+## The physical system
+node "system" : physics.system {
+	# Create three revolute joints in a serial chain
+	node "p{1:3}" : physics.joints.revoluteY {
+		 tr = "[0; 0; -1]"
+		com = "[0; 0; -0.5]"
+		  I = "Inertia.Box(m, 0.05, 0.05, 1)"
+	}
+
+	node "p1" {
+		# Override the coordinate transformation of the first node
+		# so that it's at the origin
+		tr = "[0; 0; 0]"
+
+		# Set the initial joint angle at some value
+		 q = "-@offset"
+	}
+
+	node "p{2:3}" {
+		# Set initial joint angles consistent with the initial
+		# state of a parallelogram
+		q = ["0.5 * pi + @offset", "0.5 * pi - @offset"]
+	}
+
+	# Connect the three revolute joints in a serial chain
+	edge from "p{1:3}" to "p$(@1 + 1)" : physics.joint {}
+
+	# Create a closing loop revolute constraint joint
+	node "pcl" : physics.cjoints.revoluteY {
+		tr = "[0; 0; -1]"
+	}
+
+	# Connect from the last revolute join to the closing
+	# loop joint.
+	edge from "p3" to "pcl" : physics.cjoint {}
+
+    # The physics/model.cdn file should be included at the end of the
+    # model definition and constructs a "model" node containing global
+    # system quantities such as the center of mass and total mass. It is
+    # also responsible for constructing the required Jacobians if requested.
+    include "physics/model.cdn"
+
+    # The physics/dynamics.cdn file should be included last and constructs
+    # the equations necessary for forward simulation of the dynamics. It
+    # uses RNEA to construct C and CRBA to construct H in a new node called
+    # "dynamics". It then derives generalized accelerations in dynamics.ddq
+    # which are project back to the individual joints.
+    include "physics/dynamics.cdn"
+}
+
+# vi:ts=4:et

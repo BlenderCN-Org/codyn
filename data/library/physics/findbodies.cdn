@@ -1,22 +1,47 @@
 defines
 {
     rootbodies = has-template(physics.body) | not(inputs | has-template(physics.joint))
+
     bodies = | @rootbodies | recurse(outputs | has-template(physics.joint) | output) | name
+    cbodies = has-template(physics.cbody) | name
 
     # Calculate a list of dof for each body
     bodydof = | @bodies | sort
               | if (applied-templates | recurse(applied-templates) | /dof([1-6])/ | last)
               | append-context("@1")
 
+    # Same for closed loop bodies
+    cbodydof = | "@cbodies" | sort
+               | if (applied-templates | recurse(applied-templates) | /cdof([1-6])/ | last)
+               | append-context("@1")
+
+    cbodycons = "{@cbodydof|$(6 - @0)}"
+
     # Calculate a cumulative sum of the dofs (gives index for each body when
     # dofs are expanded). i.e. @bodydofidx[<bodyidx>] will give the expanded
     # index of that particular body
     bodydofidx = "{@bodydof|@cnt[+@0]}"
+    cbodydofidx = "{@cbodydof|@ccnt[+@0]}"
+    cbodyconsidx = "{@cbodydof|@ccnt[+$(6 - @0)]}"
 
     bodydofex = "{@bodydofidx|@1:+$(@bodydof[$(@1[!] + 1)] - 1)}"
 
     # The total dofs in the system
     numdof = "@{@bodydof||$(@0 + @1)}"
+
+    numbodycons = "@{@cbodydof|$($(@0) == 0 ? 0 : 6 - $(@0))||$(@0 + @1)}"
+
+    ccontactnames = children | has-template(physics.contacts.hardbase) | name | parent | name | append-context("@0_@@0")
+
+    ccontactdof = children | has-template(physics.contacts.hardbase) | if (applied-templates | recurse(applied-templates) | /cdof([1-6])/ | last) | append-context("@1")
+    ccontactcons = "{@ccontactdof|$(6 - @0)}"
+
+    ccontactconsidx = "{@ccontactdof|$(@numbodycons + @ccnt[+$(6 - @0)])}"
+
+    # Number of constraints in the system
+    numccontactcons = "@{@ccontactdof|$($(@0) == 0 ? 0 : 6 - $(@0))||$(@0 + @1)}"
+
+    numcons = "$(@numbodycons + @numccontactcons)"
 
     # bodychain will contain for each body, a comma separated list of indices
     # from (and including) the body upwards to the root of the kinematic tree.

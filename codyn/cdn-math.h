@@ -166,6 +166,11 @@ typedef enum
 	CDN_MATH_FUNCTION_TYPE_LINSOLVE,
 	CDN_MATH_FUNCTION_TYPE_QR,
 	CDN_MATH_FUNCTION_TYPE_SLINSOLVE,
+	CDN_MATH_FUNCTION_TYPE_SLTDL,
+	CDN_MATH_FUNCTION_TYPE_SLTDL_DINV,
+	CDN_MATH_FUNCTION_TYPE_SLTDL_DINV_LINVT,
+	CDN_MATH_FUNCTION_TYPE_SLTDL_LINVT,
+	CDN_MATH_FUNCTION_TYPE_SLTDL_LINV,
 	CDN_MATH_FUNCTION_TYPE_SUM,
 	CDN_MATH_FUNCTION_TYPE_PRODUCT,
 	CDN_MATH_FUNCTION_TYPE_LENGTH,
@@ -205,10 +210,6 @@ gboolean             cdn_math_function_is_commutative         (CdnMathFunctionTy
 
 const gchar         *cdn_math_function_lookup_by_id           (CdnMathFunctionType   type,
                                                                gint                 *arguments);
-
-void                 cdn_math_compute_sparsity                (CdnMathFunctionType  type,
-                                                               CdnStackArgs const  *inargs,
-                                                               CdnStackArg         *outarg);
 
 gboolean             cdn_math_function_get_stack_manipulation (CdnMathFunctionType   type,
                                                                CdnStackArgs const   *inargs,

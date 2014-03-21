@@ -1,5 +1,5 @@
 import bpy, os, inspect, sys, math, mathutils, collections
-from gi.repository import Cdn
+from gi.repository import Cdn, Gio
 
 import codyn
 
@@ -12,6 +12,8 @@ class CodynImport(bpy.types.Operator):
     filepath = bpy.props.StringProperty(subtype="FILE_PATH")
     animation_start = bpy.props.FloatProperty(name="Animation start (t)", min=0, subtype='UNSIGNED', default=0)
     animation_end = bpy.props.FloatProperty(name="Animation end (t)", min=0, subtype='UNSIGNED', default=0)
+    coordinate_frames = bpy.props.BoolProperty(name="Coordinate frames", default=False)
+    import_forces = bpy.props.BoolProperty(name="Forces", default=True)
 
     def make_object(self, context, name, mesh=None):
         if name in bpy.data.objects:
@@ -233,6 +235,42 @@ class CodynImport(bpy.types.Operator):
         o.game.properties['cdn_record'].value = not record is None
         return o
 
+    def has_template(self, node, fullname):
+        templ = node.find_object('templates-root . ' + fullname)
+
+        if templ is None:
+            return False
+
+        return self.has_applied_template(node, templ)
+
+    def add_lamp(self, context, body, lamp, nodemap):
+        if self.has_template(lamp, 'physics.rendering.sun'):
+            bpy.ops.object.lamp_add(type='SUN')
+        elif self.has_template(lamp, 'physics.rendering.spot'):
+            bpy.ops.object.lamp_add(type='SPOT')
+        else:
+            bpy.ops.object.lamp_add()
+
+        o = context.active_object
+
+        if lamp.get_parent() in nodemap:
+            o.parent = nodemap[lamp.get_parent()]
+        else:
+            o.parent = body
+
+        o.matrix_local = codyn.matrix_to_mat4x4(lamp.get_variable('transform').get_values())
+        o.data.energy = lamp.get_variable('energy').get_value()
+        o.data.color = lamp.get_variable('color').get_values().get_flat()
+
+        if o.data.type == 'POINT':
+            o.data.distance = lamp.get_variable('distance').get_value()
+        elif o.data.type == 'SPOT':
+            o.data.distance = lamp.get_variable('distance').get_value()
+            o.data.spot_size = lamp.get_variable('size').get_value()
+            o.data.spot_blend = lamp.get_variable('blend').get_value()
+
+        return o
+
     def has_applied_template(self, obj, template):
         templmap = {}
         templ = collections.deque(obj.get_applied_templates())
@@ -293,11 +331,14 @@ class CodynImport(bpy.types.Operator):
 
             obj.game.properties['cdn_node'].value = body.get_full_id()
 
-            csid = '{0}_cs'.format(bid)
+            cs = None
 
-            cs = self.make_object(context, csid, lambda: bpy.data.meshes['coordinate_system'])
-            cs.scale = [0.05, 0.05, 0.05]
-            cs.parent = obj
+            if self.coordinate_frames:
+                csid = '{0}_cs'.format(bid)
+
+                cs = self.make_object(context, csid, lambda: bpy.data.meshes['coordinate_system'])
+                cs.scale = [0.05, 0.05, 0.05]
+                cs.parent = obj
 
             # Attach coordinate system visualization
             comid = '{0}_com'.format(bid)
@@ -311,49 +352,61 @@ class CodynImport(bpy.types.Operator):
                 shape.parent = obj
                 ret.append(shape)
 
-            contacts = body.find_objects('has-template(physics.contacts.soft)')
+            if self.import_forces:
+                contacts = body.find_objects('has-template(physics.contacts.contact)')
 
-            for c in contacts:
-                # Add contact force vector at each location
-                locs = c.get_variable('location').get_values()
-                locvals = locs.get_flat()
-                dim = locs.dimension()
+                mforce = [(c, 'location', 'forceAtLocations') for c in contacts]
+                mforce += [(body, 'forceExternalLocations', 'forceExternalAtLocations')]
 
-                for cc in range(dim.columns):
-                    bpy.ops.object.add_named(linked=True, name='force')
-                    fobj = context.active_object
+                for (c, vloc, vforce) in mforce:
+                    # Add contact force vector at each location
+                    v = c.get_variable(vloc)
 
-                    bpy.ops.object.add_named(linked=True, name='force_top')
-                    fobjtop = context.active_object
+                    if v is None:
+                        continue
 
-                    bpy.ops.object.add_named(linked=True, name='force_bottom')
-                    fobjbottom = context.active_object
+                    locs = v.get_values()
+                    locvals = locs.get_flat()
+                    dim = locs.dimension()
 
-                    fobj.name = '{0}_force_{1}'.format(bid, cc)
-                    fobjtop.name = '{0}_force_top_{1}'.format(bid, cc)
-                    fobjbottom.name = '{0}_force_bottom_{1}'.format(bid, cc)
+                    for cc in range(dim.columns):
+                        bpy.ops.object.add_named(linked=True, name='force')
+                        fobj = context.active_object
 
-                    fobjtop.parent = fobj
-                    fobjbottom.parent = fobj
+                        bpy.ops.object.add_named(linked=True, name='force_top')
+                        fobjtop = context.active_object
 
-                    fobj.scale = [0.1, 0.1, 0.1]
-                    fobj.parent = obj
+                        bpy.ops.object.add_named(linked=True, name='force_bottom')
+                        fobjbottom = context.active_object
 
-                    istart = cc * dim.rows
-                    fobj.location = locvals[istart:istart+3]
+                        fobj.name = '{0}_force_{1}'.format(bid, cc)
+                        fobjtop.name = '{0}_force_top_{1}'.format(bid, cc)
+                        fobjbottom.name = '{0}_force_bottom_{1}'.format(bid, cc)
 
-                    if not 'cdn_force' in obj.game.properties:
-                        context.scene.objects.active = fobj
-                        bpy.ops.object.game_property_new(type='STRING', name='cdn_force')
+                        fobjtop.parent = fobj
+                        fobjbottom.parent = fobj
 
-                    fobj.game.properties['cdn_force'].value = '{0}:{1}'.format(c.get_full_id(), cc)
+                        fobj.scale = [0.05, 0.05, 0.05]
+                        fobj.parent = obj
 
-                    ret.append(fobj)
-                    ret.append(fobjtop)
-                    ret.append(fobjbottom)
+                        istart = cc * dim.rows
+                        fobj.location = locvals[istart:istart+3]
+
+                        if not 'cdn_force' in obj.game.properties:
+                            context.scene.objects.active = fobj
+                            bpy.ops.object.game_property_new(type='STRING', name='cdn_force')
+
+                        fobj.game.properties['cdn_force'].value = '{0}:{1}:{2}'.format(c.get_full_id(), vforce, cc)
+
+                        ret.append(fobj)
+                        ret.append(fobjtop)
+                        ret.append(fobjbottom)
 
             ret.append(obj)
-            ret.append(cs)
+
+            if not cs is None:
+                ret.append(cs)
+
             ret.append(comobj)
 
             objmap[obj] = body
@@ -389,6 +442,11 @@ class CodynImport(bpy.types.Operator):
 
             # Transform
             nodemap[body].matrix_local = codyn.local_blender_transform(body)
+
+        for lamp in system.find_objects('has-template(physics.rendering.lamp)'):
+            l = self.add_lamp(context, sysobj, lamp, nodemap)
+            nodemap[lamp] = l
+            ret.append(l)
 
         return ret, nodemap
 
@@ -454,6 +512,99 @@ class CodynImport(bpy.types.Operator):
             # Simulate until start
             start = self.run_for(network.cdn, start)
 
+        class Force:
+            def __init__(self, node, fbody, s):
+                self.node = node
+                self.fbody = fbody
+
+                parts = s.split(':')
+
+                self.vnodename = parts[0]
+                self.vname = parts[1]
+                self.vindex = int(parts[2])
+
+                self.vnode = network.cdn.find_object(self.vnodename)
+
+                self.variable = self.vnode.get_variable(self.vname)
+                self.dimension = self.variable.get_dimension()
+
+                self.origin = self.fbody
+                self.top = None
+                self.bottom = None
+
+                for item in self.origin.children:
+                    if 'top' in item.name:
+                        self.top = item
+                    elif 'bottom' in item.name:
+                        self.bottom = item
+
+                self.bodies = [self.origin, self.top, self.bottom]
+
+            def animate(self):
+                i = self.vindex * 6
+                f = self.variable.get_values().get_flat()[i:i + 6]
+
+                visible = (abs(f[3]) + abs(f[4]) + abs(f[5]) > 0.01) or (frame == 1)
+
+                for b in self.bodies:
+                    b.hide_render = not visible
+                    b.keyframe_insert(data_path='hide_render', frame=frame)
+
+                    b.hide = not visible
+                    b.keyframe_insert(data_path='hide', frame=frame)
+
+                if not visible:
+                    return
+
+                vv = mathutils.Vector(f[3:6])
+                norm = vv.normalized()
+                l = vv.length
+
+                n = mathutils.Vector([0, 0, 1])
+
+                xyz = n.cross(norm)
+                w = 1 + n.dot(norm)
+
+                q = mathutils.Vector((w, xyz[0], xyz[1], xyz[2]))
+                q /= q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]
+
+                vl = l / 50
+
+                t = self.fbody.matrix_world.to_translation()
+
+                q = mathutils.Quaternion(list(q))
+                m = q.to_matrix().to_4x4()
+
+                loc = self.fbody.location.copy()
+                self.fbody.matrix_world = m
+                self.fbody.location = loc
+                self.fbody.scale = [0.05, 0.05, 0.05]
+
+                self.bottom.scale = [1, 1, vl]
+                self.top.scale = [1, 1, 1]
+
+                pz = (vl - 1) * 0.6923
+                self.bottom.location = [0, 0, pz]
+                self.top.location = [0, 0, pz]
+
+                self.bottom.keyframe_insert(data_path='location', frame=frame)
+                self.bottom.keyframe_insert(data_path='scale', frame=frame)
+                self.top.keyframe_insert(data_path='location', frame=frame)
+                self.top.keyframe_insert(data_path='scale', frame=frame)
+
+                self.fbody.keyframe_insert(data_path='location', frame=frame)
+                self.fbody.keyframe_insert(data_path='rotation_euler', frame=frame)
+                self.fbody.keyframe_insert(data_path='scale', frame=frame)
+
+        forces = []
+
+        for node in network.nodes:
+            body = network.nodes[node]
+
+            for child in body.children:
+                if 'cdn_force' in child.game.properties:
+                    forces.append(Force(node, child, child.game.properties['cdn_force'].value))
+
         # Simulate until start == end
         while start < end:
             # Update keyframe from codyn
@@ -464,6 +615,9 @@ class CodynImport(bpy.types.Operator):
 
                 node.keyframe_insert(data_path='location', frame=frame)
                 node.keyframe_insert(data_path='rotation_euler', frame=frame)
+
+            for force in forces:
+                force.animate()
 
             # Simulate for one frame
             start += self.run_for(network.cdn, period)
@@ -477,9 +631,17 @@ class CodynImport(bpy.types.Operator):
         self.link_library(context)
 
         path = self.filepath
+        files = []
 
         try:
-            network = Cdn.Network.new_from_path(path)
+            network = Cdn.Network()
+            ctx = Cdn.ParserContext.new(network)
+
+            ctx.connect('file-used', lambda x, y, z: files.append(y.get_path()))
+            ctx.push_input(Gio.File.new_for_path(path), None, False)
+
+            ctx.parse(True)
+
         except Exception as e:
             self.report({'ERROR'}, 'Failed to load network: ' + str(e))
             return {'FINISHED'}
@@ -555,10 +717,23 @@ class CodynImport(bpy.types.Operator):
 
         codyn.data.networks[name].cdn = network
         codyn.data.networks[name].filename = path
-        codyn.data.networks[name].mtime = os.path.getmtime(path)
+
+        mtime = os.path.getmtime(path)
+
+        for f in files:
+            try:
+                fmtime = os.path.getmtime(f)
+
+                if fmtime > mtime:
+                    mtime = fmtime
+            except:
+                pass
+
+        codyn.data.networks[name].mtime = mtime
         codyn.data.networks[name].rawc = None
         codyn.data.networks[name].nodes = nodes
         codyn.data.networks[name].systems = systems
+        codyn.data.networks[name].files = files
 
         if self.animation_end != 0:
             context.scene.render.engine = 'BLENDER_RENDER'

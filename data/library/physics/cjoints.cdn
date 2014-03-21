@@ -1,0 +1,264 @@
+require "spatial.cdn"
+require "quaternion.cdn"
+
+templates
+{
+    node "physics" { node "cjoints"
+    {
+        node "revoluteX" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                0, 0, 0, 0, 0;
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
+
+            activeForceSubspace = "[1; 0; 0; 0; 0; 0]"
+
+            δ(X) = "[
+                 X[0, 2];
+                -X[0, 1];
+                 X[4, 1] * X[1, 1] + X[4, 1] * X[2, 1];
+                 X[0, 5];
+                -X[0, 4]
+            ]"
+        }
+
+        node "revoluteY" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                1, 0, 0, 0, 0;
+                0, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
+
+            activeForceSubspace = "[0; 1; 0; 0; 0; 0]"
+
+            δ(X) = "[
+                -X[2, 1];
+                 X[0, 1];
+                -X[5, 1];
+                 X[5, 0] * X[0, 0] - X[3, 0] * X[2, 0];
+                 X[3, 1]
+            ]"
+        }
+
+        node "revoluteZ" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
+
+            activeForceSubspace = "[0; 0; 1; 0; 0; 0]"
+
+            δ(X) = "[
+                 X[1, 2];
+                -X[0, 2];
+                 X[4, 2];
+                -X[3, 2];
+                 X[3, 0] * X[1, 0] + X[3, 1] * X[0, 0]
+            ]"
+        }
+
+        node "prismaticX" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1
+            ]"
+
+            activeForceSubspace = "[0; 0; 0; 1; 0; 0]"
+
+            δ(X) = "[
+                 0.5 * (X[1, 2] - X[2, 1]);
+                 0.5 * (X[2, 0] - X[0, 2]);
+                 0.5 * (X[0, 1] - X[1, 0]);
+                 X[5, 0];
+                -X[4, 0]
+            ]"
+        }
+
+        node "prismaticY" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 0;
+                0, 0, 0, 0, 1
+            ]"
+
+            activeForceSubspace = "[0; 0; 0; 0; 1; 0]"
+
+            δ(X) = "[
+                 0.5 * (X[1, 2] - X[2, 1]);
+                 0.5 * (X[2, 0] - X[0, 2]);
+                 0.5 * (X[0, 1] - X[1, 0]);
+                -X[5, 1];
+                 X[3, 1]
+            ]"
+        }
+
+        node "prismaticZ" : physics.cbody
+        {
+            constraintForceSubspace = "[
+                1, 0, 0, 0, 0;
+                0, 1, 0, 0, 0;
+                0, 0, 1, 0, 0;
+                0, 0, 0, 1, 0;
+                0, 0, 0, 0, 1;
+                0, 0, 0, 0, 0
+            ]"
+
+            activeForceSubspace = "[0; 0; 0; 0; 0; 1]"
+
+            δ(X) = "[
+                 0.5 * (X[1, 2] - X[2, 1]);
+                 0.5 * (X[0, 2] - X[2, 0]);
+                 0.5 * (X[0, 1] - X[1, 0]);
+                 X[4, 2];
+                -X[3, 2]
+            ]"
+        }
+
+        node "planarX" : physics.cbody, physics.cdof4
+        {
+            constraintForceSubspace = "[
+                0, 0;
+                0, 0;
+                0, 0;
+                0, 0;
+                1, 0;
+                0, 1
+            ]"
+
+            activeForceSubspace = "[1, 0, 0, 0;
+                                    0, 1, 0, 0;
+                                    0, 0, 1, 0;
+                                    0, 0, 0, 1;
+                                    0, 0, 0, 0;
+                                    0, 0, 0, 0]"
+
+            δ(X) = "[
+                 X[0, 5];
+                -X[0, 4]
+            ]"
+        }
+
+        node "planarY" : physics.cbody, physics.cdof4
+        {
+            constraintForceSubspace = "[
+                0, 0;
+                0, 0;
+                0, 0;
+                1, 0;
+                0, 0;
+                0, 1
+            ]"
+
+            activeForceSubspace = "[1, 0, 0, 0;
+                                    0, 1, 0, 0;
+                                    0, 0, 1, 0;
+                                    0, 0, 0, 0;
+                                    0, 0, 0, 1;
+                                    0, 0, 0, 0]"
+
+            δ(X) = "[
+                -X[5, 1];
+                 X[3, 1]
+            ]"
+        }
+
+        node "planarZ" : physics.cbody, physics.cdof4
+        {
+            constraintForceSubspace = "[
+                0, 0;
+                0, 0;
+                0, 0;
+                1, 0;
+                0, 1;
+                0, 0
+            ]"
+
+            activeForceSubspace = "[1, 0, 0, 0;
+                                    0, 1, 0, 0;
+                                    0, 0, 1, 0;
+                                    0, 0, 0, 0;
+                                    0, 0, 0, 0;
+                                    0, 0, 0, 1]"
+
+            δ(X) = "[
+                 X[4, 2];
+                -X[3, 2]
+            ]"
+        }
+
+        node "cubical" : physics.cbody, physics.cdof3
+        {
+            constraintForceSubspace = "[
+                1, 0, 0;
+                0, 1, 0;
+                0, 0, 1;
+                0, 0, 0;
+                0, 0, 0;
+                0, 0, 0
+            ]"
+
+            activeForceSubspace = "[0, 0, 0;
+                                    0, 0, 0;
+                                    0, 0, 0;
+                                    1, 0, 0;
+                                    0, 1, 0;
+                                    0, 0, 1]"
+
+            δ(X) = "[
+                 X[1, 2];
+                -X[0, 2];
+                 X[0, 1]
+            ]"
+        }
+
+        node "spherical" : physics.cbody, physics.cdof3
+        {
+            constraintForceSubspace = "[
+                0, 0, 0;
+                0, 0, 0;
+                0, 0, 0;
+                1, 0, 0;
+                0, 1, 0;
+                0, 0, 1
+            ]"
+
+            activeForceSubspace = "[1, 0, 0;
+                                    0, 1, 0;
+                                    0, 0, 1;
+                                    0, 0, 0;
+                                    0, 0, 0;
+                                    0, 0, 0]"
+
+            δ(X) = "[
+                X[4, 0] * X[2, 0] + X[4, 1] * X[2, 1] + X[4, 2] * X[2, 2];
+                X[5, 0] * X[0, 0] + X[5, 1] * X[0, 1] + X[5, 2] * X[0, 2];
+                X[3, 0] * X[1, 0] + X[3, 1] * X[1, 1] + X[3, 2] * X[1, 2]
+            ]"
+        }
+    } }
+}
+
+# vi:ex:ts=4:et

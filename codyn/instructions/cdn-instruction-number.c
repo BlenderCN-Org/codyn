@@ -133,11 +133,6 @@ cdn_instruction_number_new (gdouble value)
 	self->priv->value = value;
 	self->priv->repr = NULL;
 
-	if (fabs (self->priv->value) <= 1e-14)
-	{
-		cdn_stack_arg_set_sparsity_one (&self->priv->smanip.push, 0);
-	}
-
 	return CDN_INSTRUCTION (ret);
 }
 
@@ -172,16 +167,6 @@ cdn_instruction_number_set_value (CdnInstructionNumber *number,
 	{
 		g_free (number->priv->repr);
 		number->priv->repr = NULL;
-	}
-
-	if (fabs (number->priv->value) <= 1e-14)
-	{
-		guint sidx = 0;
-		cdn_stack_arg_set_sparsity (&number->priv->smanip.push, &sidx, 1);
-	}
-	else
-	{
-		cdn_stack_arg_set_sparsity (&number->priv->smanip.push, NULL, 0);
 	}
 }
 

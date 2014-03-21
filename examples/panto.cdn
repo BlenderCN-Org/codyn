@@ -1,0 +1,83 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.001:6 -m panto.hip.q -m panto.knee.q -m panto.ankle.q -m panto.par.q
+
+## An example of using closing loop joints to create parallel
+## structures. Here, a simple 2D pantographic leg is constructed
+## by introducing a loop constraint closing the system on itself.
+
+include "physics/physics.cdn"
+include "physics/cjoints.cdn"
+
+integrator {
+    method = "runge-kutta"
+}
+
+node "panto" : physics.system {
+    ## The node representing the hip joint of the leg.
+    node "hip" : physics.joints.revoluteY {
+        com = "[0; 0; -0.02]"
+          m = "0.01"
+          I = "Inertia.Box(m, 0.01, 0.005, 0.04)"
+          q = "0.1 * pi"
+        
+        # Torque due to slight damping
+        D = "1e-3"
+        τ = "-D * dq"
+    }
+
+    ## The node representing the knee joint of the leg.
+    node "knee" : physics.joints.revoluteY {
+         tr = "[0; 0; -0.04]"
+        com = "[0; 0; -0.03]"
+          m = "0.02"
+          I = "Inertia.Box(m, 0.01, 0.005, 0.06)"
+          q = "-0.4 * pi"
+
+        # Torque due to a virtual spring around the
+        #    initial angle of the leg
+        q0 = "q" | once
+         K = "0.1"
+         τ = "K * (q0 - q)"
+    }
+
+    ## The node representing the ankle joint of the leg.
+    node "ankle" : physics.joints.revoluteY {
+         tr = "[0; 0; -0.06]"
+        com = "[0; 0; -0.025]"
+          m = "0.01"
+          I = "Inertia.Box(m, 0.01, 0.005, 0.05)"
+          q = "0.4 * pi"
+    }
+
+    ## The node representing the parallel joint of the leg.
+    node "par" : physics.joints.revoluteY {
+         tr = "[0; 0; 0.02]"
+        com = "[0; 0; 0.025]"
+          m = 0.1
+          I = "Inertia.Box(m, 0.01, 0.005, 0.05)"
+          q = "-0.4 * pi"
+    }
+
+    # Connect hip to knee, knee to ankle, ankle to par in one go
+    edge from "{hip,knee,ankle}" to ["knee", "ankle", "par"] : physics.joint {}
+
+    # Close pantographic parallel structure
+    node "cl" : physics.cjoints.revoluteY {
+        tr = "[0; 0; 0.06]"
+    }
+
+    edge from "{par,cl}" to ["cl", "hip"] : physics.cjoint {}
+
+    # The physics/model.cdn file should be included at the end of the
+    # model definition and constructs a "model" node containing global
+    # system quantities such as the center of mass and total mass. It is
+    # also responsible for constructing the required Jacobians if requested.
+    include "physics/model.cdn"
+
+    # The physics/dynamics.cdn file should be included last and constructs
+    # the equations necessary for forward simulation of the dynamics. It
+    # uses RNEA to construct C and CRBA to construct H in a new node called
+    # "dynamics". It then derives generalized accelerations in dynamics.ddq
+    # which are project back to the individual joints.
+    include "physics/dynamics.cdn"
+}

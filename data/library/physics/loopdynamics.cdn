@@ -1,0 +1,79 @@
+node | "dynamics" | if(parent . has-template(physics.cbody), parent . children | has-template(physics.contacts.hardbase))
+{
+    node "loopdynamics"
+    {
+        # Solve H ddq = tau - C + tauact + K^T lamda for ddq
+        KT = "Kᵀ"
+
+        Y = "sltdllinvt(ltdl, KT, pλ)"
+
+        τc = "τ - C"
+        z = "sltdldinvlinvt(ltdl, τc, pλ)"
+
+        YT = "Yᵀ"
+
+        A = "YT ∙ sltdldinv(ltdl, Y)"
+        b = "k - YT ∙ z"
+
+        λ = "pinv(A) ∙ b"
+        ddq = "sltdllinv(ltdl, sltdldinvlinvt(ltdl, τc + KT ∙ λ, pλ), pλ)"
+    }
+
+    interface
+    {
+        λ = λ in "loopdynamics"
+    }
+
+    ddq = "loopdynamics.ddq"
+}
+
+edge "K_@cbodies" from   <cjoint>:@1
+                       | <cons-index>:append-context("@@1[!]")
+                       | xor(  inputs
+                             | has-template(physics.cjoint)
+                             | input
+                             | recurse(inputs | has-template(physics.joint) | input)
+                             | <ojoint>:name | <side>:append-context("-1"),
+                               outputs
+                             | has-template(physics.cjoint)
+                             | output
+                             | recurse(inputs | has-template(physics.joint) | input)
+                             | <ojoint>:name | <side>:append-context("1"))
+                       | parent . "@cjoint"
+                  to dynamics
+{
+    defines
+    {
+        b = "$(@bodies[!@ojoint] + 1)"
+        i = "@{@bodydofidx[@b]:+$(@bodydof[@b] - 1)||@0\,@1}"
+        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
+    }
+
+    "K[[@jr], [@i]]" <= "@side ∙ baseConstraintForceMotionSubspace ∙ @ojoint.baseMotionSubspace" state "active"
+    "K[[@jr], [@i]]" <= "zeros(size(knull, 0), size(@ojoint.motionSubspace, 1))" state "inactive"
+}
+
+edge "k_@cbodies" from   @1
+                       | <cons-index>:append-context("@@1[!]")
+                    to dynamics
+{
+    defines
+    {
+        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
+    }
+
+    "k[@jr]" <= k
+}
+
+edge "λ_@cbodies" from dynamics
+                    to @1 | <cons-index>:append-context("@@1[!]")
+{
+    defines
+    {
+        jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
+    }
+
+    λ <= "λ[@jr]"
+}
+
+# vi:ex:ts=4:et

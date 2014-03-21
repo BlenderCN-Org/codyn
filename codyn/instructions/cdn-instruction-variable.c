@@ -145,53 +145,6 @@ cdn_instruction_variable_execute (CdnInstruction *instruction,
 	}
 }
 
-static gboolean
-variable_is_sparse (CdnVariable *v)
-{
-	// Cannot be sparse if it's marked as in
-	if (cdn_variable_get_flags (v) & CDN_VARIABLE_FLAG_IN)
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-static guint *
-map_slice_sparsity (CdnStackArg const *arg,
-                    guint       const *slice,
-                    guint              slice_length,
-                    guint             *retlen)
-{
-	guint *ret;
-	guint *rret;
-	guint i;
-	gint sidx = 0;
-
-	if (arg->sparsity == NULL)
-	{
-		*retlen = 0;
-		return NULL;
-	}
-
-	ret = g_new0 (guint, slice_length);
-
-	for (i = 0; i < slice_length; ++i)
-	{
-		if (cdn_stack_arg_is_sparse (arg, slice[i]))
-		{
-			ret[sidx] = i;
-			++sidx;
-		}
-	}
-
-	*retlen = sidx;
-	rret = g_memdup (ret, sizeof (guint) * sidx);
-	g_free (ret);
-
-	return rret;
-}
-
 static CdnStackManipulation const *
 cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
                                                  GError         **error)
@@ -203,7 +156,6 @@ cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
 	if (self->priv->property)
 	{
 		CdnExpression *expr;
-		CdnStackArg const *arg;
 
 		expr = cdn_variable_get_expression (self->priv->property);
 
@@ -227,42 +179,6 @@ cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
 		if (self->priv->slice)
 		{
 			self->priv->smanip.push.dimension = self->priv->slice_dim;
-		}
-
-		if (variable_is_sparse (self->priv->property))
-		{
-			CdnExpression *e;
-
-			e = cdn_variable_get_expression (self->priv->property);
-
-			// Check to see how to compute sparsity...
-			arg = cdn_expression_get_stack_arg (e);
-
-			if (arg->num_sparse > 0)
-			{
-				if (self->priv->slice)
-				{
-					guint *d;
-					guint retlen;
-
-					d = map_slice_sparsity (arg,
-					                        self->priv->slice,
-					                        self->priv->slice_length,
-					                        &retlen);
-
-					cdn_stack_arg_set_sparsity (&self->priv->smanip.push,
-					                            d,
-					                            retlen);
-
-					g_free (d);
-				}
-				else
-				{
-					cdn_stack_arg_set_sparsity (&self->priv->smanip.push,
-					                            arg->sparsity,
-					                            arg->num_sparse);
-				}
-			}
 		}
 	}
 

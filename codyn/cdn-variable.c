@@ -1588,6 +1588,16 @@ cdn_variable_get_integral (CdnVariable *variable)
 	return variable->priv->diff_for;
 }
 
+/**
+ * cdn_variable_compile:
+ * @variable: A #CdnVariable
+ * @error: (type CdnCompileError*): A #CdnCompileError
+ *
+ * Compile a single variable.
+ *
+ * Returns: %TRUE if the compilation was successful, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_variable_compile (CdnVariable       *variable,
                       CdnCompileError   *error)

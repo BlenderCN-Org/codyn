@@ -109,7 +109,7 @@ cdn_function_polynomial_evaluate_impl (CdnFunction *function,
 		CdnFunctionArgument *arg = item->data;
 		CdnVariable *v;
 
-		v = _cdn_function_argument_get_variable (arg);
+		v = cdn_function_argument_get_variable (arg);
 
 		mult *= cdn_variable_get_value (v);
 	}

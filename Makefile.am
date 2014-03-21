@@ -1,4 +1,4 @@
-SUBDIRS = codyn data tests m4 win32 tools io blender
+SUBDIRS = codyn data tests m4 win32 tools io blender examples
 
 ACLOCAL_AMFLAGS = -I m4
 

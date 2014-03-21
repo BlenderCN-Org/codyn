@@ -1,0 +1,69 @@
+#!/usr/bin/env cdn-monitor-i
+# -t 0:0.01:8 -m '"m{1:2}".r'
+
+## Example of using a morphed, amplitude controlled phase
+## oscillator. The resulting oscillator has an arbitrary
+## limit cycle shape which is defined by a user function.
+
+templates {
+    ## The morphed oscillator
+    node "morphed" {
+        ## Angular frequency
+        omega = "2 * pi"
+
+        ## Desired amplitude
+           mu = "1"
+
+        ## Convergence constant
+        gamma = 1
+
+        ## User defined shaping function. This can be overridden
+        ## in realizations of this template
+        f(theta) = "sin(theta)"
+
+        ## Differential equation on the phase
+        p' = "omega"
+
+        ## Differential equation on the amplitude. Here the shaping
+        ## function is used to construct arbitrary output in r
+        r' = "mu * f(p)' + gamma * (mu * f(p) - r)"
+    }
+
+    ## Basic phase coupling
+    edge "coupling" {
+        ## Coupling bias
+        bias = 0
+
+        ## Coupling weight
+        weight = 1
+
+        ## Coupling differential equation
+        p' += "weight * sin(input.p - output.p - bias)"
+    }
+}
+
+## A morphed oscillator instantiation
+node "m1" : morphed {
+    ## Some user defined shaping function for the oscillator limit
+    ## cycle shape
+    f(theta) = "cos(theta * 2 + 0.2 * pi) * (0.1 + sin(theta))"
+
+    p = "rand(-pi, 0)"
+    r = 6
+}
+
+node "m2" : morphed {
+    ## Some user defined shaping function for the oscillator limit
+    ## cycle shape
+    f(theta) = "cos(theta * 2 + 0.2 * pi) * (0.1 + sin(theta)) + 0.5"
+
+    p = "rand(0, pi)"
+    r = -4
+}
+
+<bidirectional>
+edge from "m1" to "m2" : coupling {
+    weight = 0.5
+}
+
+# vi:ts=4:et

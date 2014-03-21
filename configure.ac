@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.4.4)
+AC_INIT(codyn, 3.5)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
@@ -211,12 +211,13 @@ have_lapack=no
 
 if test "x$enable_lapack" != "xno" && test "x$platform_osx" = "xyes"; then
 	AC_MSG_CHECKING([for lapack])
-	AC_MSG_RESULT([using vecLib framework])
 
-	LAPACK_LIBS="-framework vecLib"
+	AC_MSG_RESULT([using Accelerate framework])
+
+	LAPACK_LIBS="-framework Accelerate"
 	LAPACK_CFLAGS=""
 
-	have_lapack=vecLib
+	have_lapack=Accelerate
 fi
 
 dnl
@@ -486,6 +487,9 @@ if test "x$enable_python" = "xyes"; then
 	AC_SUBST(pyoverridesdir)
 fi
 
+adl_RECURSIVE_EVAL($pythondir, EXPANDED_PYTHONDIR)
+AC_SUBST(EXPANDED_PYTHONDIR)
+
 AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
 
 AC_CONFIG_FILES([
@@ -506,8 +510,7 @@ data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile
 data/library/physics/algorithms/Makefile
-data/library/physics/lagrange/Makefile
-data/library/physics/direct/Makefile
+examples/Makefile
 io/Makefile
 io/file/Makefile
 io/network/Makefile
@@ -524,6 +527,9 @@ tools/cdn-render/Makefile
 tools/cdn-context/Makefile
 tools/cdn-archive/Makefile
 tools/cdn-compile/Makefile
+tools/cdn-python/Makefile
+tools/cdn-repl/Makefile
+tools/cdn-repl/cdn-repl
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cdncontext/Makefile
