@@ -127,8 +127,14 @@ class CodynImport(bpy.types.Operator):
 
             elif shape.find_object('self | first | has-template(physics.rendering.sphere)'):
                 r = shape.get_variable('radius').get_values().get_flat()[0]
+                s = shape.get_variable('subdivisions')
 
-                bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, size=r)
+                if not s is None:
+                    s = int(s.get_values().get_flat()[0])
+                else:
+                    s = 4
+
+                bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=s, size=r)
 
                 o = context.active_object
                 o.name = '{0}_{1}_sphere'.format(name, len(retval))
