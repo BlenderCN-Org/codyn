@@ -15,6 +15,17 @@ node "model"
     dq = "[{@bodies|@1.dq||@0;@1}]"
 }
 
+node "@bodies"
+{
+    defines
+    {
+        b = "@bodies[!@@0]"
+    }
+
+    bodyIndex = "@b"
+    bodyDofs = "[{@bodydofex[$(@b + 1)]||@0;@1}]"
+}
+
 node | "@cbodies"
      | if(  outputs
           | has-template(physics.cjoint)
