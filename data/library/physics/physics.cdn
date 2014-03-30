@@ -130,7 +130,7 @@ templates
             acceleration = "transform ∙ [0; 0; 0; -g] + cJ"
 
             ## Body jacobian column in base
-            bodyJacobian = "localToBaseTransform ∙ motionSubspace"
+            bodyJacobian = "baseMotionSubspace"
 
             ## CoM jacobian column in base (only linear)
             bodyJacobianCom = "localToBaseTransform ∙ Spatial.Translation(com) ∙ motionSubspace"
