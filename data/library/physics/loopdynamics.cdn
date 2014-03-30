@@ -66,14 +66,14 @@ edge "k_@cbodies" from   @1
 }
 
 edge "λ_@cbodies" from dynamics
-                    to @1 | <cons-index>:append-context("@@1[!]")
+                    to "@@1" | <cons-index>:append-context("@@1[!]")
 {
     defines
     {
         jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
     }
 
-    λ <= "λ[@jr]"
+    λ <= "-λ[[@jr]]"
 }
 
 # vi:ex:ts=4:et
