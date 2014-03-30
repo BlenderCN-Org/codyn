@@ -652,12 +652,12 @@ class CodynImport(bpy.types.Operator):
         if res[1] > 0:
             render.resolution_y = res[1]
 
-        perc = node.get_variable('resolution_percentage').get_value()
+        perc = node.get_variable('resolutionPercentage').get_value()
 
         if perc > 0:
             render.resolution_percentage = perc
 
-        fps = node.get_variable('frame_rate').get_value()
+        fps = node.get_variable('frameRate').get_value()
 
         if fps > 0:
             render.fps = fps
@@ -668,19 +668,19 @@ class CodynImport(bpy.types.Operator):
 
         world = context.scene.world
 
-        for (vname, pname) in (('paper_sky', 'use_sky_paper'), ('blend_sky', 'use_sky_blend'), ('real_sky', 'use_sky_real')):
+        for (vname, pname) in (('paperSky', 'use_sky_paper'), ('blendSky', 'use_sky_blend'), ('realSky', 'use_sky_real')):
             sky = node.get_variable(vname).get_value()
 
             if sky >= 0:
                 setattr(world, pname, (sky > 0))
 
-        for cname in ('horizon_color', 'zenith_color', 'ambient_color'):
+        for (cname, pname) in (('horizonColor', 'horizon_color'), ('zenithColor', 'zenith_color'), ('ambientColor', 'ambient_color')):
             c = node.get_variable(cname).get_values().get_flat()
 
             if len(c) == 3 and c[0] >= 0 and c[1] >= 0 and c[2] >= 0:
-                setattr(world, cname, c)
+                setattr(world, pname, c)
 
-        ao = node.get_variable('ambient_occlusion').get_value()
+        ao = node.get_variable('ambientOcclusion').get_value()
 
         if ao >= 0:
             world.light_settings.use_ambient_occlusion = (ao > 0)
