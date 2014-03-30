@@ -250,6 +250,7 @@ templates
                 kα = "1 / T"
                 kβ = "1 / T"
 
+                ## Transformation from predecessor frame to successor frame
                 Xstab = "baseToLocalTransformSucc * localToBaseTransformPred"
                 kδ = "δ(Xstab)"
 
