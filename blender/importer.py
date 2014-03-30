@@ -142,8 +142,14 @@ class CodynImport(bpy.types.Operator):
             elif shape.find_object('self | first | has-template(physics.rendering.cylinder)'):
                 r = shape.get_variable('radius').get_values().get_flat()[0]
                 h = shape.get_variable('height').get_values().get_flat()[0]
+                v = shape.get_variable('vertices')
 
-                bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=r, depth=h)
+                if not v is None:
+                    v = int(v.get_values().get_flat()[0])
+                else:
+                    v = 12
+
+                bpy.ops.mesh.primitive_cylinder_add(vertices=v, radius=r, depth=h)
 
                 o = context.active_object
                 o.name = '{0}_{1}_cylinder'.format(name, len(retval))
