@@ -25,6 +25,8 @@ templates
                  X[0, 5];
                 -X[0, 4]
             ]"
+
+            DqfromV(V) = "V[0]"
         }
 
         node "revoluteY" : physics.cbody
@@ -47,6 +49,8 @@ templates
                  X[5, 0] * X[0, 0] - X[3, 0] * X[2, 0];
                  X[3, 1]
             ]"
+
+            DqfromV(V) = "V[1]"
         }
 
         node "revoluteZ" : physics.cbody
@@ -69,6 +73,8 @@ templates
                 -X[3, 2];
                  X[3, 0] * X[1, 0] + X[3, 1] * X[0, 0]
             ]"
+
+            DqfromV(V) = "V[2]"
         }
 
         node "prismaticX" : physics.cbody
@@ -91,6 +97,8 @@ templates
                  X[5, 0];
                 -X[4, 0]
             ]"
+
+            DqfromV(V) = "V[3]"
         }
 
         node "prismaticY" : physics.cbody
@@ -113,6 +121,8 @@ templates
                 -X[5, 1];
                  X[3, 1]
             ]"
+
+            DqfromV(V) = "V[4]"
         }
 
         node "prismaticZ" : physics.cbody
@@ -135,6 +145,8 @@ templates
                  X[4, 2];
                 -X[3, 2]
             ]"
+
+            DqfromV(V) = "V[5]"
         }
 
         node "planarX" : physics.cbody, physics.cdof4
@@ -159,6 +171,8 @@ templates
                  X[0, 5];
                 -X[0, 4]
             ]"
+
+            DqfromV(V) = "[V[0]; V[1]; V[2]; V[3]]"
         }
 
         node "planarY" : physics.cbody, physics.cdof4
@@ -183,6 +197,8 @@ templates
                 -X[5, 1];
                  X[3, 1]
             ]"
+
+            DqfromV(V) = "[V[0]; V[1]; V[2]; V[4]]"
         }
 
         node "planarZ" : physics.cbody, physics.cdof4
@@ -207,6 +223,8 @@ templates
                  X[4, 2];
                 -X[3, 2]
             ]"
+
+            DqfromV(V) = "[V[0]; V[1]; V[2]; V[5]]"
         }
 
         node "cubical" : physics.cbody, physics.cdof3
@@ -232,6 +250,8 @@ templates
                 -X[0, 2];
                  X[0, 1]
             ]"
+
+            DqfromV(V) = "V[3:6]"
         }
 
         node "spherical" : physics.cbody, physics.cdof3
@@ -257,6 +277,8 @@ templates
                 X[5, 0] * X[0, 0] + X[5, 1] * X[0, 1] + X[5, 2] * X[0, 2];
                 X[3, 0] * X[1, 0] + X[3, 1] * X[1, 1] + X[3, 2] * X[1, 2]
             ]"
+
+            DqfromV(V) = "V[0:3]"
         }
     } }
 }
