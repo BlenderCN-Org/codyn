@@ -235,6 +235,13 @@ templates
             ## vectors (inversed)
             baseConstraintForceMotionSubspace = "Spatial.ForceToMotionInverseTransform(baseConstraintForceSubspace)"
 
+            ## Approximated dq and q
+            dq0 = "zeros(6, 1)"
+            dq = "DqfromV(baseToLocalTransformPred * dq0)"
+
+            q = "null"
+            q' = "dq"
+
             # Constraint stabilization
             node "stabilization"
             {

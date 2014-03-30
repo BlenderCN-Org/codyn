@@ -62,4 +62,23 @@ node | <body>:@bodies | sort
     }
 }
 
+edge "dq0_@cbodies" from   <cjoint>:@1
+                         | <cons-index>:append-context("@@1[!]")
+                         | xor(  inputs
+                               | has-template(physics.cjoint)
+                               | input
+                               | recurse(inputs | has-template(physics.joint) | input)
+                               | <ojoint>:name
+                               | <side>:append-context("-1"),
+                                 outputs
+                               | has-template(physics.cjoint)
+                               | output
+                               | recurse(inputs | has-template(physics.joint) | input)
+                               | <ojoint>:name
+                               | <side>:append-context("1"))
+                    to @cjoint
+{
+    dq0 += "@side ∙ baseMotionSubspace ∙ dq"
+}
+
 # vi:ts=4:et
