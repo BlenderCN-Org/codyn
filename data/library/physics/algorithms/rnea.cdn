@@ -30,16 +30,12 @@ templates
 
         edge "loopJointTransformSuccessor"
         {
-            baseToLocalTransformSucc <= "output.coordinateTransformSucc ∙ baseToLocalTransform"
-
             baseVelocitySucc <= "localToBaseTransform ∙ velocity"
             baseAccelerationSucc <= "localToBaseTransform ∙ acceleration"
         }
 
         edge "loopJointTransformPredecessor"
         {
-            baseToLocalTransformPred <= "output.coordinateTransformPred ∙ baseToLocalTransform"
-
             baseVelocityPred <= "localToBaseTransform ∙ velocity"
             baseAccelerationPred <= "localToBaseTransform ∙ acceleration"
         }

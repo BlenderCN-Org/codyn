@@ -24,6 +24,19 @@ node | "@cbodies"
     coordinateTransformSucc = "Spatial.Inverse(@@0.baseToLocalTransform * localToBaseTransformPred)" | once
 }
 
+node edges | has-template(physics.cjoint) | if(output | has-template(physics.body)) | output-name | input-name | parent
+{
+    edge "loop_joint_@@0_to_@0" from "@@@0" to "@@@0"
+    {
+        baseToLocalTransformSucc <= "output.coordinateTransformSucc ∙ baseToLocalTransform"
+    }
+}
+
+edge edges | has-template(physics.cjoint) | if(input | has-template(physics.body))
+{
+    baseToLocalTransformPred <= "output.coordinateTransformPred ∙ baseToLocalTransform"
+}
+
 include "jacobian.cdn"
 include "algorithms/transformations.cdn"
 
