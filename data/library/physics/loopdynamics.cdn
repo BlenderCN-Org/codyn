@@ -73,7 +73,7 @@ edge "λ_@cbodies" from dynamics
         jr = "@{@cbodyconsidx[$(@cons-index + 1)]:+$(@cbodycons[$(@cons-index + 1)] - 1)||@0;@1}"
     }
 
-    λ <= "-λ[[@jr]]"
+    λ <= "λ[[@jr]]"
 }
 
 edge "force_@cbodies" from @1

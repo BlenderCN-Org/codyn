@@ -202,16 +202,24 @@ templates
             ## predecessor frame
             tr = "[0; 0; 0]"
 
-            ## Coordinate transform from closing loop joint frame to its
-            ## predecessor frame. This defaults to a 3d translation
-            ## specified in tr
+            ## Coordinate transform from predecessor frame to closing joint
+            ## frame. This defaults to a 3d translation specified in tr
             coordinateTransformPred = "Spatial.Translation(tr)"
 
-            ## Coordinate transform from closing loop joint frame to its
-            ## successor frame. Defaults to fixed frame
-            coordinateTransformSucc = "baseToLocalTransformPred" | once
+            ## Coordinate transform from successor frame to closing loop joint
+            ## frame. Defaults to fixed frame
+            coordinateTransformSucc = "Spatial.RotationPart(baseToLocalTransformPred)" | once
+            baseToLocalTransformSuccFixed = "baseToLocalTransformPred" | once
 
-            baseToLocalTransformSucc = "coordinateTransformSucc"
+            ## Coordinate transform from base frame to the closing joint frame,
+            ## as implied by the successor
+            baseToLocalTransformSucc = "baseToLocalTransformSuccFixed"
+
+            ## Coordinate transform from base frame to the closing joint frame,
+            ## as implied by the predecessor. Note that this is equal to
+            ## baseToLocalTransformSucc if the joint is properly closed, but
+            ## may drift due to numerical errors. This drift error can be
+            ## obtained from "baseToLocalTransformSucc * localToBaseTransformPred"
             baseToLocalTransformPred = "eye(6)"
 
             "localToBaseTransform{Succ,Pred}" = "Spatial.Inverse(baseToLocalTransform@1)"
@@ -263,9 +271,17 @@ templates
             loopMotionSubspace = "baseConstraintForceMotionSubspace"
 
             k = "knull"
+
+            ## Resolved constraint force multipliers. These are projected
+            ## from the dynamics solver back into the constraint joints. Note
+            ## that the equations are such that this λ represents forces in the
+            ## closing joint frame.
             λ = "knull"
 
-            # In predecessor frame
+            ## Resulting constraint force in the closing joint frame. The force
+            ## is obtained by projecting the constraint multipliers through
+            ## the constraint force subspace. Note that the force is as
+            ## observed from the successor!
             force = "constraintForceSubspace ∙ λ"
 
             edge self

@@ -64,7 +64,10 @@ templates
                 tr = "location"
                 K = "cfnullT"
 
-                forceAtLocations = "Spatial.MotionToForceInverseTransform(Spatial.RotationPart(baseToLocalTransformSucc)) ∙ force"
+                ## Transform forces in the base frame. Note that we want forces
+                ## as observer from the predecessor (body in contact with fixed
+                ## world), so we _negate_ the force here.
+                forceAtLocations = "Spatial.MotionToForceInverseTransform(Spatial.RotationPart(baseToLocalTransformSucc)) ∙ -force"
 
                 edge self
                 {
