@@ -79,13 +79,13 @@ edge "λ_@cbodies" from dynamics
 edge "force_@cbodies" from @1
                         to @@1 | inputs | has-template(physics.cjoint) | input
 {
-    forceClosingConstraints += "Spatial.ForceTransform(coordinateTransformPred) ∙ force"
+    forceClosingConstraints += "Spatial.MotionToForceInverseTransform(coordinateTransformPred) ∙ -force"
 }
 
 edge "force_@cbodies" from @1
                         to @@1 | outputs | has-template(physics.cjoint) | output
 {
-    forceClosingConstraints += "Spatial.ForceTransform(coordinateTransformSucc) ∙ -force"
+    forceClosingConstraints += "Spatial.MotionToForceInverseTransform(coordinateTransformSucc) ∙ force"
 }
 
 # vi:ex:ts=4:et
