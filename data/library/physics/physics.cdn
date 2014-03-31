@@ -266,7 +266,7 @@ templates
             λ = "knull"
 
             # In predecessor frame
-            force = "constraintForceSubspace * λ"
+            force = "constraintForceSubspace ∙ λ"
 
             edge self
             {
