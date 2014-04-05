@@ -111,4 +111,20 @@ edge from   dynamics
     "λ_@ci" <= "λ[[@r]]"
 }
 
+node | has-template(physics.body)
+     . has-template(physics.contacts.hardbase) | parent | first
+{
+    defines
+    {
+        cnames = | has-template(physics.contacts.hardbase)
+        force = "@{@cnames|force_@0||@0 + @1}"
+    }
+
+    edge self
+    {
+        "force_@cnames" = "Spatial.MotionToForceInverseTransform(@1.coordinateTransformPred) ∙ -@1.force"
+        forceClosingConstraints += "@force"
+    }
+}
+
 # vi:ts=4:et
