@@ -45,6 +45,36 @@ node "Inertia"
         0,               0, 1 / 12 ∙ m ∙ l²
     ]"
 
+    Rotate(I, R) = "R * I * transpose(R)"
+
+    RotateX_(I, cθ, sθ) = "Rotate(I, [
+        1,  0,  0;
+        0,  cθ, sθ;
+        0, -sθ, cθ
+    ])"
+    RotateX(I, θ) = "RotateX_(cos(θ), sin(θ))"
+
+    RotateZ_(I, cθ, sθ) = "Rotate(I, [
+         cθ,  sθ, 0;
+        -sθ,  cθ, 0;
+         0,   0,  1
+    ])"
+
+    RotateZ(I, θ) = "RotateZ_(I, cos(θ), sin(θ))"
+
+    RotateY_(I, cθ, sθ) = "Rotate(I, [
+        cθ, 0, -sθ;
+        0,  1,  0;
+        sθ, 0,  cθ
+    ])"
+
+    RotateY(I, θ) = "RotateY_(I, cos(θ), sin(θ))"
+
+    Translate_(m, I, C) = "I + m * (transpose(C) * C)"
+    Translate(m, I, r) = "Translate_(m, I, [ 0,    -r[2],  r[1];
+                                             r[2],  0,    -r[0];
+                                            -r[1],  r[0],  0])"
+
     include "layout/line.cdn"
 }
 

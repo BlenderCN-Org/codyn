@@ -89,8 +89,9 @@ Type `help' for more information."""
         import ctypes
 
         self._rl_buffer = None
+        self._islibedit = ('libedit' in readline.__doc__)
 
-        if 'libedit' in readline.__doc__:
+        if self._islibedit:
             libname = 'libedit.dylib'
         else:
             libname = 'libreadline.so'
@@ -143,7 +144,13 @@ Type `help' for more information."""
 
     def _update_prompt(self):
         t = self.network.get_integrator().get_variable('t')
-        self.prompt = '(\x1b[33m{0}\x1b[0m) [\x1b[36m{1}\x1b[0m]$ '.format(', '.join([x.get_object() == self.network and 'cdn' or x.get_object().get_full_id_for_display() for x in self._selections]), t.get_value())
+
+        if not self._islibedit:
+            fstr ='(\001\x1b[33m\002{0}\001\x1b[0m\002) [\001\x1b[36m\002{1}\001\x1b[0m\002]$ '
+        else:
+            fstr = '({0}) [{1}]$ '
+
+        self.prompt = fstr.format(', '.join([x.get_object() == self.network and 'cdn' or x.get_object().get_full_id_for_display() for x in self._selections]), t.get_value())
 
     def _set_selections(self, selections=None):
         self._prev_selections = self._selections

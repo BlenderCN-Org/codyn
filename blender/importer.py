@@ -127,8 +127,14 @@ class CodynImport(bpy.types.Operator):
 
             elif shape.find_object('self | first | has-template(physics.rendering.sphere)'):
                 r = shape.get_variable('radius').get_values().get_flat()[0]
+                s = shape.get_variable('subdivisions')
 
-                bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, size=r)
+                if not s is None:
+                    s = int(s.get_values().get_flat()[0])
+                else:
+                    s = 4
+
+                bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=s, size=r)
 
                 o = context.active_object
                 o.name = '{0}_{1}_sphere'.format(name, len(retval))
@@ -136,8 +142,14 @@ class CodynImport(bpy.types.Operator):
             elif shape.find_object('self | first | has-template(physics.rendering.cylinder)'):
                 r = shape.get_variable('radius').get_values().get_flat()[0]
                 h = shape.get_variable('height').get_values().get_flat()[0]
+                v = shape.get_variable('vertices')
 
-                bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=r, depth=h)
+                if not v is None:
+                    v = int(v.get_values().get_flat()[0])
+                else:
+                    v = 12
+
+                bpy.ops.mesh.primitive_cylinder_add(vertices=v, radius=r, depth=h)
 
                 o = context.active_object
                 o.name = '{0}_{1}_cylinder'.format(name, len(retval))
@@ -625,6 +637,54 @@ class CodynImport(bpy.types.Operator):
 
         network.cdn.end()
 
+    def import_scene(self, context, node):
+        if node is None:
+            return
+
+        scene = context.scene
+        render = scene.render
+
+        res = node.get_variable('resolution').get_values().get_flat()
+
+        if res[0] > 0:
+            render.resolution_x = res[0]
+
+        if res[1] > 0:
+            render.resolution_y = res[1]
+
+        perc = node.get_variable('resolutionPercentage').get_value()
+
+        if perc > 0:
+            render.resolution_percentage = perc
+
+        fps = node.get_variable('frameRate').get_value()
+
+        if fps > 0:
+            render.fps = fps
+
+    def import_world(self, context, node):
+        if node is None:
+            return
+
+        world = context.scene.world
+
+        for (vname, pname) in (('paperSky', 'use_sky_paper'), ('blendSky', 'use_sky_blend'), ('realSky', 'use_sky_real')):
+            sky = node.get_variable(vname).get_value()
+
+            if sky >= 0:
+                setattr(world, pname, (sky > 0))
+
+        for (cname, pname) in (('horizonColor', 'horizon_color'), ('zenithColor', 'zenith_color'), ('ambientColor', 'ambient_color')):
+            c = node.get_variable(cname).get_values().get_flat()
+
+            if len(c) == 3 and c[0] >= 0 and c[1] >= 0 and c[2] >= 0:
+                setattr(world, pname, c)
+
+        ao = node.get_variable('ambientOcclusion').get_value()
+
+        if ao >= 0:
+            world.light_settings.use_ambient_occlusion = (ao > 0)
+
     def execute(self, context):
         context.scene.cursor_location = [0, 0, 0]
 
@@ -714,6 +774,9 @@ class CodynImport(bpy.types.Operator):
             context.scene.objects.active = objs[0]
 
         context.scene.layers[0] = True
+
+        self.import_scene(context, network.find_object('has-template(physics.rendering.scene)'))
+        self.import_world(context, network.find_object('has-template(physics.rendering.world)'))
 
         codyn.data.networks[name].cdn = network
         codyn.data.networks[name].filename = path

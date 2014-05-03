@@ -1338,7 +1338,7 @@ node_interface_to_xml (CdnNetworkSerializer *serializer,
 	CdnVariableInterface *iface;
 	gchar **names;
 	gchar **ptr;
-	xmlNodePtr parent;
+	xmlNodePtr parent = 0;
 
 	iface = cdn_node_get_variable_interface (group);
 

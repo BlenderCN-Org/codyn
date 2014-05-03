@@ -15,6 +15,17 @@ node "model"
     dq = "[{@bodies|@1.dq||@0;@1}]"
 }
 
+node "@bodies"
+{
+    defines
+    {
+        b = "@bodies[!@@0]"
+    }
+
+    bodyIndex = "@b"
+    bodyDofs = "[{@bodydofex[$(@b + 1)]||@0;@1}]"
+}
+
 node | "@cbodies"
      | if(  outputs
           | has-template(physics.cjoint)
@@ -22,6 +33,19 @@ node | "@cbodies"
           | name)
 {
     coordinateTransformSucc = "Spatial.Inverse(@@0.baseToLocalTransform * localToBaseTransformPred)" | once
+}
+
+node edges | has-template(physics.cjoint) | if(output | has-template(physics.body)) | output-name | input-name | parent
+{
+    edge "loop_joint_@@0_to_@0" from "@@@0" to "@@@0"
+    {
+        baseToLocalTransformSucc <= "output.coordinateTransformSucc ∙ baseToLocalTransform"
+    }
+}
+
+edge edges | has-template(physics.cjoint) | if(input | has-template(physics.body))
+{
+    baseToLocalTransformPred <= "output.coordinateTransformPred ∙ baseToLocalTransform"
 }
 
 include "jacobian.cdn"

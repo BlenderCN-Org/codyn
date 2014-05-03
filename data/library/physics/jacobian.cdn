@@ -62,4 +62,35 @@ node | <body>:@bodies | sort
     }
 }
 
+node | "@cbodies"
+{
+    J0 = "zeros(6, @numdof)"
+}
+
+edge "dq0_@cbodies" from   <cjoint>:@1
+                         | <cons-index>:append-context("@@1[!]")
+                         | xor(  inputs
+                               | has-template(physics.cjoint)
+                               | input
+                               | recurse(inputs | has-template(physics.joint) | input)
+                               | <ojoint>:name
+                               | <side>:append-context("-1"),
+                                 outputs
+                               | has-template(physics.cjoint)
+                               | output
+                               | recurse(inputs | has-template(physics.joint) | input)
+                               | <ojoint>:name
+                               | <side>:append-context("1"))
+                    to @cjoint
+{
+    defines
+    {
+        b = "@bodies[!@ojoint]"
+        bi = "@bodydofex[$(@b + 1)]"
+    }
+
+    "J0[[0;1;2;3;4;5], [{@bi||@0\,@1}]]" <= "@side * baseMotionSubspace"
+    dq0 += "@side ∙ baseMotionSubspace ∙ dq"
+}
+
 # vi:ts=4:et

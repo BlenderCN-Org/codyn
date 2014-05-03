@@ -5985,7 +5985,6 @@ cdn_parser_context_begin_selector_item (CdnParserContext *context)
  * cdn_parser_context_get_error_location:
  * @context: the context.
  * @lstart: (out): the line start.
- * @lstart: (out): the line start.
  * @lend: (out): the line end.
  * @cstart: (out): the column start.
  * @cend: (out): the column end.

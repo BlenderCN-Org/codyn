@@ -15,6 +15,7 @@ templates
         {
             ## Transmit force from the child to the parent frame
             forceChild += "transformT ∙ force"
+            forceClosingConstraints += "transformT ∙ forceClosingConstraints"
         }
 
         edge "activeLoopJointForceSuccessor"
@@ -30,16 +31,12 @@ templates
 
         edge "loopJointTransformSuccessor"
         {
-            baseToLocalTransformSucc <= "output.coordinateTransformSucc ∙ baseToLocalTransform"
-
             baseVelocitySucc <= "localToBaseTransform ∙ velocity"
             baseAccelerationSucc <= "localToBaseTransform ∙ acceleration"
         }
 
         edge "loopJointTransformPredecessor"
         {
-            baseToLocalTransformPred <= "output.coordinateTransformPred ∙ baseToLocalTransform"
-
             baseVelocityPred <= "localToBaseTransform ∙ velocity"
             baseAccelerationPred <= "localToBaseTransform ∙ acceleration"
         }
@@ -55,6 +52,12 @@ templates
             ## vector containing torques and forces, acting on the local body
             ## coordinates.
             forceExternal = "zeros(6, 1)"
+
+            ## Force propagated backwards from constraints
+            forceClosingConstraints = "zeros(6, 1)"
+
+            ## The total constraint force
+            forceConstraint = "force - forceClosingConstraints"
 
             ## External spatial force as a result of a loop closure joint.
             forceLoopJointActive = "zeros(6, 1)"

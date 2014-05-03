@@ -4,15 +4,36 @@ templates
 {
     node "physics" { node "rendering"
     {
+        node "world"
+        {
+            paperSky = -1
+            blendSky = -1
+            realSky = -1
+
+            horizonColor = "[-1, -1, -1]"
+            zenithColor = "[-1, -1, -1]"
+            ambientColor = "[-1, -1, -1]"
+
+            ambientOcclusion = -1
+        }
+
+        node "scene"
+        {
+            resolution = "[-1, -1]"
+            resolutionPercentage = -1
+            frameRate = -1
+        }
+
         node "shape"
         {
-            transform = "eye(4)" | out
+            transform = "eye(4)"
             color = "[0.5; 0.5; 0.5]"
         }
 
         node "sphere" : shape
         {
             radius = "0.1"
+            subdivisions = 4
         }
 
         node "box" : shape
@@ -24,6 +45,7 @@ templates
         {
             height = 1
             radius = 0.1
+            vertices = 12
         }
 
         node "plane" : shape
