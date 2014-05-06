@@ -4,3 +4,4 @@ usr/share/texmf/tex/latex/cdn/codyn.sty
 usr/share/texmf/tex/latex/cdn/cdn-listings.tex
 usr/bin
 usr/lib/gedit*
+usr/lib/python*/*-packages/cdnrepl/*.py
