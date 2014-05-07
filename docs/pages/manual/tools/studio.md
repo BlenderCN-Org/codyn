@@ -1,3 +1,3 @@
-#<cldoc:Manual::4. Tools::studio>
+#<cldoc:Manual::Tools::studio>
 
 The graphical interface for codyn networks.

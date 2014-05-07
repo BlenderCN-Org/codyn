@@ -1,4 +1,4 @@
-#<cldoc:Manual::1. Introduction::4. Performance>
+#<cldoc:Manual::Introduction::Performance>
 
 Compiling your network for high performance.
 

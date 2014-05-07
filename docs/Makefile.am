@@ -34,7 +34,7 @@ site-styles:
 html/index.html: $(girfile) $(pages) $(cdnfiles) $(pngfigures)
 	$(AM_V_GEN) $(CLDOC) gir					\
 		--category 'API Reference'				\
-		--merge pages						\
+		--merge pages/index.md					\
 		--merge-filter $(srcdir)/generatecode.py		\
 		$(javascript_opts)					\
 		$(css_opts)						\

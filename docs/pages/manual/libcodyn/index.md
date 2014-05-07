@@ -1,3 +1,3 @@
-#<cldoc:Manual::2. libcodyn>
+#<cldoc:Manual::libcodyn>
 
 High level description of libcodyn.

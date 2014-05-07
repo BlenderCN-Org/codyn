@@ -1,4 +1,4 @@
-#<cldoc:Manual::1. Introduction>
+#<cldoc:Manual::Introduction>
 
 Introduction to the codyn framework.
 
@@ -17,4 +17,10 @@ For applications where high performance is required, or for systems with very
 strict requirements, the high level description of the dynamics can be compiled
 to a very low-level C implementation. The generated code does not have any
 dependencies and can be compiled for a large variety of platforms (including microcontrollers).
-See <Manual::4. Tools::rawc> for more information.
+See <Manual::Tools::rawc> for more information.
+
+#<cldoc:include(conceptual.md)>
+#<cldoc:include(firstnetwork.md)>
+#<cldoc:include(usingstudio.md)>
+#<cldoc:include(performance.md)>
+#<cldoc:include(physics.md)>

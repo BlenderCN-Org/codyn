@@ -1,4 +1,4 @@
-#<cldoc:Manual::1. Introduction::1. Conceptual Overview>
+#<cldoc:Manual::Introduction::Conceptual Overview>
 
 Concepts and terminology.
 
@@ -72,11 +72,11 @@ of oscillators and couplings.
 ## Simulation
 codyn provides a number of ways to simulate (numerically integrate) your network
 after you have it constructed. You can open your network in the
-<Manual::4. Tools::studio> to run simulations interactively while plotting
-variables. Alternatively, you can use the <Manual::4. Tools::Command line> tool
+<Manual::Tools::studio> to run simulations interactively while plotting
+variables. Alternatively, you can use the <Manual::Tools::Command line> tool
 *cdn-monitor* to run a simulation from the terminal. This tool will simply output
 the values of the variables you specify to monitor. Finally, you can open
 the network programmatically in a number of supported programming languages
-(see <Manual::5. Bindings>).
+(see <Manual::Bindings>).
 
 [concept]: figures/concept.png

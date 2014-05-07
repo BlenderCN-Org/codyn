@@ -1,4 +1,4 @@
-#<cldoc:Manual::1. Introduction::3. Using the studio>
+#<cldoc:Manual::Introduction::Using the studio>
 
 How to use the codyn studio.
 
@@ -10,7 +10,7 @@ variables influence your dynamics.
 ## Loading a network
 To load a network, simply start the studio and use File/Open to open your
 network. Here we open the example developed in the
-<[previous chapter]Manual::1. Introduction::2. First Network>.
+<[previous chapter]First Network>.
 
 ![centered][studio_complete]
 

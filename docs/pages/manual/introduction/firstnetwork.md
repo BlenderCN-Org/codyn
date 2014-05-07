@@ -1,8 +1,8 @@
-#<cldoc:Manual::1. Introduction::2. First Network>
+#<cldoc:Manual::Introduction::First Network>
 
 Writing your first network.
 
-If you've been reading the <[conceptual overview]1. Conceptual Overview>, then you have already
+If you've been reading the <[conceptual overview]Conceptual Overview>, then you have already
 seen how a very simple example network can be defined. Here we will go
 through constructing and simulating a network step by step so that you can
 get an intuition of how you can use codyn to simulate dynamical networks.
@@ -12,7 +12,7 @@ Although networks can be created completely programmatically, the canonical and
 convenient way to create a network is by using the codyn modeling language.
 We will not go fully into the details of the language here, but provide a
 short introduction into using its basic features. For more details on the
-modeling language see <[modeling language]3. Modeling>.
+modeling language see <[modeling language]Modeling>.
 
 The goal of this tutorial is to create the oscillator network as presented
 in [From Swimming to Walking with a Salamander Robot Driven by a Spinal Cord Model (Ijspeert et al, 2007)][science2007]. In this article, a network of simple amplitude controlled phase
