@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -490,8 +490,8 @@ cdn_expansion_context_debug_print (CdnExpansionContext  *context,
 		{
 			g_fprintf (file, "\n  %s: ", (gchar const *)defines->data);
 
-			cdn_expansion_debug_print (cdn_expansion_context_get_define (context, defines->data),
-			                           file);
+			_cdn_expansion_debug_print (cdn_expansion_context_get_define (context, defines->data),
+			                            file);
 
 			defines = g_slist_delete_link (defines, defines);
 		}
@@ -519,7 +519,7 @@ cdn_expansion_context_debug_print (CdnExpansionContext  *context,
 			}
 
 			g_fprintf (file, "  %d: ", i + 1);
-			cdn_expansion_debug_print (ctx->expansions->pdata[ctx->expansions->len - l - 1], file);
+			_cdn_expansion_debug_print (ctx->expansions->pdata[ctx->expansions->len - l - 1], file);
 			g_fprintf (file, "\n");
 
 			++i;

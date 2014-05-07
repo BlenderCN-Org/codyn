@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -112,15 +112,13 @@ GSList            *cdn_embedded_string_expand_multiple  (CdnEmbeddedString      
                                                          CdnExpansionContext       *ctx,
                                                          GError                   **error);
 
-gchar             *cdn_embedded_string_escape           (gchar const               *item);
+gchar             *cdn_embedded_string_escape           (gchar const               *s);
 
 gchar             *cdn_embedded_string_expand_escape    (CdnEmbeddedString         *s,
                                                          CdnExpansionContext       *ctx,
                                                          GError                   **error);
 
 void               cdn_embedded_string_clear_cache      (CdnEmbeddedString         *s);
-
-gchar             *cdn_embedded_string_collapse         (gchar const * const       *s);
 
 CdnExpansion      *cdn_embedded_string_as_expansion     (CdnEmbeddedString         *s,
                                                          CdnExpansionContext       *context,

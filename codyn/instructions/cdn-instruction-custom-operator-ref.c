@@ -9,6 +9,19 @@ struct _CdnInstructionCustomOperatorRefPrivate
 	CdnStackManipulation smanip;
 };
 
+/**
+ * CdnInstructionCustomOperatorRef:
+ *
+ * Custom operator ref instruction.
+ *
+ * The #CdnInstructionCustomOperatorRef is a special #CdnInstruction subtype
+ * which represents a reference to a custom operator. This is different from
+ * #CdnInstructionCustomOperator since it does not actually execute. This
+ * instruction type is only used internally to create symbolic references
+ * to custom operators and never ends up in the final instruction stream.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionCustomOperatorRef, cdn_instruction_custom_operator_ref, CDN_TYPE_INSTRUCTION)
 
 static void
@@ -110,11 +123,10 @@ cdn_instruction_custom_operator_ref_init (CdnInstructionCustomOperatorRef *self)
 /**
  * cdn_instruction_custom_operator_ref_new:
  * @operator: A #CdnOperator
- * @expressions: (element-type CdnExpression) (transfer none): A #GSList of #CdnExpression
  *
- * Create a new #CdnInstructionCustomOperatorRef.
+ * Create a new instruction representing a reference to a custom operator.
  *
- * Returns: A #CdnInstruction
+ * Returns: (transfer full) (type CdnInstructionCustomOperatorRef): a new #CdnInstructionCustomOperatorRef
  *
  **/
 CdnInstruction *

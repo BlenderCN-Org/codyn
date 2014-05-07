@@ -39,8 +39,29 @@ struct _CdnInstructionIndexPrivate
 	CdnInstructionIndexType type;
 };
 
+/**
+ * CdnInstructionIndex:
+ *
+ * Indexing instruction.
+ *
+ * The #CdnInstructionIndex type is a special #CdnInstruction subtype
+ * which represents an indexing operation. Several indexing schemes
+ * are supported, such as flat indexing, row/column indexing and range
+ * indexing.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionIndex, cdn_instruction_index, CDN_TYPE_INSTRUCTION)
 
+/**
+ * cdn_index_range_n:
+ * @range: a #CdnIndexRange
+ *
+ * Get the length represented by the range (i.e. (end - start) / step).
+ *
+ * Returns: the range length
+ *
+ */
 gint
 cdn_index_range_n (CdnIndexRange const *range)
 {
@@ -52,6 +73,16 @@ cdn_index_range_n (CdnIndexRange const *range)
 	return (range->end - range->start) / range->step;
 }
 
+/**
+ * cdn_index_range_equal:
+ * @a: a #CdnIndexRange
+ * @b: a #CdnIndexRange
+ *
+ * Compare two index ranges for exact equality.
+ *
+ * Returns: %TRUE if the two ranges are equal, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_index_range_equal (CdnIndexRange const *a,
                        CdnIndexRange const *b)
@@ -486,13 +517,16 @@ cdn_instruction_index_init (CdnInstructionIndex *self)
 
 /**
  * cdn_instruction_index_new:
- * @indices: Description.
+ * @indices: (transfer full): a list of indices.
  * @retdim: a #CdnDimension.
  * @arg: a #CdnStackArg.
  *
- * Create a new linear index instruction.
+ * Create a new linear index instruction using indices from @indices.
+ * The number of indices is determined automatically from @retdim, which
+ * determines also what the dimensionality of the result is. @arg represents
+ * the argument on the stack which should be indexed.
  *
- * Returns: (transfer full): a #CdnInstruction.
+ * Returns: (transfer full) (type CdnInstructionIndex): a new #CdnInstructionIndex.
  *
  **/
 CdnInstruction *
@@ -533,7 +567,7 @@ cdn_instruction_index_new (gint               *indices,
  * range always represents a row. If @arg is not %NULL however, the range will
  * be a column or row depending on the dimension of @arg.
  *
- * Returns: (transfer full): a #CdnInstruction.
+ * Returns: (transfer full) (type CdnInstructionIndex): a new #CdnInstructionIndex.
  *
  **/
 CdnInstruction *
@@ -576,7 +610,7 @@ cdn_instruction_index_new_rows_x_columns (gint              *rows,
  * range always represents a row. If @arg is not %NULL however, the range will
  * be a column or row depending on the dimension of @arg.
  *
- * Returns: (transfer full): a #CdnInstruction.
+ * Returns: (transfer full) (type CdnInstructionIndex): a new #CdnInstructionIndex.
  *
  **/
 CdnInstruction *
@@ -638,7 +672,7 @@ cdn_instruction_index_new_range (CdnIndexRange const *range,
  * argument using a range of rows and a range of columns selecting the block
  * represented by the intersection (in terms of rows-x-columns) of the ranges.
  *
- * Returns: (transfer full): a #CdnInstruction.
+ * Returns: (transfer full) (type CdnInstructionIndex): a new #CdnInstructionIndex.
  *
  **/
 CdnInstruction *
@@ -679,7 +713,21 @@ cdn_instruction_index_new_range_block (CdnIndexRange const *rows,
 	return CDN_INSTRUCTION (ret);
 }
 
-
+/**
+ * cdn_instruction_index_new_offset:
+ * @offset: the offset
+ * @retdim: a #CdnDimension
+ * @arg: a #CdnStackArg
+ *
+ * Create a new instruction which indexes everything from a given (linear)
+ * offset onwards. I.e. this can be used for indices such as a[2:n]. Note that
+ * this is a specialization of #cdn_instruction_index_new_range, but with
+ * better performance. @retdim determines the dimensionality of the result,
+ * and the number of elements to index starting from @offset.
+ *
+ * Returns: (transfer full) (type CdnInstructionIndex): a new #CdnInstructionIndex.
+ *
+ */
 CdnInstruction *
 cdn_instruction_index_new_offset (gint                offset,
                                   CdnDimension const *retdim,
@@ -782,7 +830,7 @@ cdn_instruction_index_get_range_block (CdnInstructionIndex *instr,
  * Get the offset of the offset index instruction. This is only valid with the
  * type of the index instruction is #CDN_INSTRUCTION_INDEX_TYPE_OFFSET.
  *
- * Returns: the index offset.
+ * Returns: the index offset or -1 if the indexing type is not #CDN_INSTRUCTION_INDEX_TYPE_OFFSET.
  *
  **/
 gint
@@ -834,6 +882,17 @@ cdn_instruction_index_get_indices (CdnInstructionIndex *instr,
 	return NULL;
 }
 
+/**
+ * cdn_instruction_index_num_indices:
+ * @instr: the #CdnInstructionIndex
+ *
+ * Get how many elements this instruction indexes. This is equivalent
+ * to checking how many elements this instruction pushes onto the stack
+ * when executed.
+ *
+ * Returns: the number of indices
+ *
+ */
 gint
 cdn_instruction_index_num_indices (CdnInstructionIndex *instr)
 {
@@ -845,6 +904,20 @@ cdn_instruction_index_num_indices (CdnInstructionIndex *instr)
 	return cdn_dimension_size (retdim);
 }
 
+/**
+ * cdn_instruction_index_write_indices:
+ * @instr: the #CdnInstructionIndex
+ * @indices: (array-length l) (out): a return value list of indices
+ * @l: the lenght of @indices
+ *
+ * Write the linear indices which this instruction indexes when executed
+ * in the provided @indices. The size of @indices, i.e. @l, should be at
+ * least large enough to hold #cdn_instruction_index_num_indices. This
+ * operation is supported for all indexing types.
+ *
+ * Returns: %TRUE if the indices where obtained, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
                                      gint                *indices,
@@ -953,7 +1026,7 @@ cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
 }
 
 void
-cdn_instruction_index_set_range_end (CdnInstructionIndex *instr,
+_cdn_instruction_index_set_range_end (CdnInstructionIndex *instr,
                                      gint                 end)
 {
 	g_return_if_fail (CDN_IS_INSTRUCTION_INDEX (instr));

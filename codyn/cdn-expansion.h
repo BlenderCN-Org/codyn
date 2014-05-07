@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -43,41 +43,41 @@ CdnExpansion *cdn_expansion_newv             (gchar const            *item,
 
 CdnExpansion *cdn_expansion_new_one          (gchar const            *item);
 
-void          cdn_expansion_debug_print      (CdnExpansion *expansion,
-                                              FILE         *file);
+void         _cdn_expansion_debug_print      (CdnExpansion           *expansion,
+                                              FILE                   *file);
 
-CdnExpansion *cdn_expansion_copy             (CdnExpansion           *id);
-CdnExpansion *cdn_expansion_ref             (CdnExpansion           *id);
-void cdn_expansion_unref             (CdnExpansion           *id);
+CdnExpansion *cdn_expansion_copy             (CdnExpansion           *expansion);
+CdnExpansion *cdn_expansion_ref              (CdnExpansion           *expansion);
+void          cdn_expansion_unref            (CdnExpansion           *expansion);
 
-gint          cdn_expansion_num              (CdnExpansion           *id);
+gint          cdn_expansion_num              (CdnExpansion           *expansion);
 
-gchar const  *cdn_expansion_get              (CdnExpansion           *id,
+gchar const  *cdn_expansion_get              (CdnExpansion           *expansion,
                                               gint                    idx);
 
-gint          cdn_expansion_get_index        (CdnExpansion           *id,
+gint          cdn_expansion_get_index        (CdnExpansion           *expansion,
                                               gint                    idx);
 
-void          cdn_expansion_set_index        (CdnExpansion           *id,
+void          cdn_expansion_set_index        (CdnExpansion           *expansion,
                                               gint                    idx,
                                               gint                    val);
 
-void          cdn_expansion_add              (CdnExpansion           *id,
+void          cdn_expansion_add              (CdnExpansion           *expansion,
                                               gchar const            *item);
 
-void          cdn_expansion_insert           (CdnExpansion           *id,
+void          cdn_expansion_insert           (CdnExpansion           *expansion,
                                               gint                    idx,
                                               gchar const            *item);
 
-void          cdn_expansion_set              (CdnExpansion           *id,
+void          cdn_expansion_set              (CdnExpansion           *expansion,
                                               gint                    idx,
                                               gchar const            *val);
 
-void          cdn_expansion_append           (CdnExpansion           *id,
+void          cdn_expansion_append           (CdnExpansion           *expansion,
                                               CdnExpansion           *other,
                                               gint                    idx);
 
-void          cdn_expansion_prepend          (CdnExpansion           *id,
+void          cdn_expansion_prepend          (CdnExpansion           *expansion,
                                               CdnExpansion           *other,
                                               gint                    idx);
 

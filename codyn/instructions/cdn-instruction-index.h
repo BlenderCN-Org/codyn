@@ -78,8 +78,8 @@ CdnInstruction *cdn_instruction_index_new_rows_x_columns (gint              *row
 
 CdnInstructionIndexType cdn_instruction_index_get_index_type (CdnInstructionIndex *instr);
 
-void cdn_instruction_index_set_range_end (CdnInstructionIndex *instr,
-                                          gint                 end);
+void _cdn_instruction_index_set_range_end (CdnInstructionIndex *instr,
+                                           gint                 end);
 
 gint cdn_instruction_index_num_indices (CdnInstructionIndex *instr);
 

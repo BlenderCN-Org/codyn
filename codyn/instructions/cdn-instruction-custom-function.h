@@ -18,14 +18,6 @@ typedef struct _CdnInstructionCustomFunction		CdnInstructionCustomFunction;
 typedef struct _CdnInstructionCustomFunctionClass	CdnInstructionCustomFunctionClass;
 typedef struct _CdnInstructionCustomFunctionPrivate	CdnInstructionCustomFunctionPrivate;
 
-/**
- * CdnInstructionCustomFunction:
- * @function: the custom function
- * @arguments: the number of arguments the function receives
- *
- * The instruction class for %CDN_INSTRUCTION_TYPE_CUSTOM_FUNCTION
- *
- */
 struct _CdnInstructionCustomFunction
 {
 	/*< private >*/

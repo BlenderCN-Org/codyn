@@ -8,6 +8,16 @@ struct _CdnInstructionCustomOperatorPrivate
 	CdnOperator *op;
 };
 
+/**
+ * CdnInstructionCustomOperator:
+ *
+ * Custom operator call instruction.
+ *
+ * The #CdnInstructionCustomOperator is a special #CdnInstruction subtype
+ * which represents a custom operator call.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionCustomOperator, cdn_instruction_custom_operator, CDN_TYPE_INSTRUCTION)
 
 static void
@@ -181,7 +191,7 @@ cdn_instruction_custom_operator_init (CdnInstructionCustomOperator *self)
  *
  * Create a new #CdnInstructionCustomOperator.
  *
- * Returns: A #CdnInstruction
+ * Returns: (transfer full) (type CdnInstructionCustomOperator): a new #CdnInstructionCustomOperator
  *
  **/
 CdnInstruction *

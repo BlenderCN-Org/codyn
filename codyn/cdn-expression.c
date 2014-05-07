@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -3422,12 +3422,12 @@ make_static_index (CdnExpression *expression,
 
 		if (isi1)
 		{
-			cdn_instruction_index_set_range_end (r1, d3->rows);
+			_cdn_instruction_index_set_range_end (r1, d3->rows);
 		}
 
 		if (isi2)
 		{
-			cdn_instruction_index_set_range_end (r2, d3->columns);
+			_cdn_instruction_index_set_range_end (r2, d3->columns);
 		}
 
 		if (isi1 && isi2)
@@ -3592,7 +3592,7 @@ make_static_index (CdnExpression *expression,
 			CdnInstruction *ret;
 			CdnIndexRange r;
 
-			cdn_instruction_index_set_range_end (idx, cdn_stack_arg_size (d3));
+			_cdn_instruction_index_set_range_end (idx, cdn_stack_arg_size (d3));
 			r = *cdn_instruction_index_get_range (idx);
 
 			ret = cdn_instruction_index_new_range (&r, d3);

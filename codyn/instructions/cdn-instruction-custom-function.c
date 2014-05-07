@@ -1,5 +1,15 @@
 #include "cdn-instruction-custom-function.h"
 
+/**
+ * CdnInstructionCustomFunction:
+ *
+ * Custom function call instruction.
+ *
+ * The #CdnInstructionCustomFunction is a special #CdnInstruction subtype
+ * which represents a custom function call.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionCustomFunction, cdn_instruction_custom_function, CDN_TYPE_INSTRUCTION)
 
 #define CDN_INSTRUCTION_CUSTOM_FUNCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_CUSTOM_FUNCTION, CdnInstructionCustomFunctionPrivate))
@@ -146,6 +156,19 @@ set_function (CdnInstructionCustomFunction *function,
 	}
 }
 
+/**
+ * cdn_instruction_custom_function_new:
+ * @function: a #CdnFunction
+ * @argdim: the args
+ *
+ * Create a new custom function instruction representing a call
+ * to a custom function. @argdim indicates the dimensionality of the
+ * arguments passed on the stack when this instruction should call
+ * the corresponding function.
+ *
+ * Returns: (transfer full) (type CdnInstructionCustomFunction): a new #CdnInstructionCustomFunction
+ *
+ */
 CdnInstruction *
 cdn_instruction_custom_function_new (CdnFunction        *function,
                                      CdnStackArgs const *argdim)
@@ -177,6 +200,14 @@ cdn_instruction_custom_function_get_function (CdnInstructionCustomFunction *func
 	return function->priv->function;
 }
 
+/**
+ * cdn_instruction_custom_function_set_function:
+ * @function: A #CdnInstructionCustomFunction
+ * @f: the function
+ *
+ * Set the function executed by the instruction.
+ *
+ **/
 void
 cdn_instruction_custom_function_set_function (CdnInstructionCustomFunction *function,
                                               CdnFunction                  *f)
