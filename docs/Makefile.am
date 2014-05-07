@@ -45,9 +45,15 @@ serve: $(outputloc)/index.html
 	$(CLDOC) serve $(outputloc)
 
 figures/%.pdf: figures/%.tikz
-	$(AM_V_GEN) pdflatex -interaction nonstopmode -output-directory figures $< >/dev/null && \
-	rm -f $(patsubst %.tikz,%.log,$<) && \
-	rm -f $(patsubst %.tikz,%.aux,$<)
+	$(AM_V_GEN) \
+	pdflatex -interaction nonstopmode -halt-on-error -output-directory figures $< >/dev/null; \
+	ret=$$?; \
+	if [ $$ret != 0 ]; then \
+		$(srcdir)/extracterror.py < $(patsubst %.tikz,%.log,$<); \
+	fi; \
+	rm -f $(patsubst %.tikz,%.log,$<); \
+	rm -f $(patsubst %.tikz,%.aux,$<); \
+	exit $$ret
 
 figures/%.png: figures/%.pdf
 	$(AM_V_GEN) convert $< -background white -flatten $@ && \
