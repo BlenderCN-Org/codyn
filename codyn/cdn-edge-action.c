@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -419,7 +419,7 @@ cdn_edge_action_get_property (GObject    *object,
                               GParamSpec *pspec)
 {
 	CdnEdgeAction *self = CDN_EDGE_ACTION (object);
-	
+
 	switch (prop_id)
 	{
 		case PROP_LINK:
@@ -545,7 +545,7 @@ cdn_edge_action_init (CdnEdgeAction *self)
  * cdn_edge_action_new:
  * @target: A #CdnVariable
  * @equation: A #CdnExpression
- * 
+ *
  * Create a new #CdnEdgeAction.
  *
  * Returns: A new #CdnEdgeAction
@@ -684,6 +684,18 @@ cdn_edge_action_get_target_variable (CdnEdgeAction *action)
 	return action->priv->property;
 }
 
+/**
+ * cdn_edge_action_equal:
+ * @action: the #CdnEdgeAction
+ * @other: another #CdnEdgeAction
+ *
+ * Compares @action with @other for equality. Edge actions are considered
+ * equal when they target the same variable, have the same indexing expression
+ * and finally the same differential equation.
+ *
+ * Returns: %TRUE if @action is equal to @other, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_edge_action_equal (CdnEdgeAction *action,
                        CdnEdgeAction *other)
@@ -765,6 +777,16 @@ _cdn_edge_action_set_edge (CdnEdgeAction *action,
 	set_edge (action, link);
 }
 
+/**
+ * cdn_edge_action_set_index:
+ * @action: the #CdnEdgeAction
+ * @expression: the index expression
+ *
+ * Set an expression to use for indexing into the target variable.
+ * The expression is only evaluated once, on initialization and should
+ * therefore only contain static indices.
+ *
+ */
 void
 cdn_edge_action_set_index (CdnEdgeAction *action,
                            CdnExpression *expression)
@@ -852,6 +874,16 @@ cdn_edge_action_get_index (CdnEdgeAction *action)
 	return action->priv->index;
 }
 
+/**
+ * cdn_edge_action_compile:
+ * @action: A #CdnEdgeAction
+ * @context: A #CdnCompileContext
+ * @error: (allow-none): A #CdnCompileError or %NULL
+ *
+ * Compile the edge action expression in the specified context.
+ *
+ * Returns: %TRUE if the action was compiled successfully, %FALSE otherwise.
+ */
 gboolean
 cdn_edge_action_compile (CdnEdgeAction     *action,
                          CdnCompileContext *context,
@@ -1057,15 +1089,36 @@ _cdn_edge_action_get_integrated (CdnEdgeAction *action,
 	return action->priv->integrated_set;
 }
 
+/**
+ * cdn_edge_action_set_adds:
+ * @action: the #CdnEdgeAction
+ * @adds: whether the action adds
+ *
+ * Sets whether @action adds to its targets differential equation, or overrides
+ * it completely. This is only relevant when the target of the action is not
+ * an integrated variable.
+ *
+ */
 void
 cdn_edge_action_set_adds (CdnEdgeAction *action,
                           gboolean       adds)
 {
 	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
-	
+
 	action->priv->adds = adds;
 }
 
+/**
+ * cdn_edge_action_get_adds:
+ * @action: the #CdnEdgeAction
+ *
+ * Gets whether @action adds to its targets differential equation, or overrides
+ * it completely. This is only relevant when the target of the action is not
+ * an integrated variable.
+ *
+ * Returns: %TRUE if the action adds, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_edge_action_get_adds (CdnEdgeAction *action)
 {
