@@ -153,7 +153,6 @@ struct _CdnParserContextPrivate
 	CdnStatement *error_statement;
 	GFile *error_file;
 
-	CdnLayout *layout;
 	GHashTable *files;
 
 	guint error_occurred : 1;
@@ -416,11 +415,6 @@ cdn_parser_context_finalize (GObject *object)
 		self->priv->context =
 			g_slist_delete_link (self->priv->context,
 			                     self->priv->context);
-	}
-
-	if (self->priv->layout)
-	{
-		g_object_unref (self->priv->layout);
 	}
 
 	g_hash_table_destroy (self->priv->files);
@@ -2007,7 +2001,7 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 			name = parse_action_index (extarget, &index);
 
 			decom = cdn_decompose_dot (name, &order);
-			
+
 			if (decom)
 			{
 				integrated = TRUE;
@@ -3664,7 +3658,7 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
 	else
 	{
 		gboolean autoid;
-	
+
 		autoid = id == NULL;
 
 		if (id == NULL)
@@ -4466,7 +4460,7 @@ cdn_parser_context_peek_selector (CdnParserContext *context)
 /**
  * cdn_parser_context_pop_selector:
  * @context: A #CdnParserContext
- * 
+ *
  * Description.
  *
  * Returns: (transfer full): A #CdnSelector
@@ -5004,7 +4998,7 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 		GFile *file = NULL;
 
 		res = cdn_expansion_get (item->data, 0);
-		
+
 		file = cdn_network_parser_utils_resolve_import (inp ? inp->file : NULL,
 		                                                res);
 
@@ -5203,23 +5197,6 @@ cdn_parser_context_push_annotation (CdnParserContext  *context,
 	}
 
 	context->priv->annotation = annotation;
-}
-
-/**
- * cdn_parser_context_push_layout: (skip)
- *
- **/
-void
-cdn_parser_context_push_layout (CdnParserContext *context)
-{
-	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
-
-	if (!context->priv->layout)
-	{
-		context->priv->layout = cdn_layout_new (context->priv->network);
-	}
-
-	cdn_parser_context_push_scope (context);
 }
 
 void
@@ -5800,7 +5777,7 @@ cdn_parser_context_debug_string (CdnParserContext  *context,
 
 			g_free (ss);
 		}
-	
+
 		expansion_context_pop (context);
 		g_slist_foreach (ret, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ret);

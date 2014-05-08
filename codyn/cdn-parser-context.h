@@ -32,7 +32,6 @@
 #include <codyn/cdn-import.h>
 #include <codyn/cdn-import-alias.h>
 #include <codyn/cdn-selector.h>
-#include <codyn/cdn-layout.h>
 #include <codyn/cdn-attribute.h>
 #include <codyn/cdn-event.h>
 #include <codyn/cdn-io.h>
@@ -297,9 +296,6 @@ void                   cdn_parser_context_push_annotation      (CdnParserContext
 void                   cdn_parser_context_push_scope           (CdnParserContext           *context);
 
 void                   cdn_parser_context_push_define          (CdnParserContext           *context);
-
-void                   cdn_parser_context_push_layout          (CdnParserContext           *context);
-void                   cdn_parser_context_pop_layout           (CdnParserContext           *context);
 
 void                   cdn_parser_context_add_layout_position  (CdnParserContext           *context,
                                                                 CdnSelector                *selector,

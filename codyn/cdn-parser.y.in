@@ -1514,11 +1514,11 @@ import
 
 layout
 	: T_KEY_LAYOUT
-	  '{'			{ cdn_parser_context_push_layout (context); }
+	  '{'			{ cdn_parser_context_push_scope (context); }
 	  layout_contents
 	  '}'			{ cdn_parser_context_pop (context); }
 	|
-	  T_KEY_LAYOUT          { cdn_parser_context_push_layout (context); }
+	  T_KEY_LAYOUT          { cdn_parser_context_push_scope (context); }
 	  layout_item           { cdn_parser_context_pop (context); }
 	;
 
