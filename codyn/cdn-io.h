@@ -38,6 +38,14 @@ G_BEGIN_DECLS
 typedef struct _CdnIo		CdnIo;
 typedef struct _CdnIoInterface	CdnIoInterface;
 
+/**
+ * CdnIoMode:
+ * @CDN_IO_MODE_INPUT: input
+ * @CDN_IO_MODE_OUTPUT: output
+ * @CDN_IO_MODE_INPUT_OUTPUT: input/output
+ *
+ * Input/output mode types.
+ */
 typedef enum
 {
 	CDN_IO_MODE_INPUT = 1 << 0,

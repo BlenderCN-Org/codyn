@@ -809,6 +809,14 @@ cdn_operator_delayed_init (CdnOperatorDelayed *self)
 	self->priv = CDN_OPERATOR_DELAYED_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_delayed_new:
+ *
+ * Create a new delayed operator
+ *
+ * Returns: (transfer full): a new delayed operator
+ *
+ */
 CdnOperatorDelayed *
 cdn_operator_delayed_new ()
 {

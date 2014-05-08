@@ -38,10 +38,31 @@ struct _CdnOperatorPrivate
 	CdnStackArgs args;
 };
 
+/**
+ * CdnOperator:
+ *
+ * Custom operator base class.
+ *
+ * #CdnOperator is an abstract base class for the implementation of custom operators
+ * for codyn. Note that here the term Operator does not refer to the standard mathematical
+ * binary or unary operators (such as addition and multiplication), but rather operations
+ * on symbolic expressions. Operators are used to implement functionality which operators
+ * on the symbolic, rather than numeric level. Examples of operator implementations are
+ * derivation, delays and simplification.
+ */
+
 G_DEFINE_ABSTRACT_TYPE (CdnOperator,
                         cdn_operator,
                         G_TYPE_OBJECT);
 
+/**
+ * cdn_operator_error_quark:
+ *
+ * Get the error quark for the operator error type.
+ *
+ * Returns: a #GQuark for the operator error type
+ *
+ */
 GQuark
 cdn_operator_error_quark ()
 {
@@ -512,6 +533,15 @@ cdn_operator_get_expressions (CdnOperator *op,
 	return op->priv->expressions[idx];
 }
 
+/**
+ * cdn_operator_num_expressions:
+ * @op: the #CdnOperator
+ *
+ * Get the number of expressions for the operator
+ *
+ * Returns: the number of expressions
+ *
+ */
 gint
 cdn_operator_num_expressions (CdnOperator *op)
 {
@@ -539,6 +569,15 @@ cdn_operator_get_indices (CdnOperator *op,
 	return op->priv->indices[idx];
 }
 
+/**
+ * cdn_operator_num_indices:
+ * @op: the #CdnOperator
+ *
+ * Get the number of indices for the operator
+ *
+ * Returns: the number of indices
+ *
+ */
 gint
 cdn_operator_num_indices (CdnOperator *op)
 {
@@ -775,18 +814,44 @@ cdn_operator_get_primary_function (CdnOperator *op)
 	return NULL;
 }
 
+/**
+ * cdn_operator_get_stack_manipulation:
+ * @op: the #CdnOperator
+ *
+ * Get the operator stack manipulation.
+ *
+ * Returns: the operator stack manipulation
+ *
+ */
 CdnStackManipulation const *
 cdn_operator_get_stack_manipulation (CdnOperator *op)
 {
 	return CDN_OPERATOR_GET_CLASS (op)->get_stack_manipulation (op);
 }
 
+/**
+ * cdn_operator_reset:
+ * @op: the #CdnOperator
+ *
+ * Reset the operator.
+ *
+ */
 void
 cdn_operator_reset (CdnOperator *op)
 {
 	CDN_OPERATOR_GET_CLASS (op)->reset (op);
 }
 
+/**
+ * cdn_operator_step:
+ * @op: the #CdnOperator
+ * @t: the time
+ * @timestep: the time step
+ *
+ * Step the operator. This should update any internal state of
+ * the operator to reflect that a simulation step has been performed.
+ *
+ */
 void
 cdn_operator_step (CdnOperator *op,
                    gdouble      t,
@@ -795,6 +860,14 @@ cdn_operator_step (CdnOperator *op,
 	CDN_OPERATOR_GET_CLASS (op)->step (op, t, timestep);
 }
 
+/**
+ * cdn_operator_initialize_integrate:
+ * @op: the #CdnOperator
+ * @integrator: a #CdnIntegrator
+ *
+ * Initialize the operator for numerical integration
+ *
+ */
 void
 cdn_operator_initialize_integrate (CdnOperator   *op,
                                    CdnIntegrator *integrator)

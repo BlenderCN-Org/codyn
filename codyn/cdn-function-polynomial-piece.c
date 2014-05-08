@@ -448,6 +448,16 @@ cdn_function_polynomial_piece_get_derivative (CdnFunctionPolynomialPiece *piece,
 	return retp;
 }
 
+/**
+ * cdn_function_polynomial_piece_equal:
+ * @a: the #CdnFunctionPolynomialPiece
+ * @b: another #CdnFunctionPolynomialPiece
+ *
+ * Check whether two function polynomial pieces are equal.
+ *
+ * Returns: %TRUE if @a is equal to @b, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_function_polynomial_piece_equal (CdnFunctionPolynomialPiece *a,
                                      CdnFunctionPolynomialPiece *b)

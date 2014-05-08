@@ -23,6 +23,16 @@
 #include "cdn-selection.h"
 #include "cdn-expansion.h"
 
+/**
+ * CdnSelection:
+ *
+ * Selection object.
+ *
+ * #CdnSelection is an object which contains the result of a selector.
+ * It contains both the selected object and an expansion context which was
+ * the result of how the object got selected.
+ */
+
 struct _CdnSelection
 {
 	gpointer  object;
@@ -51,6 +61,14 @@ cdn_selection_get_type (void)
 	return g_define_type_id__volatile;
 }
 
+/**
+ * cdn_selection_unref:
+ * @selection: the #CdnSelection
+ *
+ * Decrease the reference count on the selection. If the reference count drops
+ * to 0, then the selection will be destroyed and is no longer valid.
+ *
+ */
 void
 cdn_selection_unref (CdnSelection *selection)
 {
@@ -74,6 +92,15 @@ cdn_selection_unref (CdnSelection *selection)
 	g_slice_free (CdnSelection, selection);
 }
 
+/**
+ * cdn_selection_ref:
+ * @selection: the #CdnSelection
+ *
+ * Increase the reference count on the selection
+ *
+ * Returns: (transfer full): @selection
+ *
+ */
 CdnSelection *
 cdn_selection_ref (CdnSelection *selection)
 {
@@ -152,6 +179,14 @@ cdn_selection_get_object (CdnSelection *selection)
 	return selection->object;
 }
 
+/**
+ * cdn_selection_set_object:
+ * @selection: A #CdnSelection
+ * @object: the object
+ *
+ * Set the object being selected.
+ *
+ */
 void
 cdn_selection_set_object (CdnSelection *selection,
                           gpointer      object)

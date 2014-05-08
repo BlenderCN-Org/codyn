@@ -36,6 +36,17 @@
 
 typedef CdnEventLogicalNode LogicalNode;
 
+
+/**
+ * CdnEventLogicalNode:
+ *
+ * Logical event condition node
+ *
+ * #CdnEventLogicalNode is a struct which contains a tree representation an event
+ * condition.
+ *
+ */
+
 struct _CdnEventLogicalNode
 {
 	CdnMathFunctionType type;
@@ -65,6 +76,16 @@ struct _CdnEventPrivate
 
 	guint terminal : 1;
 };
+
+/**
+ * CdnEventSetVariable:
+ *
+ * Event set variable.
+ *
+ * #CdnEventSetVariable contains information on a set variable which
+ * gets executed when an event fires.
+ *
+ */
 
 struct _CdnEventSetVariable
 {

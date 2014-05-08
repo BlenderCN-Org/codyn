@@ -171,7 +171,7 @@ CdnVariable       *cdn_variable_get_integral            (CdnVariable *variable);
 CdnVariable       *cdn_variable_get_derivative          (CdnVariable *variable);
 
 void               cdn_variable_set_derivative          (CdnVariable *variable,
-                                                         CdnVariable *diffprop);
+                                                         CdnVariable *derivative);
 
 gboolean           cdn_variable_compile                 (CdnVariable              *variable,
                                                          CdnCompileErrorForward   *error);

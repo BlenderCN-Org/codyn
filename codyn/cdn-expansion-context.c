@@ -36,6 +36,17 @@ struct _CdnExpansionContext
 	gulong marker;
 };
 
+/**
+ * CdnExpansionContext:
+ *
+ * Expansion context.
+ *
+ * #CdnExpansionContext is a boxed class which provides a context for storing
+ * expansions and defines during parsing. Expansion contexts can have parent
+ * contexts, allowing to construct a prioritized hierarchy of contexts to
+ * lookup values in.
+ */
+
 GType
 cdn_expansion_context_get_type (void)
 {
@@ -56,6 +67,16 @@ cdn_expansion_context_get_type (void)
 	return g_define_type_id__volatile;
 }
 
+/**
+ * cdn_expansion_context_new:
+ * @parent: (allow-none): a parent context
+ *
+ * Create a new expansion context with a given parent context. Use
+ * #cdn_expansion_context_unref if the context is no longer needed.
+ *
+ * Returns: (transfer full): a new #CdnExpansionContext
+ *
+ */
 CdnExpansionContext *
 cdn_expansion_context_new (CdnExpansionContext *parent)
 {
@@ -79,6 +100,19 @@ cdn_expansion_context_new (CdnExpansionContext *parent)
 	return ret;
 }
 
+/**
+ * cdn_expansion_context_new_unreffed:
+ * @parent: (allow-none): a parent context
+ *
+ * Create a new expansion context with a given parent context. The
+ * corresponding context is floating, i.e. it has a reference count
+ * of 0. To correctly destroy the context, use #cdn_expansion_context_ref
+ * first and then #cdn_expansion_context_unref. You usually will want
+ * to use #cdn_expansion_context_new instead of this function.
+ *
+ * Returns: (transfer floating): a new #CdnExpansionContext
+ *
+ */
 CdnExpansionContext *
 cdn_expansion_context_new_unreffed (CdnExpansionContext *parent)
 {
@@ -90,44 +124,61 @@ cdn_expansion_context_new_unreffed (CdnExpansionContext *parent)
 	return ret;
 }
 
+/**
+ * cdn_expansion_context_ref:
+ * @context: the #CdnExpansionContext
+ *
+ * Increase the reference count of the expansion context.
+ *
+ * Returns: @context
+ *
+ */
 CdnExpansionContext *
-cdn_expansion_context_ref (CdnExpansionContext *self)
+cdn_expansion_context_ref (CdnExpansionContext *context)
 {
-	if (self)
+	if (context)
 	{
-		g_atomic_int_inc ((gint *)&self->ref_count);
+		g_atomic_int_inc ((gint *)&context->ref_count);
 	}
 
-	return self;
+	return context;
 }
 
+/**
+ * cdn_expansion_context_unref:
+ * @context: the #CdnExpansionContext
+ *
+ * Decrease the reference count of the expansion context. If the
+ * reference counts drops to 0, then the memory associated with
+ * the context is freed and @self is no longer valid.
+ */
 void
-cdn_expansion_context_unref (CdnExpansionContext *self)
+cdn_expansion_context_unref (CdnExpansionContext *context)
 {
-	if (!g_atomic_int_dec_and_test ((gint *)&self->ref_count))
+	if (!g_atomic_int_dec_and_test ((gint *)&context->ref_count))
 	{
 		return;
 	}
 
-	if (self->parent)
+	if (context->parent)
 	{
-		cdn_expansion_context_unref (self->parent);
-		self->parent = NULL;
+		cdn_expansion_context_unref (context->parent);
+		context->parent = NULL;
 	}
 
-	if (self->defines)
+	if (context->defines)
 	{
-		g_hash_table_unref (self->defines);
-		self->defines = NULL;
+		g_hash_table_unref (context->defines);
+		context->defines = NULL;
 	}
 
-	if (self->expansions)
+	if (context->expansions)
 	{
-		g_ptr_array_free (self->expansions, TRUE);
-		self->expansions = NULL;
+		g_ptr_array_free (context->expansions, TRUE);
+		context->expansions = NULL;
 	}
 
-	g_slice_free (CdnExpansionContext, self);
+	g_slice_free (CdnExpansionContext, context);
 }
 
 static GHashTable *
@@ -187,6 +238,19 @@ context_get_define (CdnExpansionContext *context,
 	return NULL;
 }
 
+/**
+ * cdn_expansion_context_increment_define:
+ * @context: the #CdnExpansionContext
+ * @name: the define name
+ * @exidx: the expansion index
+ * @num: the increment
+ *
+ * Increments a define counter, at the specified expansion index, with
+ * the corresponding increment (may be negative).
+ *
+ * Returns: the old value of the counter
+ *
+ */
 gint
 cdn_expansion_context_increment_define (CdnExpansionContext *context,
                                         gchar const         *name,
@@ -231,6 +295,15 @@ cdn_expansion_context_increment_define (CdnExpansionContext *context,
 	return ret;
 }
 
+/**
+ * cdn_expansion_context_add_define:
+ * @context: the #CdnExpansionContext
+ * @name: the define name
+ * @value: the define value
+ *
+ * Define a new value with the specified name in the expansion context.
+ *
+ */
 void
 cdn_expansion_context_add_define (CdnExpansionContext *context,
                                   gchar const         *name,
@@ -259,6 +332,15 @@ ensure_expansions (CdnExpansionContext *context)
 	return context->expansions;
 }
 
+
+/**
+ * cdn_expansion_context_add_expansion:
+ * @context: the #CdnExpansionContext
+ * @expansion: the expansion
+ *
+ * Add an expansion to the top of the context.
+ *
+ */
 void
 cdn_expansion_context_add_expansion (CdnExpansionContext *context,
                                      CdnExpansion        *expansion)
@@ -272,6 +354,14 @@ cdn_expansion_context_add_expansion (CdnExpansionContext *context,
 	++context->marker;
 }
 
+/**
+ * cdn_expansion_context_remove_expansion:
+ * @context: the #CdnExpansionContext
+ * @expansion: the expansion
+ *
+ * Remove the specified expansion from the context.
+ *
+ */
 void
 cdn_expansion_context_remove_expansion (CdnExpansionContext *context,
                                         CdnExpansion        *expansion)
@@ -295,7 +385,7 @@ cdn_expansion_context_remove_expansion (CdnExpansionContext *context,
  * @context: A #CdnExpansionContext
  * @expansions: (element-type CdnExpansion): A #GSList of #CdnExpansion
  *
- * Add expansions to the expansion context.
+ * Add multiple expansions to the top of the expansion context.
  *
  **/
 void
@@ -380,6 +470,9 @@ cdn_expansion_context_get_expansion (CdnExpansionContext *context,
 	return NULL;
 }
 
+/**
+ * cdn_expansion_context_calculate: (skip)
+ */
 gchar *
 cdn_expansion_context_calculate (CdnExpansionContext  *context,
                                  gchar const          *equation,
@@ -529,6 +622,17 @@ cdn_expansion_context_debug_print (CdnExpansionContext  *context,
 	g_fprintf (file, "]\n");
 }
 
+/**
+ * cdn_expansion_context_get_marker:
+ * @context: the #CdnExpansionContext
+ *
+ * Get the current marker of the context. The marker is used to determine
+ * whether or not the context has been changed. Each change increases the
+ * marker.
+ *
+ * Returns: the context marker.
+ *
+ */
 gulong
 cdn_expansion_context_get_marker (CdnExpansionContext *context)
 {
@@ -576,6 +680,16 @@ cdn_expansion_context_get_expansions (CdnExpansionContext *context)
 	return g_slist_reverse (ret);
 }
 
+/**
+ * cdn_expansion_context_shared_defines:
+ * @context: the #CdnExpansionContext
+ * @from: another #CdnExpansionContext
+ *
+ * Use the defines from @from as a shared set of defines
+ * in @context. When new defines are added to @context, these
+ * defines will also appear in @from and vice versa.
+ *
+ */
 void
 cdn_expansion_context_shared_defines (CdnExpansionContext *context,
                                       CdnExpansionContext *from)
@@ -631,6 +745,15 @@ cdn_expansion_context_foreach_define (CdnExpansionContext *context,
 	}
 }
 
+/**
+ * cdn_expansion_context_get_parent:
+ * @context: the #CdnParserContext
+ *
+ * Get the parent context of @context.
+ *
+ * Returns: the parent context or %NULL.
+ *
+ */
 CdnExpansionContext *
 cdn_expansion_context_get_parent (CdnExpansionContext *context)
 {
@@ -683,6 +806,14 @@ copy_define (gchar const  *name,
 	}
 }
 
+/**
+ * cdn_expansion_context_add_defines:
+ * @context: the #CdnExpansionContext
+ * @defines: the defines to add
+ *
+ * Add multiple defines from a hash table to the defines of @context.
+ *
+ */
 void
 cdn_expansion_context_add_defines (CdnExpansionContext *context,
                                    GHashTable          *defines)
@@ -749,6 +880,14 @@ do_merge (CdnExpansionContext *context,
 	++context->marker;
 }
 
+/**
+ * cdn_expansion_context_merge:
+ * @context: the #CdnExpansionContext
+ * @other: another #CdnExpansionContext
+ *
+ * Merge the content of @other into @context.
+ *
+ */
 void
 cdn_expansion_context_merge (CdnExpansionContext *context,
                              CdnExpansionContext *other)
@@ -811,6 +950,14 @@ cdn_expansion_context_merge (CdnExpansionContext *context,
 	g_slist_free (p1);
 }
 
+/**
+ * cdn_expansion_context_truncate:
+ * @context: the #CdnExpansionContext
+ * @parent: the parent #CdnExpansionContext
+ *
+ * Truncate @context to contain only parent contexts up to @parent.
+ *
+ */
 void
 cdn_expansion_context_truncate (CdnExpansionContext *context,
                                 CdnExpansionContext *parent)

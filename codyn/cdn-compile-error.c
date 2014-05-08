@@ -36,8 +36,24 @@ struct _CdnCompileErrorPrivate
 	CdnExpression *expression;
 };
 
+/**
+ * CdnCompileError:
+ *
+ * Compile error message container.
+ *
+ * Object used to store information on expression compile errors.
+ */
+
 G_DEFINE_TYPE (CdnCompileError, cdn_compile_error, G_TYPE_OBJECT)
 
+/**
+ * cdn_compile_error_type_quark:
+ *
+ * Get the compile error type quark
+ *
+ * Returns: the #GQuark for compile error types
+ *
+ */
 GQuark
 cdn_compile_error_type_quark ()
 {
@@ -400,6 +416,15 @@ cdn_compile_error_get_message (CdnCompileError *error)
 	return error->priv->error ? error->priv->error->message : "Unknown";
 }
 
+/**
+ * cdn_compile_error_get_formatted_string:
+ * @error: the #CdnCompileError
+ *
+ * Get information about the compile error as a human readable formatted string.
+ *
+ * Returns: (transfer full): the formatted error message
+ *
+ */
 gchar *
 cdn_compile_error_get_formatted_string (CdnCompileError *error)
 {

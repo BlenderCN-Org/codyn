@@ -37,6 +37,15 @@ G_BEGIN_DECLS
 #define CDN_IS_NODE_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CDN_TYPE_NODE))
 #define CDN_NODE_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CDN_TYPE_NODE, CdnNodeClass))
 
+/**
+ * CdnNodeError:
+ * @CDN_NODE_ERROR_CHILD_ALREADY_EXISTS: child already exists
+ * @CDN_NODE_ERROR_CHILD_DOES_NOT_EXIST: child does not exist
+ * @CDN_NODE_ERROR_CHILD_IN_USE: child in use
+ * @CDN_NODE_ERROR_NUM: num
+ *
+ * Node error codes.
+ */
 typedef enum
 {
 	CDN_NODE_ERROR_CHILD_ALREADY_EXISTS,
@@ -81,7 +90,7 @@ struct _CdnNodeClass
 	                                GError    **error);
 
 	gboolean      (*verify_remove_child) (CdnNode   *node,
-	                                      CdnObject  *object,
+	                                      CdnObject  *child,
 	                                      GError    **error);
 
 	GSList const *(*get_children)  (CdnNode   *node);

@@ -84,6 +84,14 @@ enum
 
 static gulong signals[NUM_SIGNALS];
 
+/**
+ * cdn_variable_interface_error_quark:
+ *
+ * Get the error quark for the variable interface error type.
+ *
+ * Returns: a #GQuark for the variable interface error type
+ *
+ */
 GQuark
 cdn_variable_interface_error_quark (void)
 {
@@ -568,6 +576,16 @@ cdn_variable_interface_get_names (CdnVariableInterface *iface)
 	return (gchar **)g_ptr_array_free (ptr, FALSE);
 }
 
+/**
+ * cdn_variable_interface_implements:
+ * @iface: the #CdnVariableInterface
+ * @name: the name
+ *
+ * Get whether the variable interface implements a variable with the given name.
+ *
+ * Returns: %TRUE if implemented, %FALSE otherwise
+ *
+ */
 gboolean
 cdn_variable_interface_implements (CdnVariableInterface *iface,
                                    gchar const          *name)
@@ -578,7 +596,16 @@ cdn_variable_interface_implements (CdnVariableInterface *iface,
 	return g_hash_table_lookup (iface->priv->properties, name) != NULL;
 }
 
-
+/**
+ * cdn_variable_interface_lookup_child_name:
+ * @iface: the #CdnVariableInterface
+ * @name: the variable name
+ *
+ * Lookup the name of the child for which @name provides an interface.
+ *
+ * Returns: the child name.
+ *
+ */
 gchar const *
 cdn_variable_interface_lookup_child_name (CdnVariableInterface  *iface,
                                           gchar const           *name)
@@ -598,6 +625,16 @@ cdn_variable_interface_lookup_child_name (CdnVariableInterface  *iface,
 	return prop->child_name;
 }
 
+/**
+ * cdn_variable_interface_lookup_variable_name:
+ * @iface: the #CdnVariableInterface
+ * @name: the variable name
+ *
+ * Lookup the name of the child variable for which @name provides an interface.
+ *
+ * Returns: the child variable name.
+ *
+ */
 gchar const *
 cdn_variable_interface_lookup_variable_name (CdnVariableInterface *iface,
                                              gchar const          *name)

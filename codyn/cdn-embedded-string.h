@@ -41,6 +41,17 @@ typedef struct _CdnEmbeddedString		CdnEmbeddedString;
 typedef struct _CdnEmbeddedStringClass		CdnEmbeddedStringClass;
 typedef struct _CdnEmbeddedStringPrivate	CdnEmbeddedStringPrivate;
 
+/**
+ * CdnEmbeddedStringNodeType:
+ * @CDN_EMBEDDED_STRING_NODE_TEXT: text
+ * @CDN_EMBEDDED_STRING_NODE_EQUATION: equation
+ * @CDN_EMBEDDED_STRING_NODE_INDIRECTION: indirection
+ * @CDN_EMBEDDED_STRING_NODE_REDUCE: reduce
+ * @CDN_EMBEDDED_STRING_NODE_MAP: map
+ * @CDN_EMBEDDED_STRING_NODE_CONDITION: condition
+ *
+ * Types of embedded string nodes.
+ */
 typedef enum
 {
 	CDN_EMBEDDED_STRING_NODE_TEXT,
@@ -65,6 +76,13 @@ struct _CdnEmbeddedStringClass
 	GObjectClass parent_class;
 };
 
+/**
+ * CdnEmbeddedStringError:
+ * @CDN_EMBEDDED_STRING_ERROR_BRACES: non matching braces
+ * @CDN_EMBEDDED_STRING_ERROR_INVALID_EXPANSION: invalid expansion
+ *
+ * Embedded string error codes.
+ */
 typedef enum
 {
 	CDN_EMBEDDED_STRING_ERROR_BRACES,

@@ -80,6 +80,14 @@ typedef enum
 	CDN_NETWORK_LOAD_ERROR_LINK_LIBRARY
 } CdnNetworkLoadError;
 
+/**
+ * CdnNetworkFormat:
+ * @CDN_NETWORK_FORMAT_UNKNOWN: unknown
+ * @CDN_NETWORK_FORMAT_CDN: codyn modeling language
+ * @CDN_NETWORK_FORMAT_XML: xml
+ *
+ * The loaded network format.
+ */
 typedef enum
 {
 	CDN_NETWORK_FORMAT_UNKNOWN,
@@ -89,6 +97,13 @@ typedef enum
 
 #define CDN_NETWORK_ERROR (cdn_network_error_quark ())
 
+/**
+ * CdnNetworkError:
+ * @CDN_NETWORK_ERROR_UNOWNED_TEMPLATE: unowned template
+ * @CDN_NETWORK_ERROR_NUM: num
+ *
+ * Network error codes.
+ */
 typedef enum
 {
 	CDN_NETWORK_ERROR_UNOWNED_TEMPLATE,

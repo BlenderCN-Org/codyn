@@ -126,6 +126,14 @@ static void on_import_parent_changed (CdnImport  *import,
                                       GParamSpec *spec,
                                       CdnNetwork *network);
 
+/**
+ * cdn_network_load_error_quark:
+ *
+ * Get the error quark for the network load error type.
+ *
+ * Returns: a #GQuark for the network load error type
+ *
+ */
 GQuark
 cdn_network_load_error_quark ()
 {
@@ -139,6 +147,14 @@ cdn_network_load_error_quark ()
 	return quark;
 }
 
+/**
+ * cdn_network_error_quark:
+ *
+ * Get the error quark for the network error type.
+ *
+ * Returns: a #GQuark for the network error type
+ *
+ */
 GQuark
 cdn_network_error_quark ()
 {
@@ -1719,6 +1735,14 @@ cdn_init_real ()
 	cdn_network_xml_init ();
 }
 
+/**
+ * cdn_init:
+ *
+ * Global codyn library initialization. This initializes the gobject type
+ * system, debugging and input/output modules. Note that you normally do not need
+ * to call this as it codyn initializes automatically on first use. This function
+ * can be called multiple times and will only initialize once.
+ */
 void
 cdn_init ()
 {

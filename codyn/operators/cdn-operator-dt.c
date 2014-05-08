@@ -313,6 +313,14 @@ cdn_operator_dt_init (CdnOperatorDt *self)
 	self->priv = CDN_OPERATOR_DT_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_dt_new:
+ *
+ * Create a new dt operator
+ *
+ * Returns: (transfer full): a new dt operator
+ *
+ */
 CdnOperatorDt *
 cdn_operator_dt_new ()
 {

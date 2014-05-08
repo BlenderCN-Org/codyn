@@ -696,6 +696,14 @@ cdn_operator_pdiff_init (CdnOperatorPDiff *self)
 	self->priv = CDN_OPERATOR_PDIFF_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_pdiff_new:
+ *
+ * Create a new pdiff operator
+ *
+ * Returns: (transfer full): a new pdiff operator
+ *
+ */
 CdnOperatorPDiff *
 cdn_operator_pdiff_new ()
 {

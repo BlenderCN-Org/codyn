@@ -79,6 +79,14 @@ static guint signals[NUM_SIGNALS] = {0,};
 
 static gboolean use_rand_as_argument = FALSE;
 
+/**
+ * cdn_function_error_quark:
+ *
+ * Get the function error type quark.
+ *
+ * Returns: a #GQuark for the function error type.
+ *
+ */
 GQuark
 cdn_function_error_quark (void)
 {
@@ -2212,6 +2220,15 @@ cdn_function_get_argument (CdnFunction *function,
 	return g_hash_table_lookup (function->priv->arguments_hash, name);
 }
 
+/**
+ * cdn_function_get_stack_manipulation:
+ * @function: the #CdnFunction
+ *
+ * Get the stack manipulation of the function (i.e. when called)
+ *
+ * Returns: (transfer none): the stack manipulation
+ *
+ */
 CdnStackManipulation const *
 cdn_function_get_stack_manipulation (CdnFunction *function)
 {
@@ -2268,6 +2285,15 @@ cdn_function_get_derivative (CdnFunction                       *function,
 	                                                          error);
 }
 
+/**
+ * cdn_function_set_rand_as_argument:
+ * @rand_as_argument: rand as argument
+ *
+ * Sets whether random number instructions in functions are passed by argument.
+ * This should be set before parsing any expressions since it alters the
+ * state globally. If set, random instructions in function expressions are promoted
+ * to arguments in the function call.
+ */
 void
 cdn_function_set_rand_as_argument (gboolean rand_as_argument)
 {

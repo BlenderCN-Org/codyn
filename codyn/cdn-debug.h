@@ -3,6 +3,17 @@
 
 #include <glib.h>
 
+/**
+ * CdnDebugSection:
+ * @CDN_DEBUG_LINSOLVE: linsolve
+ * @CDN_DEBUG_DIFF: diff
+ * @CDN_DEBUG_SIMPLIFY: simplify
+ * @CDN_DEBUG_IO: io
+ * @CDN_DEBUG_MATH: math
+ * @CDN_DEBUG_INTEGRATOR: integrator
+ *
+ * Various levels of debugging.
+ */
 typedef enum
 {
 	CDN_DEBUG_LINSOLVE = 1 << (G_LOG_LEVEL_USER_SHIFT + 0),

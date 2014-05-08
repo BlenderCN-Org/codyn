@@ -9,6 +9,15 @@
 
 G_BEGIN_DECLS
 
+/**
+ * CdnExpressionTreeIterDeriveFlags:
+ * @CDN_EXPRESSION_TREE_ITER_DERIVE_NONE: none
+ * @CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL: partial
+ * @CDN_EXPRESSION_TREE_ITER_DERIVE_TIME: time
+ * @CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY: simplify
+ *
+ * Flags for tree iter derivation.
+ */
 typedef enum
 {
 	CDN_EXPRESSION_TREE_ITER_DERIVE_NONE = 0,
@@ -19,6 +28,14 @@ typedef enum
 
 #define CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR (cdn_expression_tree_iter_derive_error_quark ())
 
+/**
+ * CdnExpressionTreeIterDeriveError:
+ * @CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED: unsupported
+ * @CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_INVALID: invalid
+ * @CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_FUNCTION: function
+ *
+ * Tree iter derivation errors.
+ */
 typedef enum
 {
 	CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
@@ -40,7 +57,7 @@ CdnExpressionTreeIter *cdn_expression_tree_iter_copy            (CdnExpressionTr
 void                   cdn_expression_tree_iter_free            (CdnExpressionTreeIter *iter);
 
 void                   cdn_expression_tree_iter_set_num_children (CdnExpressionTreeIter *iter,
-                                                                  gint                   i);
+                                                                  gint                   num);
 
 void                   cdn_expression_tree_iter_swap_children   (CdnExpressionTreeIter *iter,
                                                                  gint                   first,
@@ -77,11 +94,11 @@ gboolean               cdn_expression_tree_iter_equal           (CdnExpressionTr
                                                                  gboolean               asstring);
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_solve_for       (CdnExpressionTreeIter  *iter,
-                                                                 CdnVariable            *prop,
+                                                                 CdnVariable            *variable,
                                                                  GError                **error);
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_substitute      (CdnExpressionTreeIter *iter,
-                                                                 CdnVariable           *property,
+                                                                 CdnVariable           *variable,
                                                                  CdnExpressionTreeIter *subst);
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_substitute_hash (CdnExpressionTreeIter *iter,

@@ -23,6 +23,15 @@
 #include "cdn-annotatable.h"
 #include "cdn-enum-types.h"
 
+/**
+ * CdnAnnotationInfo:
+ *
+ * Annotation information
+ *
+ * #CdnAnnotationInfo contains information about annotations in the codyn
+ * modeling language.
+ */
+
 struct _CdnAnnotationInfo
 {
 	gchar *annotation;

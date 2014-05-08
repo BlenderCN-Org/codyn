@@ -768,6 +768,14 @@ cdn_operator_linsolve_init (CdnOperatorLinsolve *self)
 	self->priv = CDN_OPERATOR_LINSOLVE_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_linsolve_new:
+ *
+ * Create a new linsolve operator
+ *
+ * Returns: (transfer full): a new linsolve operator
+ *
+ */
 CdnOperatorLinsolve *
 cdn_operator_linsolve_new ()
 {

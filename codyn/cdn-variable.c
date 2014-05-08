@@ -1102,6 +1102,15 @@ cdn_variable_remove_flags (CdnVariable      *variable,
 	set_flags (variable, variable->priv->flags & ~flags, TRUE);
 }
 
+/**
+ * cdn_variable_clear_update:
+ * @variable: A #CdnVariable
+ *
+ * Clear the update value of a variable. The update value is used to store the
+ * result of differential equations on the variable. You normally do not need
+ * to use this function.
+ *
+ */
 void
 cdn_variable_clear_update (CdnVariable *variable)
 {
@@ -1348,6 +1357,15 @@ find_interfaced (CdnObject    *object,
 	return NULL;
 }
 
+/**
+ * cdn_variable_get_full_name_for_display:
+ * @variable: A #CdnVariable
+ *
+ * Get the full name of the variable ready for user display.
+ *
+ * Returns: (transfer full): the full name for display
+ *
+ */
 gchar *
 cdn_variable_get_full_name_for_display (CdnVariable *variable)
 {
@@ -1499,6 +1517,15 @@ cdn_variable_get_actions (CdnVariable *variable)
 	                                              NULL));
 }
 
+/**
+ * cdn_variable_has_actions:
+ * @variable: the #CdnVariable
+ *
+ * Get whether there are and edge actions acting on @variable.
+ *
+ * Returns: %TRUE if @variable has any actions, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_variable_has_actions (CdnVariable *variable)
 {
@@ -1544,14 +1571,23 @@ cdn_variable_has_actions (CdnVariable *variable)
 	return FALSE;
 }
 
+/**
+ * cdn_variable_set_derivative:
+ * @variable: the #CdnVariable
+ * @derivative: (allow-none): the derivative
+ *
+ * Set @derivative to be the variable representing the
+ * derivative of @variable.
+ *
+ */
 void
 cdn_variable_set_derivative (CdnVariable *variable,
-                             CdnVariable *diffprop)
+                             CdnVariable *derivative)
 {
 	g_return_if_fail (CDN_IS_VARIABLE (variable));
-	g_return_if_fail (diffprop == NULL || CDN_IS_VARIABLE (diffprop));
+	g_return_if_fail (derivative == NULL || CDN_IS_VARIABLE (derivative));
 
-	set_diff_of (variable, diffprop);
+	set_diff_of (variable, derivative);
 }
 
 /**
@@ -1647,6 +1683,16 @@ cdn_variable_compile (CdnVariable       *variable,
 	return ret;
 }
 
+/**
+ * cdn_variable_has_flag:
+ * @variable: the #CdnVariable
+ * @flags: the flags
+ *
+ * Check whether @variable has the flags specified by @flags.
+ *
+ * Returns: %TRUE if @variable has the flags @flags, %FALSE otherwise
+ *
+ */
 gboolean
 cdn_variable_has_flag (CdnVariable      *variable,
                        CdnVariableFlags  flags)

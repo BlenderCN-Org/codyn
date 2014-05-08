@@ -49,11 +49,11 @@ typedef struct _CdnFunctionPrivate  CdnFunctionPrivate;
 /**
  * CdnFunctionError:
  * @CDN_FUNCTION_ERROR_UNKNOWN: unknown
- * @CDN_FUNCTION_ERROR_ARGUMENT_NOT_FOUND: property not found
+ * @CDN_FUNCTION_ERROR_ARGUMENT_NOT_FOUND: argument not found
  * @CDN_FUNCTION_NUM_ERRORS: num errors
  *
- *
- **/
+ * Function error codes.
+ */
 typedef enum
 {
 	CDN_FUNCTION_ERROR_UNKNOWN,

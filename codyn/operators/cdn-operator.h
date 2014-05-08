@@ -46,6 +46,13 @@ typedef struct _CdnOperatorPrivate	CdnOperatorPrivate;
 
 #define CDN_OPERATOR_ERROR (cdn_operator_error_quark ())
 
+/**
+ * CdnOperatorError:
+ * CDN_OPERATOR_ERROR_UNSUPPORTED: unsupported
+ * CDN_OPERATOR_ERROR_INVALID: invalid
+ *
+ * Operator error codes.
+ */
 typedef enum
 {
 	CDN_OPERATOR_ERROR_UNSUPPORTED,

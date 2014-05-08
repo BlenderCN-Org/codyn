@@ -17,6 +17,17 @@ struct _CdnIoMethodPrivate
 	gchar *path;
 };
 
+/**
+ * CdnIoMethod:
+ *
+ * Dynamic IO module loader.
+ *
+ * #CdnIoMethod is a dynamic loader for loading codyn IO modules. IO modules
+ * in codyn allow for extension of reading/writing input/output capabilities.
+ * libcodyn itself implements two such IO modules by itself, for reading files
+ * and for connecting dynamical systems over the network (using either TCP or UDP).
+ */
+
 G_DEFINE_TYPE (CdnIoMethod, cdn_io_method, G_TYPE_TYPE_MODULE)
 
 enum
@@ -147,6 +158,18 @@ cdn_io_method_init (CdnIoMethod *self)
 	self->priv = CDN_IO_METHOD_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_io_method_new:
+ * @path: the dynamic module path
+ *
+ * Create a new dynamic io method module to be loaded from the specified
+ * path. @path should point to a dynamically loadable module. After construction,
+ * use #cdn_io_method_find to obtain a #GType of the dynamically loaded #CdnIo
+ * class corresponding to a particular IO mode.
+ *
+ * Returns: (transfer full): a new #CdnIoMethod.
+ *
+ */
 CdnIoMethod *
 cdn_io_method_new (gchar const *path)
 {
@@ -265,6 +288,20 @@ find_type_init_func (gchar const *name,
 	return ret;
 }
 
+/**
+ * cdn_io_method_find:
+ * @name: the io name
+ * @mode: the io mode
+ *
+ * Find the #GType of the class corresponding to @name, implementing
+ * the IO mode @mode. This function will look for the dynamic symbol
+ * cdn_input_{name}_get_type, cdn_output_{name}_get_type or
+ * cdn_io_{name}_get_type, depending on whether the @mode is respectively
+ * #CDN_IO_MODE_INPUT, #CDN_IO_MODE_OUTPUT or #CDN_IO_MODE_INPUT_OUTPUT.
+ *
+ * Returns: the corresponding #GType or #G_TYPE_INVALID if not found.
+ *
+ */
 GType
 cdn_io_method_find (gchar const *name,
                     CdnIoMode    mode)
@@ -389,6 +426,18 @@ load_all_io_methods ()
 	g_free (path);
 }
 
+/**
+ * cdn_io_method_initialize:
+ *
+ * Load all io modules in the io module search directories. The directories being searched
+ * are:
+ *
+ * 1. $CDN_IO_METHODS environment variable
+ * 2. $XDG_DATA_HOME/codyn-3.0/io
+ * 3. $XDG_DATA_DIRS/codyn-3.0/io
+ * 4. INSTALL/data/codyn-3.0/io
+ *
+ */
 void
 cdn_io_method_initialize ()
 {

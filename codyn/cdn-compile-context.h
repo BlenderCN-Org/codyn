@@ -41,15 +41,6 @@ typedef struct _CdnCompileContext		CdnCompileContext;
 typedef struct _CdnCompileContextClass		CdnCompileContextClass;
 typedef struct _CdnCompileContextPrivate	CdnCompileContextPrivate;
 
-/**
- * CdnCompileContext:
- *
- * The expression compile context
- *
- * The compile context provides information for compiling expressions such
- * as the available user defined functions and the objects that can be used
- * to lookup properties used in the expression.
- */
 struct _CdnCompileContext
 {
 	/*< private >*/
@@ -82,15 +73,15 @@ void cdn_compile_context_prepend_function (CdnCompileContext *context,
 void cdn_compile_context_append_function (CdnCompileContext *context,
                                           CdnFunctionForward *function);
 
-void cdn_compile_context_set_function_ref_priority (CdnCompileContext *context,
-                                                    gboolean           prio);
+void _cdn_compile_context_set_function_ref_priority (CdnCompileContext *context,
+                                                     gboolean           prio);
 
-gboolean cdn_compile_context_get_function_ref_priority (CdnCompileContext *context);
+gboolean _cdn_compile_context_get_function_ref_priority (CdnCompileContext *context);
 
-void cdn_compile_context_set_function_arg_priority (CdnCompileContext *context,
-                                                    gboolean           prio);
+void _cdn_compile_context_set_function_arg_priority (CdnCompileContext *context,
+                                                     gboolean           prio);
 
-gboolean cdn_compile_context_get_function_arg_priority (CdnCompileContext *context);
+gboolean _cdn_compile_context_get_function_arg_priority (CdnCompileContext *context);
 
 CdnVariableForward *
 cdn_compile_context_lookup_variable (CdnCompileContext *context,

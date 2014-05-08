@@ -27,6 +27,44 @@
 CdnDimension cdn_dimension_one = {{.dims = {1, 1}}};
 CdnDimension *cdn_dimension_onep = &cdn_dimension_one;
 
+/**
+ * CdnDimension:
+ *
+ * A dimension
+ *
+ * #CdnDimension represents a rows-by-columns dimension.
+ *
+ */
+
+/**
+ * CdnStackArg:
+ *
+ * A stack argument.
+ *
+ * #CdnStackArg represents a single argument on the stack. It carries
+ * information about the dimensionality of the argument.
+ */
+
+/**
+ * CdnStackArgs:
+ *
+ * List of stack arguments
+ *
+ * #CdnStackArgs contains a list of #CdnStackArg.
+ *
+ */
+
+/**
+ * CdnStackManipulation:
+ *
+ * Stack manipulation information
+ *
+ * #CdnStackManipulation contains information on how a particular instruction
+ * or function manipulates the stack. It encodes both how many elements are popped
+ * as well as pushed onto the stack when executed.
+ *
+ */
+
 // Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
 // understand
 GType
@@ -44,6 +82,12 @@ cdn_stack_get_type ()
 	return gtype;
 }
 
+/**
+ * cdn_stack_arg_destroy:
+ * @arg: the #CdnStackArg
+ *
+ * Destroy a stack allocated stack arg.
+ */
 void
 cdn_stack_arg_destroy (CdnStackArg *arg)
 {
@@ -262,6 +306,15 @@ cdn_stack_copy (CdnStack *stack)
 	return ret;
 }
 
+/**
+ * cdn_stack_resize:
+ * @stack: the #CdnStack
+ * @size: the new size
+ *
+ * Resize the stack to have a capacity of @size. Note that this destroys
+ * the contents of the stack if the new size is different from the old
+ * size of the stack.
+ */
 void
 cdn_stack_resize (CdnStack *stack,
                   guint     size)
@@ -373,6 +426,18 @@ cdn_stack_pop (CdnStack *stack)
 	return *(--stack->output_ptr);
 }
 
+/**
+ * cdn_stack_popn:
+ * @stack: the #CdnStack
+ * @num: the number of elements to pop
+ *
+ * Pop a number of values from the stack at once. Note: this function does not
+ * check whether there are @num values to pop in the first place. Be sure to either
+ * know, or check the stack yourself.
+ *
+ * Returns: the last value on the stack
+ *
+ */
 gdouble *
 cdn_stack_popn (CdnStack *stack,
                 gint      num)
@@ -398,12 +463,33 @@ cdn_stack_at (CdnStack *stack,
 	return stack->output[idx];
 }
 
+/**
+ * cdn_stack_peek:
+ * @stack: the #CdnStack
+ *
+ * Peek at the last value on the stack. Note that this does not check whether the
+ * stack actually contains a value. It is up to the caller to make sure a value
+ * exists before peeking.
+ *
+ * Returns: the last value on the stack.
+ *
+ */
 gdouble
 cdn_stack_peek (CdnStack *stack)
 {
 	return *(stack->output_ptr - 1);
 }
 
+/**
+ * cdn_stack_set:
+ * @stack: the #CdnStack
+ * @value: a value
+ *
+ * Set the last value on the stack to a value. Note that this does not check whether the
+ * stack actually contains a value. It is up to the caller to make sure a value
+ * exists before setting its value.
+ *
+ */
 void
 cdn_stack_set (CdnStack *stack,
                gdouble   value)
@@ -424,6 +510,16 @@ cdn_stack_reset (CdnStack *stack)
 	stack->output_ptr = stack->output;
 }
 
+/**
+ * cdn_stack_set_at:
+ * @stack: the #CdnStack
+ * @idx: the index
+ * @value: a value
+ *
+ * Set the value if the specified indexed item (from the start!) on the stack to a value.
+ * Note that this does not check whether @idx is a valid location on the stack.
+ *
+ */
 void
 cdn_stack_set_at (CdnStack *stack,
                   gint      idx,
@@ -432,18 +528,43 @@ cdn_stack_set_at (CdnStack *stack,
 	stack->output[idx] = value;
 }
 
+/**
+ * cdn_stack_ptr:
+ * @stack: the #CdnStack
+ *
+ * Get the stack pointer pointing to the start of the stack.
+ *
+ * Returns: (transfer none): the stack pointer
+ *
+ */
 gdouble *
 cdn_stack_ptr (CdnStack *stack)
 {
 	return stack->output;
 }
 
+/**
+ * cdn_stack_output_ptr:
+ * @stack: the #CdnStack
+ *
+ * Get the stack pointer pointing to the last value of the stack.
+ *
+ * Returns: (transfer none): the stack pointer
+ *
+ */
 gdouble *
 cdn_stack_output_ptr (CdnStack *stack)
 {
 	return stack->output_ptr;
 }
 
+/**
+ * cdn_stack_set_output_ptr:
+ * @stack: the #CdnStack
+ * @ptr: the new output pointer
+ *
+ * Set the output pointer (i.e. the position of the stack) of the stack.
+ */
 void
 cdn_stack_set_output_ptr (CdnStack *stack,
                           gdouble  *ptr)
@@ -455,6 +576,14 @@ cdn_stack_set_output_ptr (CdnStack *stack,
 	}
 }
 
+/**
+ * cdn_stack_pushn:
+ * @stack: the #CdnStack
+ * @values: (array length=num): the values to push
+ * @num: the number of values
+ *
+ * Push one or more values on the stack.
+ */
 void
 cdn_stack_pushn (CdnStack      *stack,
                  gdouble const *values,
@@ -464,6 +593,14 @@ cdn_stack_pushn (CdnStack      *stack,
 	stack->output_ptr += num;
 }
 
+/**
+ * cdn_stack_pushni:
+ * @stack: the #CdnStack
+ * @value: the value to push
+ * @num: the number of times to push the value
+ *
+ * Push the same value one or more times on the stack.
+ */
 void
 cdn_stack_pushni (CdnStack *stack,
                   gdouble   value,
@@ -513,6 +650,12 @@ cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip)
 	return &smanip->pop;
 }
 
+/**
+ * cdn_stack_args_get_num:
+ * @args: the #CdnStackArgs
+ *
+ * Get the number of arguments in @args.
+ */
 guint
 cdn_stack_args_get_num (CdnStackArgs const *args)
 {
@@ -537,6 +680,14 @@ cdn_stack_manipulation_get_push (CdnStackManipulation const *smanip)
 	return &smanip->push;
 }
 
+/**
+ * cdn_stack_arg_copy:
+ * @ret: (out): the return value of the copied stack arg
+ * @src: the source stack arg to copy
+ *
+ * Copy the stack arg @src into the stack arg @ret.
+ *
+ */
 void
 cdn_stack_arg_copy (CdnStackArg       *ret,
                     CdnStackArg const *src)
@@ -545,12 +696,25 @@ cdn_stack_arg_copy (CdnStackArg       *ret,
 	ret->columns = src->columns;
 }
 
+/**
+ * cdn_stack_arg_size:
+ * @arg: the #CdnStackArg
+ *
+ * Get the size (total number of elements) of @arg.
+ */
 guint
 cdn_stack_arg_size (CdnStackArg const *arg)
 {
 	return arg ? arg->rows * arg->columns : 1;
 }
 
+/**
+ * cdn_stack_args_destroy:
+ * @args: the #CdnStackArgs
+ *
+ * Destroy the contents of the provided stack args. Note that this does
+ * not free the memory of @args itself.
+ */
 void
 cdn_stack_args_destroy (CdnStackArgs *args)
 {
@@ -572,6 +736,13 @@ cdn_stack_args_destroy (CdnStackArgs *args)
 	args->num = 0;
 }
 
+/**
+ * cdn_stack_manipulation_destroy:
+ * @smanip: the #CdnStackManipulation
+ *
+ * Destroy the contents of the provided stack manipulation. Note that this does
+ * not free the memory of @smanip itself.
+ */
 void
 cdn_stack_manipulation_destroy (CdnStackManipulation *smanip)
 {
@@ -584,6 +755,18 @@ cdn_stack_manipulation_destroy (CdnStackManipulation *smanip)
 	cdn_stack_arg_destroy (&smanip->push);
 }
 
+/**
+ * cdn_stack_args_new:
+ * @num: the number of arguments
+ *
+ * Create a new #CdnStackArgs and allocate @num arguments. The arguments
+ * initially have dimension 1-by-1. It is also possible to allocate
+ * #CdnStackArgs on the stack to avoid allocations. To do so, please
+ * use #cdn_stack_args_init to initialize the stack allocated #CdnStackArgs
+ * appropriately.
+ *
+ * Returns: (transfer full): a new #CdnStackArgs
+ */
 CdnStackArgs *
 cdn_stack_args_new (gint num)
 {
@@ -602,6 +785,14 @@ cdn_stack_args_new (gint num)
 	return ret;
 }
 
+/**
+ * cdn_stack_args_init:
+ * @args: the #CdnStackArgs
+ * @num: the number of arguments
+ *
+ * Initializes @args to contain @num arguments. Note that the dimensionality
+ * of the arguments is initially unspecified and should be set accordingly.
+ */
 void
 cdn_stack_args_init (CdnStackArgs *args,
                      gint          num)
@@ -610,6 +801,13 @@ cdn_stack_args_init (CdnStackArgs *args,
 	args->args = g_new0 (CdnStackArg, num);
 }
 
+/**
+ * cdn_stack_args_append:
+ * @args: the #CdnStackArgs
+ * @arg: the #CdnStackArg to add
+ *
+ * Append @arg to the arguments of @args.
+ */
 void
 cdn_stack_args_append (CdnStackArgs      *args,
                        CdnStackArg const *arg)
@@ -631,6 +829,13 @@ cdn_stack_args_append (CdnStackArgs      *args,
 	cdn_stack_arg_copy (&args->args[args->num - 1], arg);
 }
 
+/**
+ * cdn_stack_args_copy:
+ * @dest: (out): the destination #CdnStackArgs
+ * @src: the source #CdnStackArgs
+ *
+ * Copy the stack args from @src to @dest.
+ */
 void
 cdn_stack_args_copy (CdnStackArgs       *dest,
                      CdnStackArgs const *src)
@@ -648,6 +853,13 @@ cdn_stack_args_copy (CdnStackArgs       *dest,
 	dest->args = g_memdup (src->args, sizeof (CdnStackArg) * dest->num);
 }
 
+/**
+ * cdn_stack_manipulation_copy:
+ * @dest: (out): the destination #CdnStackManipulation
+ * @src: the source #CdnStackManipulation
+ *
+ * Copy the stack manipulation from @src to @dest.
+ */
 void
 cdn_stack_manipulation_copy (CdnStackManipulation       *dest,
                              CdnStackManipulation const *src)

@@ -169,6 +169,18 @@ enum
 
 static guint signals[NUM_SIGNALS];
 
+/**
+ * CdnParserContext:
+ *
+ * Modeling language parsing context.
+ *
+ * #CdnParsercontext is a class which implements a context for the codyn
+ * modeling language. During parsing of codyn model files, API on the parser
+ * context is called to construct the network. The context is responsible
+ * for keeping track of the parser state as well as constructing the actual
+ * objects, nodes and edges.
+ */
+
 G_DEFINE_TYPE (CdnParserContext, cdn_parser_context, G_TYPE_OBJECT)
 
 enum
@@ -563,6 +575,18 @@ cdn_parser_context_init (CdnParserContext *self)
 	                                       cdn_expansion_context_new (NULL));
 }
 
+/**
+ * cdn_parser_context_new:
+ * @network: a #CdnNetwork
+ *
+ * Create a new parser context for @network. Initially, the parser does not contain
+ * any input and hence will not parser anything. Use #cdn_parser_context_push_input
+ * and #cdn_parser_context_push_input_from_path to push new input sources into
+ * the parser.
+ *
+ * Returns: (transfer full): a new #CdnParserContext
+ *
+ */
 CdnParserContext *
 cdn_parser_context_new (CdnNetwork *network)
 {
@@ -2360,6 +2384,9 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 	g_object_unref (property_name);
 }
 
+/**
+ * cdn_parser_context_set_error: (skip)
+ */
 void
 cdn_parser_context_set_error (CdnParserContext *context,
                               gchar const      *message)
@@ -3590,6 +3617,9 @@ cdn_parser_context_push_node (CdnParserContext  *context,
 	free_multi_array_list (templates);
 }
 
+/**
+ * cdn_parser_context_set_node_state: (skip)
+ */
 void
 cdn_parser_context_set_node_state (CdnParserContext  *context,
                                    GPtrArray         *states)
@@ -4359,6 +4389,9 @@ cdn_parser_context_push_selector (CdnParserContext *context,
 		                 selector);
 }
 
+/**
+ * cdn_parser_context_push_selector_define_context: (skip)
+ */
 void
 cdn_parser_context_push_selector_define_context (CdnParserContext *context,
                                                  gchar            *id)
@@ -4372,8 +4405,7 @@ cdn_parser_context_push_selector_define_context (CdnParserContext *context,
 
 /**
  * cdn_parser_context_push_selector_identifier: (skip)
- *
- **/
+ */
 void
 cdn_parser_context_push_selector_identifier (CdnParserContext  *context,
                                              CdnEmbeddedString *identifier)
@@ -4545,6 +4577,19 @@ cdn_parser_context_read (CdnParserContext *context,
 	return ret;
 }
 
+/**
+ * cdn_parser_context_parse:
+ * @context: the #CdnParserContext
+ * @push_network: whether to push the network
+ * @error: a #GError or %NULL
+ *
+ * Parse the currently pushed input. If @push_network is set to %TRUE,
+ * then the network object associated with the parser will be pushed
+ * onto the current scope.
+ *
+ * Returns: %TRUE if parsing was successful, %FALSE otherwise
+ *
+ */
 gboolean
 cdn_parser_context_parse (CdnParserContext  *context,
                           gboolean           push_network,
@@ -4626,6 +4671,17 @@ cdn_parser_context_set_column (CdnParserContext *context,
 	input->cend = end;
 }
 
+/**
+ * cdn_parser_context_get_line:
+ * @context: the #CdnParserContext
+ * @lineno: (out) (allow-none): result location for the current line
+ *
+ * Get the current line being parsed in the current input. If not
+ * %NULL, @lineno will be set to the current line number being parsed.
+ *
+ * Returns: the line being parsed
+ *
+ */
 gchar const *
 cdn_parser_context_get_line (CdnParserContext *context,
                              gint             *lineno)
@@ -4644,6 +4700,17 @@ cdn_parser_context_get_line (CdnParserContext *context,
 	return cdn_parser_context_get_line_at (context, input ? input->lineno : 0);
 }
 
+/**
+ * cdn_parser_context_get_line_at:
+ * @context: the #CdnParserContext
+ * @lineno: line number
+ *
+ * Get a line of text in the current input corresponding at the line
+ * number @lineno.
+ *
+ * Returns: the line
+ *
+ */
 gchar const *
 cdn_parser_context_get_line_at (CdnParserContext *context,
                                 gint              lineno)
@@ -4662,6 +4729,14 @@ cdn_parser_context_get_line_at (CdnParserContext *context,
 	return g_hash_table_lookup (input->lines, GINT_TO_POINTER (lineno));
 }
 
+/**
+ * cdn_parser_context_get_column:
+ * @context: the #CdnParserContext
+ * @start: (out): the column start
+ * @end: (out): the column end
+ *
+ * Get the currently parsed token column start and end
+ */
 void
 cdn_parser_context_get_column (CdnParserContext *context,
                                gint             *start,
@@ -4699,6 +4774,9 @@ cdn_parser_context_get_column (CdnParserContext *context,
 	}
 }
 
+/**
+ * cdn_parser_context_set_token: (skip)
+ */
 void
 cdn_parser_context_set_token (CdnParserContext *context,
                               gchar const      *token)
@@ -4714,6 +4792,9 @@ cdn_parser_context_set_token (CdnParserContext *context,
 	input->token = g_strdup (token);
 }
 
+/**
+ * cdn_parser_context_get_token: (skip)
+ */
 gchar const *
 cdn_parser_context_get_token (CdnParserContext *context)
 {
@@ -4722,6 +4803,9 @@ cdn_parser_context_get_token (CdnParserContext *context)
 	return CURRENT_INPUT (context)->token;
 }
 
+/**
+ * cdn_parser_context_define: (skip)
+ */
 void
 cdn_parser_context_define (CdnParserContext  *context,
                            GPtrArray         *nameptr,
@@ -4836,7 +4920,10 @@ cdn_parser_context_define (CdnParserContext  *context,
  * @stream: (allow-none): the input stream.
  * @isonce: whether only to process it once.
  *
- **/
+ * Push a new input into the context. Parsing will continue
+ * from this input.
+ *
+ */
 void
 cdn_parser_context_push_input (CdnParserContext *context,
                                GFile            *file,
@@ -5039,11 +5126,14 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 
 /**
  * cdn_parser_context_push_input_from_string:
- * @context:
- * @s:
- * @only_in_context:
+ * @context: the #CdnParserContext
+ * @s: the string to parse
+ * @only_in_context: whether to only allow parsing when in a context
  *
- **/
+ * Parse input from a string. When @only_in_context is set, then parsing
+ * will be ignored when there are is no open context.
+ *
+ */
 void
 cdn_parser_context_push_input_from_string (CdnParserContext *context,
                                            gchar const      *s,
@@ -5076,9 +5166,10 @@ cdn_parser_context_push_input_from_string (CdnParserContext *context,
 
 /**
  * cdn_parser_context_pop_input:
- * @context:
+ * @context: the #CdnParserContext
  *
- **/
+ * Pop the currently being parsed input from the context.
+ */
 void
 cdn_parser_context_pop_input (CdnParserContext *context)
 {
@@ -5140,6 +5231,9 @@ cdn_parser_context_get_file (CdnParserContext *context)
 	return NULL;
 }
 
+/**
+ * cdn_parser_context_get_start_token: (skip)
+ */
 gint
 cdn_parser_context_get_start_token (CdnParserContext *context)
 {
@@ -5148,6 +5242,9 @@ cdn_parser_context_get_start_token (CdnParserContext *context)
 	return context->priv->start_token;
 }
 
+/**
+ * cdn_parser_context_steal_start_token: (skip)
+ */
 gint
 cdn_parser_context_steal_start_token (CdnParserContext *context)
 {
@@ -5161,6 +5258,9 @@ cdn_parser_context_steal_start_token (CdnParserContext *context)
 	return ret;
 }
 
+/**
+ * cdn_parser_context_set_start_token: (skip)
+ */
 void
 cdn_parser_context_set_start_token (CdnParserContext *context,
                                     gint              token)
@@ -5199,6 +5299,9 @@ cdn_parser_context_push_annotation (CdnParserContext  *context,
 	context->priv->annotation = annotation;
 }
 
+/**
+ * cdn_parser_context_add_layout_position: (skip)
+ */
 void
 cdn_parser_context_add_layout_position (CdnParserContext  *context,
                                         CdnSelector       *selector,
@@ -5444,6 +5547,16 @@ replace_selection_object (CdnParserContext *context,
 	}
 }
 
+/**
+ * cdn_parser_context_add_integrator_variable:
+ * @context: the #CdnParserContext
+ * @name: the name
+ * @value: the value
+ *
+ * Add an integrator variable. Integrator variables are special since
+ * they correspond to specific properties of the integrator (i.e. these
+ * are not #CdnVariable).
+ */
 void
 cdn_parser_context_add_integrator_variable (CdnParserContext  *context,
                                             CdnEmbeddedString *name,
@@ -5614,6 +5727,9 @@ cdn_parser_context_pop_string (CdnParserContext *context)
 	return s;
 }
 
+/**
+ * cdn_parser_context_push_equation: (skip)
+ */
 void
 cdn_parser_context_push_equation (CdnParserContext *context)
 {
@@ -5624,6 +5740,9 @@ cdn_parser_context_push_equation (CdnParserContext *context)
 		                 GINT_TO_POINTER (1));
 }
 
+/**
+ * cdn_parser_context_push_equation_depth: (skip)
+ */
 void
 cdn_parser_context_push_equation_depth (CdnParserContext *context)
 {
@@ -5634,6 +5753,9 @@ cdn_parser_context_push_equation_depth (CdnParserContext *context)
 		GINT_TO_POINTER (GPOINTER_TO_INT (context->priv->equations->data) + 1);
 }
 
+/**
+ * cdn_parser_context_peek_equation_depth: (skip)
+ */
 gint
 cdn_parser_context_peek_equation_depth (CdnParserContext *context)
 {
@@ -5643,6 +5765,9 @@ cdn_parser_context_peek_equation_depth (CdnParserContext *context)
 	return GPOINTER_TO_INT (context->priv->equations->data);
 }
 
+/**
+ * cdn_parser_context_pop_equation_depth: (skip)
+ */
 gboolean
 cdn_parser_context_pop_equation_depth (CdnParserContext *context)
 {
@@ -5705,6 +5830,9 @@ debug_selector (CdnParserContext *context,
 	g_slist_free (orig);
 }
 
+/**
+ * cdn_parser_context_debug_selector: (skip)
+ */
 void
 cdn_parser_context_debug_selector (CdnParserContext *context,
                                    CdnSelector      *selector)
@@ -5737,6 +5865,9 @@ cdn_parser_context_debug_selector (CdnParserContext *context,
 	}
 }
 
+/**
+ * cdn_parser_context_debug_string: (skip)
+ */
 void
 cdn_parser_context_debug_string (CdnParserContext  *context,
                                  CdnEmbeddedString *s)
@@ -5786,6 +5917,9 @@ cdn_parser_context_debug_string (CdnParserContext  *context,
 	g_object_unref (s);
 }
 
+/**
+ * cdn_parser_context_debug_context: (skip)
+ */
 void
 cdn_parser_context_debug_context (CdnParserContext *context)
 {
@@ -5825,6 +5959,13 @@ cdn_parser_context_debug_context (CdnParserContext *context)
 	g_free (name);
 }
 
+/**
+ * cdn_parser_context_delete_selector:
+ * @context: the #CdnParserContext
+ * @selector: a selector
+ *
+ * Delete all objects selected by @selector.
+ */
 void
 cdn_parser_context_delete_selector (CdnParserContext *context,
                                     CdnSelector      *selector)
@@ -5950,6 +6091,9 @@ cdn_parser_context_previous_selections (CdnParserContext *context)
 	return ((Context *)context->priv->context_stack->next->data)->objects;
 }
 
+/**
+ * cdn_parser_context_begin_selector_item: (skip)
+ */
 void
 cdn_parser_context_begin_selector_item (CdnParserContext *context)
 {
@@ -5967,7 +6111,8 @@ cdn_parser_context_begin_selector_item (CdnParserContext *context)
  * @cend: (out): the column end.
  * @file: (out): the file.
  *
- **/
+ * Get the location of the current parser error.
+ */
 void
 cdn_parser_context_get_error_location (CdnParserContext  *context,
                                        gint              *lstart,
@@ -6174,6 +6319,15 @@ apply_unapply_template (CdnParserContext *context,
 	}
 }
 
+/**
+ * cdn_parser_context_apply_template:
+ * @context: the #CdnParserContext
+ * @templates: a selector
+ * @targets: a selector
+ *
+ * Apply the templates selected by @templates to the objects selected
+ * by @targets
+ */
 void
 cdn_parser_context_apply_template (CdnParserContext *context,
                                    CdnSelector      *templates,
@@ -6186,6 +6340,15 @@ cdn_parser_context_apply_template (CdnParserContext *context,
 	apply_unapply_template (context, templates, targets, TRUE);
 }
 
+/**
+ * cdn_parser_context_unapply_template:
+ * @context: the #CdnParserContext
+ * @templates: a selector
+ * @targets: a selector
+ *
+ * Unapply the templates selected by @templates to the objects selected
+ * by @targets
+ */
 void
 cdn_parser_context_unapply_template (CdnParserContext *context,
                                      CdnSelector      *templates,
@@ -6199,6 +6362,9 @@ cdn_parser_context_unapply_template (CdnParserContext *context,
 	apply_unapply_template (context, templates, targets, FALSE);
 }
 
+/**
+ * cdn_parser_context_get_first_eof: (skip)
+ */
 gboolean
 cdn_parser_context_get_first_eof (CdnParserContext *context)
 {
@@ -6216,6 +6382,9 @@ cdn_parser_context_get_first_eof (CdnParserContext *context)
 	return inp->first_eof;
 }
 
+/**
+ * cdn_parser_context_set_first_eof: (skip)
+ */
 void
 cdn_parser_context_set_first_eof (CdnParserContext *context,
                                   gboolean          first_eof)
@@ -6472,6 +6641,15 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 	}
 }
 
+/**
+ * cdn_parser_context_add_event_set_variable:
+ * @context: the #CdnParserContext
+ * @selector: a #CdnSelector
+ * @value: a value
+ *
+ * Add an set variable to the currently open events. The selector
+ * @selector is used to select target variables for the set.
+ */
 void
 cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
                                            CdnSelector       *selector,
@@ -6668,6 +6846,9 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 	g_object_unref (type);
 }
 
+/**
+ * cdn_parser_context_set_io_setting: (skip)
+ */
 void
 cdn_parser_context_set_io_setting (CdnParserContext  *context,
                                    GPtrArray         *nameptr,

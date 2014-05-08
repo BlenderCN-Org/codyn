@@ -387,6 +387,13 @@ cdn_operator_diff_init (CdnOperatorDiff *self)
 	self->priv = CDN_OPERATOR_DIFF_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_diff_new:
+ *
+ * Create a new diff operator
+ *
+ * Returns: (transfer full): a new diff operator
+ */
 CdnOperatorDiff *
 cdn_operator_diff_new ()
 {

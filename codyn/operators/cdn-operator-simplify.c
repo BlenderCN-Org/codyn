@@ -299,6 +299,14 @@ cdn_operator_simplify_init (CdnOperatorSimplify *self)
 	self->priv = CDN_OPERATOR_SIMPLIFY_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_simplify_new:
+ *
+ * Create a new simplify operator
+ *
+ * Returns: (transfer full): a new simplify operator
+ *
+ */
 CdnOperatorSimplify *
 cdn_operator_simplify_new ()
 {

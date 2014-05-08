@@ -32,8 +32,8 @@ typedef struct _CdnExpansionContext CdnExpansionContext;
 
 GType                cdn_expansion_context_get_type         (void) G_GNUC_CONST;
 
-CdnExpansionContext *cdn_expansion_context_new              (CdnExpansionContext  *context);
-CdnExpansionContext *cdn_expansion_context_new_unreffed     (CdnExpansionContext  *context);
+CdnExpansionContext *cdn_expansion_context_new              (CdnExpansionContext  *parent);
+CdnExpansionContext *cdn_expansion_context_new_unreffed     (CdnExpansionContext  *parent);
 
 CdnExpansionContext *cdn_expansion_context_ref              (CdnExpansionContext  *context);
 void                 cdn_expansion_context_unref            (CdnExpansionContext  *context);
@@ -43,7 +43,7 @@ void                 cdn_expansion_context_shared_defines   (CdnExpansionContext
 
 void                 cdn_expansion_context_add_define       (CdnExpansionContext  *context,
                                                              gchar const          *name,
-                                                             CdnExpansion         *expansion);
+                                                             CdnExpansion         *value);
 
 void                 cdn_expansion_context_debug_print      (CdnExpansionContext  *context,
                                                              FILE                 *file);

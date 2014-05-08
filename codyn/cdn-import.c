@@ -62,6 +62,14 @@ enum
 	PROP_PATH
 };
 
+/**
+ * cdn_import_error_quark:
+ *
+ * The import error type quark.
+ *
+ * Returns: a #GQuark for the import error type.
+ *
+ */
 GQuark
 cdn_import_error_quark ()
 {
@@ -979,6 +987,16 @@ cdn_import_prepend_search_path (gchar const *path)
 	import_search_path = new_search_path;
 }
 
+/**
+ * cdn_import_imports_object:
+ * @self: the #CdnImport
+ * @object: the object to check
+ *
+ * Check whether @self imports @object
+ *
+ * Returns: %TRUE if @object has been imported by @self, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_import_imports_object (CdnImport *self,
                            CdnObject *object)

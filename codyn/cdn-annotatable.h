@@ -37,6 +37,21 @@ typedef struct _CdnAnnotatableInterface	CdnAnnotatableInterface;
 
 typedef struct _CdnAnnotationInfo CdnAnnotationInfo;
 
+/**
+ * CdnAnnotationAnchor:
+ * @CDN_ANNOTATION_ANCHOR_NORTH: north
+ * @CDN_ANNOTATION_ANCHOR_NORTH_EAST: north east
+ * @CDN_ANNOTATION_ANCHOR_EAST: east
+ * @CDN_ANNOTATION_ANCHOR_SOUTH_EAST: south east
+ * @CDN_ANNOTATION_ANCHOR_SOUTH: south
+ * @CDN_ANNOTATION_ANCHOR_SOUTH_WEST: south west
+ * @CDN_ANNOTATION_ANCHOR_WEST: west
+ * @CDN_ANNOTATION_ANCHOR_NORTH_WEST: north west
+ * @CDN_ANNOTATION_ANCHOR_CENTER: center
+ *
+ * Annotation anchor determines relative to where the annotation
+ * is shown.
+ */
 typedef enum
 {
 	CDN_ANNOTATION_ANCHOR_NORTH,

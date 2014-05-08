@@ -606,6 +606,15 @@ cdn_function_argument_set_default_value (CdnFunctionArgument *argument,
 	g_object_notify (G_OBJECT (argument), "default-value");
 }
 
+/**
+ * cdn_function_argument_get_unused:
+ * @argument: the #CdnFunctionArgument
+ *
+ * Get whether the function argument is unused in the function expression.
+ *
+ * Returns: %TRUE if the function argument is unused, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_function_argument_get_unused (CdnFunctionArgument *argument)
 {
@@ -614,6 +623,16 @@ cdn_function_argument_get_unused (CdnFunctionArgument *argument)
 	return argument->priv->unused;
 }
 
+/**
+ * cdn_function_argument_set_unused:
+ * @argument: the #CdnFunctionArgument
+ * @unused: whether or not unused
+ *
+ * Set whether the function argument is unused in the function expression. Note that this
+ * is used internally based on analysis of the function expression. Setting this manually
+ * can lead to unexpected behavior.
+ *
+ */
 void
 cdn_function_argument_set_unused (CdnFunctionArgument *argument,
                                   gboolean             unused)

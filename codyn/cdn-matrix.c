@@ -2,6 +2,16 @@
 
 #include <string.h>
 
+/**
+ * CdnMatrix:
+ *
+ * 2D matrix value.
+ *
+ * #CdnMatrix is a simple 2D matrix value. It is associated with a dimension
+ * and a linear block of memory representing its values. The values in the
+ * matrix are ordered in column major ordering.
+ */
+
 static CdnMatrix *
 cdn_matrix_boxed_copy (CdnMatrix *matrix)
 {
