@@ -133,7 +133,7 @@ typedef enum
  * @CDN_SELECTOR_PSEUDO_TYPE_REDUCE: reduce
  * @CDN_SELECTOR_PSEUDO_TYPE_SORT: sort
  * @CDN_SELECTOR_PSEUDO_TYPE_XOR: xor
- * vCDN_SELECTOR_PSEUDO_NUM: num
+ * @CDN_SELECTOR_PSEUDO_NUM: num
  *
  * Pseudo selector type.
  */
