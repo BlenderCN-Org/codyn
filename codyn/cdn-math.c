@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -119,7 +119,7 @@ foreach_element2 (CdnStack           *stack,
 		cdn_stack_set (stack, op (cdn_stack_peek (stack), second));
 	}
 	else if (num1 == 1)
-	{	
+	{
 		gdouble first;
 		gint start;
 		gint i;

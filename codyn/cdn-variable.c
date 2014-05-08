@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -1037,7 +1037,7 @@ cdn_variable_equal (CdnVariable *variable,
 /**
  * cdn_variable_get_flags:
  * @variable: A #CdnVariable
- * 
+ *
  * The variable flags. The flags contains information on the type of variable (
  * such as in, or out).
  *
@@ -1055,7 +1055,7 @@ cdn_variable_get_flags (CdnVariable *variable)
  * cdn_variable_set_flags:
  * @variable: A #CdnVariable
  * @flags: A #CdnVariableFlags
- * 
+ *
  * Set the variable flags.
  *
  **/
@@ -1072,7 +1072,7 @@ cdn_variable_set_flags (CdnVariable      *variable,
  * cdn_variable_add_flags:
  * @variable: A #CdnVariable
  * @flags: A #CdnVariableFlags
- * 
+ *
  * Add a flags flag to the variable flagss.
  *
  **/
@@ -1089,7 +1089,7 @@ cdn_variable_add_flags (CdnVariable      *variable,
  * cdn_variable_remove_flags:
  * @variable: A #CdnVariable
  * @flags: A #CdnVariableFlags
- * 
+ *
  * Remove a flags flag from the variable flagss.
  *
  **/

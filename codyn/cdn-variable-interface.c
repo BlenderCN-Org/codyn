@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -363,7 +363,7 @@ cdn_variable_interface_new (CdnNode *node)
  * cdn_variable_interface_lookup:
  * @iface: A #CdnVariableInterface
  * @name: A mapping name
- * 
+ *
  * Get the property corresponding to a certain mapping name.
  *
  * Returns: (transfer none): A #CdnVariable

@@ -476,7 +476,7 @@ calculate_label_position (CdnNode *node)
 {
 	/* enum {EAST, NORTH, WEST, SOUTH, N_POS}; */
 	enum {EAST, NORTH_EAST, NORTH, NORTH_WEST, WEST, SOUTH_WEST, SOUTH, SOUTH_EAST, N_POS};
-	
+
 	gchar const *names[N_POS] = {"east", "north east", "north", "north west", "west", "south west", "south", "south east"};
 	gdouble weights[N_POS] = {0,};
 	GSList const *edges = cdn_node_get_edges (node);
@@ -515,12 +515,12 @@ calculate_label_position (CdnNode *node)
 		double angle = atan2 (y1 - y2, x2 - x1); /* y1 - y2 as Y axis points downwards in Codyn */
 
 		gint i;
-		
+
 		for (i = 0; i < N_POS; ++i)
 		{
 			double pos = 2 * M_PI * i / N_POS;
 			double dist = pos - angle;
-			
+
 			/* get a value in (-pi, pi) */
 			dist = fmod (dist + M_PI, 2 * M_PI) - M_PI;
 
@@ -665,7 +665,7 @@ output_to_tikz (CdnNetwork  *network,
 	}
 
 	write_stream_nl ("");
-	
+
 	children = cdn_node_get_children (root);
 
 	while (children)

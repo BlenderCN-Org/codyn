@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -348,7 +348,7 @@ cdn_function_argument_get_name (CdnFunctionArgument *argument)
  * cdn_function_argument_set_name:
  * @argument: A #CdnFunctionArgument
  * @name: The argument name
- * 
+ *
  * Set the function argument name.
  *
  * Returns: %TRUE if the function argument name could be successfully changed,

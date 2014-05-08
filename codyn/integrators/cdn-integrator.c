@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -1409,7 +1409,7 @@ cdn_integrator_get_state (CdnIntegrator *integrator)
  * cdn_integrator_set_state:
  * @integrator: A #CdnIntegrator
  * @state: A #CdnIntegratorState
- * 
+ *
  * Set the integrator state. You should normally not need to use this function.
  *
  **/

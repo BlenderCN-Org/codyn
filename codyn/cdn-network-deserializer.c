@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -2181,7 +2181,7 @@ cdn_network_deserializer_deserialize (CdnNetworkDeserializer  *deserializer,
  * @deserializer: A #CdnNetworkDeserializer
  * @path: The file path
  * @error: A #GError
- * 
+ *
  * Convenience function to deserialize a network from a file path.
  *
  * Returns: %TRUE if the deserialization was successful, %FALSE otherwise

@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -141,7 +141,7 @@ cdn_integrator_euler_init (CdnIntegratorEuler *self)
 
 /**
  * cdn_integrator_euler_new:
- * 
+ *
  * Create a new Euler integrator.
  *
  * Returns: A #CdnIntegratorEuler

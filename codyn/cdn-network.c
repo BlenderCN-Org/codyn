@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -1181,7 +1181,7 @@ load_from_path (CdnNetwork   *network,
  * @network: A #CdnNetwork
  * @path: The filename of the file to load
  * @error: A #GError
- * 
+ *
  * Load a network from a path into an existing network instance.
  *
  * Returns: %TRUE if the path could be loaded, %FALSE otherwise
@@ -1219,7 +1219,7 @@ load_from_string (CdnNetwork   *network,
  * @network: A #CdnNetwork
  * @s: The network to load
  * @error: A #GError
- * 
+ *
  * Load a network from text into an existing network instance.
  *
  * Returns: %TRUE if the text could be loaded, %FALSE otherwise
@@ -1304,7 +1304,7 @@ cdn_network_new_from_file (GFile   *file,
  * cdn_network_new_from_path:
  * @path: The network file path
  * @error: A #GError
- * 
+ *
  * Create a new CDN network by reading the network definition from a file path.
  * See #cdn_network_new_from_file for more information.
  *
@@ -1435,7 +1435,7 @@ cdn_network_begin (CdnNetwork  *network,
  * cdn_network_end:
  * @network: a #CdnNetwork
  * @error: a #GError
- * 
+ *
  * Finalize the network after integration. Note that you do not need to use
  * this if you are using #cdn_network_run since it will call
  * #cdn_network_end for you.
@@ -1576,7 +1576,7 @@ cdn_network_get_integrator (CdnNetwork *network)
 /**
  * cdn_network_get_template_node:
  * @network: A #CdnNetwork
- * 
+ *
  * Get the group containing the templates.
  *
  * Returns: (transfer none): A #CdnNode
