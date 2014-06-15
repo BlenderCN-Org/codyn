@@ -33,6 +33,7 @@
 #include "cdn-marshal.h"
 #include "cdn-phaseable.h"
 #include "cdn-io-method.h"
+ #include "cdn-auto-layout.h"
 
 #include <math.h>
 #include <string.h>
@@ -4612,6 +4613,7 @@ cdn_parser_context_parse (CdnParserContext  *context,
 		if (push_network)
 		{
 			cdn_parser_context_pop (context);
+			cdn_auto_layout (CDN_NODE (context->priv->network), cdn_auto_layout_settings_default ());
 		}
 	}
 	else

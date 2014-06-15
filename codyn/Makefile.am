@@ -11,6 +11,7 @@ AM_YFLAGS = -d
 
 COMMON_SOURCES = 		\
 	cdn-annotatable.c	\
+	cdn-auto-layout.c	\
 	cdn-debug.c \
 	cdn-compile-context.c \
 	cdn-compile-error.c \
@@ -82,6 +83,7 @@ NOINST_H_FILES = \
 INST_H_FILES = \
 	codyn.h \
 	cdn-annotatable.h \
+	cdn-auto-layout.h \
 	cdn-debug.h \
 	cdn-compile-context.h \
 	cdn-phaseable.h \
