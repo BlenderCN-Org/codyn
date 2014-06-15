@@ -38,7 +38,7 @@
 
 static gchar *output_file = NULL;
 static gchar *select_root = NULL;
-static gboolean output_tikz = TRUE;
+static gboolean output_tikz = FALSE;
 static gboolean output_dot = FALSE;
 static gboolean use_labels = FALSE;
 
@@ -781,6 +781,11 @@ main (int argc, char *argv[])
 		g_error_free (error);
 
 		return 1;
+	}
+
+	if (!output_tikz && !output_dot)
+	{
+		output_tikz = TRUE;
 	}
 
 	for (i = 1; i < argc; ++i)
