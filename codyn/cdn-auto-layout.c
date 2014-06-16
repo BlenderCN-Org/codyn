@@ -656,11 +656,6 @@ apply_constraint_edge_spread (LayoutObject *lo, CdnAutoLayoutSettings settings)
 			gdouble da;
 			gdouble ab;
 			gdouble aa;
-			gdouble la;
-			gdouble lb;
-
-			la = distance_between_objects (lo, a);
-			lb = distance_between_objects (lo, b);
 
  			aa = angle_between_objects (lo, a);
 			ab = angle_between_objects (lo, b);
