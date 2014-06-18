@@ -239,20 +239,21 @@ solve_coefficient (CdnExpressionTreeIter  *root,
 /**
  * cdn_expression_tree_iter_solve_for:
  * @iter: A #CdnExpressionTreeIter
- * @prop: A #CdnVariable
+ * @variable: A #CdnVariable
  *
- * NOTE: This is only supposed to work for canonical expressions linear in
- * @prop
+ * Solve the expression represented by @iter for the variable @variable.
+ * Note: this is only supposed to work for canonical expressions linear in
+ * @variable
  *
- * Returns: A #CdnExpressionTreeIter
+ * Returns: (transfer full): a new #CdnExpressionTreeIter
  *
  **/
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
-                                    CdnVariable            *prop,
+                                    CdnVariable            *variable,
                                     GError                **error)
 {
-	GSList *props;
+	GSList *variables;
 	GSList *item;
 	CdnExpressionTreeIter *inv;
 	GError *err = NULL;
@@ -264,23 +265,23 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	CdnStackArg nargs[2];
 	CdnExpressionTreeIter *minone;
 
-	g_return_val_if_fail (CDN_IS_VARIABLE (prop), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	// We are going to do a solve iter for prop assuming F(iter) = 0
-	props = iter_remove_variables (iter, prop, NULL);
+	// We are going to do a solve iter for variable assuming F(iter) = 0
+	variables = iter_remove_variables (iter, variable, NULL);
 
 	cdn_debug_message (DEBUG_LINSOLVE, "Solving for {%s}: {%s}",
-	                   cdn_variable_get_name (prop),
+	                   cdn_variable_get_name (variable),
 	                   cdn_expression_tree_iter_to_string (iter));
 
-	if (!props)
+	if (!variables)
 	{
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
 		             "Expression {%s} cannot be solved towards {%s}",
 		             cdn_expression_tree_iter_to_string (iter),
-		             cdn_variable_get_name (prop));
+		             cdn_variable_get_name (variable));
 
 		cdn_expression_tree_iter_free (iter);
 		return NULL;
@@ -288,16 +289,16 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 
 	cdn_debug_message (DEBUG_LINSOLVE,
 	                   "Found: %d properties",
-	                   g_slist_length (props));
+	                   g_slist_length (variables));
 
-	// Now factor out for each of the instances of prop
-	for (item = props; item; item = g_slist_next (item))
+	// Now factor out for each of the instances of variable
+	for (item = variables; item; item = g_slist_next (item))
 	{
 		CdnExpressionTreeIter *child = item->data;
 		CdnExpressionTreeIter *coef = NULL;
 
-		// Separate child (prop) from the expression, the result is
-		// a new expression without the coefficient on prop
+		// Separate child (variable) from the expression, the result is
+		// a new expression without the coefficient on variable
 		iter = solve_coefficient (iter, child, &coef, &err);
 
 		if (err)
@@ -314,7 +315,7 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 		coefs = g_slist_prepend (coefs, coef);
 	}
 
-	g_slist_free (props);
+	g_slist_free (variables);
 
 	if (!retval)
 	{
@@ -376,7 +377,7 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	inv = cdn_expression_tree_iter_simplify (inv);
 
 	cdn_debug_message (DEBUG_LINSOLVE, "Solved for {%s}: {%s}\n",
-	                   cdn_variable_get_name (prop),
+	                   cdn_variable_get_name (variable),
 	                   cdn_expression_tree_iter_to_string (inv));
 
 	iter_invalidate_cache_down (inv);

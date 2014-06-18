@@ -1838,7 +1838,7 @@ iter_simplify (CdnExpressionTreeIter *iter,
 /**
  * cdn_expression_tree_iter_simplify:
  * @iter: a #CdnExpressionTreeIter
- * 
+ *
  * Simplify an expresion. Note that the simplification is done in place, i.e.
  * the same @iter passed to the function is also returned.
  *

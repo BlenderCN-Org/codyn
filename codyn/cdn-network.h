@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -80,6 +80,14 @@ typedef enum
 	CDN_NETWORK_LOAD_ERROR_LINK_LIBRARY
 } CdnNetworkLoadError;
 
+/**
+ * CdnNetworkFormat:
+ * @CDN_NETWORK_FORMAT_UNKNOWN: unknown
+ * @CDN_NETWORK_FORMAT_CDN: codyn modeling language
+ * @CDN_NETWORK_FORMAT_XML: xml
+ *
+ * The loaded network format.
+ */
 typedef enum
 {
 	CDN_NETWORK_FORMAT_UNKNOWN,
@@ -89,6 +97,13 @@ typedef enum
 
 #define CDN_NETWORK_ERROR (cdn_network_error_quark ())
 
+/**
+ * CdnNetworkError:
+ * @CDN_NETWORK_ERROR_UNOWNED_TEMPLATE: unowned template
+ * @CDN_NETWORK_ERROR_NUM: num
+ *
+ * Network error codes.
+ */
 typedef enum
 {
 	CDN_NETWORK_ERROR_UNOWNED_TEMPLATE,

@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -171,7 +171,7 @@ CdnVariable       *cdn_variable_get_integral            (CdnVariable *variable);
 CdnVariable       *cdn_variable_get_derivative          (CdnVariable *variable);
 
 void               cdn_variable_set_derivative          (CdnVariable *variable,
-                                                         CdnVariable *diffprop);
+                                                         CdnVariable *derivative);
 
 gboolean           cdn_variable_compile                 (CdnVariable              *variable,
                                                          CdnCompileErrorForward   *error);

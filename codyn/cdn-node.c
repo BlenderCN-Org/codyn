@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -117,6 +117,14 @@ static guint node_signals[NUM_SIGNALS] = {0,};
 
 static void remove_object (CdnNode *node, CdnObject *object);
 
+/**
+ * cdn_node_error_quark:
+ *
+ * Get the error quark for the node error type.
+ *
+ * Returns: a #GQuark for the node error type
+ *
+ */
 GQuark
 cdn_node_error_quark (void)
 {
@@ -1395,10 +1403,22 @@ remove_object (CdnNode  *node,
 	g_object_unref (object);
 }
 
+/**
+ * cdn_node_verify_remove_child:
+ * @node: the #CdnNode
+ * @child: the child
+ * @error: a #GError or %NULL
+ *
+ * Verifies whether @child can be removed from @node safely. Possible
+ * errors are related to the child still being in use or part of a template.
+ *
+ * Returns: %TRUE if the child can be removed, %FALSE otherwise.
+ *
+ */
 gboolean
-cdn_node_verify_remove_child (CdnNode   *node,
-                               CdnObject  *child,
-                               GError    **error)
+cdn_node_verify_remove_child (CdnNode    *node,
+                              CdnObject  *child,
+                              GError    **error)
 {
 	g_return_val_if_fail (CDN_IS_NODE (node), FALSE);
 	g_return_val_if_fail (CDN_IS_OBJECT (child), FALSE);
@@ -1550,8 +1570,8 @@ cdn_node_get_children_impl (CdnNode *node)
 
 static gboolean
 cdn_node_verify_remove_child_impl (CdnNode   *node,
-                                    CdnObject  *object,
-                                    GError    **error)
+                                   CdnObject  *child,
+                                   GError    **error)
 {
 	/* TODO: Check if there are any objects that use the child as a template
 	   while this template is not inherited from applying a template to

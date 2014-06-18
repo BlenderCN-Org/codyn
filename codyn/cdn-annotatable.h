@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -37,6 +37,21 @@ typedef struct _CdnAnnotatableInterface	CdnAnnotatableInterface;
 
 typedef struct _CdnAnnotationInfo CdnAnnotationInfo;
 
+/**
+ * CdnAnnotationAnchor:
+ * @CDN_ANNOTATION_ANCHOR_NORTH: north
+ * @CDN_ANNOTATION_ANCHOR_NORTH_EAST: north east
+ * @CDN_ANNOTATION_ANCHOR_EAST: east
+ * @CDN_ANNOTATION_ANCHOR_SOUTH_EAST: south east
+ * @CDN_ANNOTATION_ANCHOR_SOUTH: south
+ * @CDN_ANNOTATION_ANCHOR_SOUTH_WEST: south west
+ * @CDN_ANNOTATION_ANCHOR_WEST: west
+ * @CDN_ANNOTATION_ANCHOR_NORTH_WEST: north west
+ * @CDN_ANNOTATION_ANCHOR_CENTER: center
+ *
+ * Annotation anchor determines relative to where the annotation
+ * is shown.
+ */
 typedef enum
 {
 	CDN_ANNOTATION_ANCHOR_NORTH,

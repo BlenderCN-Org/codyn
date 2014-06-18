@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -150,6 +150,19 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 static guint signals[NUM_SIGNALS];
 
 static void cdn_statement_iface_init (gpointer iface);
+
+/**
+ * CdnSelector:
+ *
+ * Selector class.
+ *
+ * #CdnSelector is a class which encodes a codyn modeling language selector. A selector
+ * receives a set of objects as input and performs filtering and selection based on
+ * a pipeline of special purpose selectors. This allows for powerful contextual selection
+ * of nodes based on certain criteria, matching names, types, children etc. Selectors
+ * can be built incrementally using the various append functions, or parsed from a string
+ * using #cdn_selector_parse.
+ */
 
 G_DEFINE_TYPE_WITH_CODE (CdnSelector,
                          cdn_selector,
@@ -623,6 +636,17 @@ cdn_selector_init (CdnSelector *self)
 	self->priv = CDN_SELECTOR_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_selector_new:
+ * @root: (allow-none): the root
+ *
+ * Create a new selector at the specified @root. The root object
+ * can be used to set the value of the object returned by the root
+ * pseudo selector.
+ *
+ * Returns: (transfer full): a new #CdnSelector
+ *
+ */
 CdnSelector *
 cdn_selector_new (CdnObject *root)
 {
@@ -693,6 +717,19 @@ add_selector (CdnSelector *selector,
 	return sel->id;
 }
 
+/**
+ * cdn_selector_append:
+ * @selector: a #CdnSelector
+ * @identifier: an embedded string
+ *
+ * Append a matching identifier selector to the pipeline. Identifier matches
+ * will match on names of objects and variables where appropriate. Note that
+ * the @identifier embedded string may contain generators and can match multiple
+ * names at the same time.
+ *
+ * Returns: a selector component identifier.
+ *
+ */
 guint
 cdn_selector_append (CdnSelector       *selector,
                      CdnEmbeddedString *identifier)
@@ -705,6 +742,19 @@ cdn_selector_append (CdnSelector       *selector,
 	                                                        FALSE));
 }
 
+/**
+ * cdn_selector_append_partial:
+ * @selector: a #CdnSelector
+ * @identifier: an embedded string
+ *
+ * Append a partial matching identifier selector to the pipeline. Identifier matches
+ * will match on names of objects and variables where appropriate. Note that
+ * the @identifier embedded string may contain generators and can match multiple
+ * names at the same time.
+ *
+ * Returns: the identifier of the added selector component
+ *
+ */
 guint
 cdn_selector_append_partial (CdnSelector       *selector,
                              CdnEmbeddedString *identifier)
@@ -725,7 +775,7 @@ cdn_selector_append_partial (CdnSelector       *selector,
  *
  * Append a pseudo selector.
  *
- * Returns: The identifier of the added pseudo selector
+ * Returns: the identifier of the added selector component
  *
  **/
 guint
@@ -740,6 +790,20 @@ cdn_selector_append_pseudo (CdnSelector           *selector,
 	                                                    arguments));
 }
 
+/**
+ * cdn_selector_append_regex:
+ * @selector: a #CdnSelector
+ * @regex: an embedded string
+ *
+ * Append a regular expression matching identifier selector to the pipeline.
+ * Identifier matches will match on names of objects and variables where appropriate.
+ * Note that the @identifier embedded string may contain generators and can match multiple
+ * names at the same time. The regular expression must match the full identifier of the
+ * object. See #cdn_selector_append_regex_partial for matching only partially.
+ *
+ * Returns: a selector component identifier.
+ *
+ */
 guint
 cdn_selector_append_regex (CdnSelector       *selector,
                            CdnEmbeddedString *regex)
@@ -753,6 +817,19 @@ cdn_selector_append_regex (CdnSelector       *selector,
 	                                                   FALSE));
 }
 
+/**
+ * cdn_selector_append_regex_partial:
+ * @selector: a #CdnSelector
+ * @regex: an embedded string
+ *
+ * Append a partial regular expression matching identifier selector to the pipeline.
+ * Identifier matches will match on names of objects and variables where appropriate.
+ * Note that the @identifier embedded string may contain generators and can match multiple
+ * names at the same time.
+ *
+ * Returns: a selector component identifier.
+ *
+ */
 guint
 cdn_selector_append_regex_partial (CdnSelector       *selector,
                                    CdnEmbeddedString *regex)
@@ -766,6 +843,16 @@ cdn_selector_append_regex_partial (CdnSelector       *selector,
 	                                                   TRUE));
 }
 
+/**
+ * cdn_selector_set_define_context:
+ * @selector: the #CdnSelector
+ * @id: the define context id
+ *
+ * Set a define context identifier in the selector for the last selector
+ * component. When set, the expansion context generated by the selector component
+ * will be stored in a define with the name @id.
+ *
+ */
 void
 cdn_selector_set_define_context (CdnSelector *selector,
                                  gchar const *id)
@@ -3496,6 +3583,15 @@ cdn_selector_select_set (CdnSelector     *selector,
 	return selector_select_all (selector, parents, type);
 }
 
+/**
+ * cdn_selector_as_string:
+ * @selector: the #CdnSelector
+ *
+ * Get a textual representation of the selector pipeline.
+ *
+ * Returns: a new string representation of the selector
+ *
+ */
 gchar *
 cdn_selector_as_string (CdnSelector *selector)
 {
@@ -3504,6 +3600,16 @@ cdn_selector_as_string (CdnSelector *selector)
 	return selector_until_as_string (selector, NULL);
 }
 
+/**
+ * cdn_selector_set_partial:
+ * @selector: the #CdnSelector
+ * @partial: whether or not to set partial
+ *
+ * Set or unset all selector components present in the selector to be
+ * partial. Note that selector components which are added after this
+ * are not affected.
+ *
+ */
 void
 cdn_selector_set_partial (CdnSelector *selector,
                           gboolean     partial)
@@ -3529,6 +3635,15 @@ cdn_selector_set_partial (CdnSelector *selector,
 	}
 }
 
+/**
+ * cdn_selector_get_last_id:
+ * @selector: the #CdnSelector
+ *
+ * Get the id of the last added selector component.
+ *
+ * Returns: the last selector component id
+ *
+ */
 guint
 cdn_selector_get_last_id (CdnSelector *selector)
 {
@@ -3826,7 +3941,8 @@ cdn_selector_part_pseudo_type (CdnSelectorPart *part)
  * cdn_selector_get_parts:
  * @selector: a #CdnSelector.
  *
- * Get the selector parts.
+ * Get the selector parts. The returned list contains the specification
+ * of all the components in the selector pipeline in the form of #CdnSelectorPart.
  *
  * Returns: (element-type CdnSelectorPart) (transfer none): a #GSList.
  *
@@ -3845,6 +3961,17 @@ cdn_selector_get_parts (CdnSelector *selector)
 	return selector->priv->selectors;
 }
 
+/**
+ * cdn_selector_get_implicit_children:
+ * @selector: the #CdnSelector
+ *
+ * Get whether the selector uses implicit children. When set, implicit children
+ * cause children to be selected from the input of the selector, as if
+ * the "children" selector component was at the beginning of the pipeline.
+ *
+ * Returns: %TRUE if the selector has implicit children, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_selector_get_implicit_children (CdnSelector *selector)
 {

@@ -1,0 +1,15 @@
+templates
+{
+    edge "coupling"
+    {
+        ## Coupling weight
+        w = "1"
+
+        ## Coupling bias
+        Φ = "0"
+
+        ## Diffusive coupling term on the phase
+        θ' += "r ∙ w ∙ sin(θ - output.θ - Φ)"
+    }
+}
+

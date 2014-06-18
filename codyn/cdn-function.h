@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -49,11 +49,11 @@ typedef struct _CdnFunctionPrivate  CdnFunctionPrivate;
 /**
  * CdnFunctionError:
  * @CDN_FUNCTION_ERROR_UNKNOWN: unknown
- * @CDN_FUNCTION_ERROR_ARGUMENT_NOT_FOUND: property not found
+ * @CDN_FUNCTION_ERROR_ARGUMENT_NOT_FOUND: argument not found
  * @CDN_FUNCTION_NUM_ERRORS: num errors
  *
- *
- **/
+ * Function error codes.
+ */
 typedef enum
 {
 	CDN_FUNCTION_ERROR_UNKNOWN,

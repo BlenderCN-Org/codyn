@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -32,7 +32,6 @@
 #include <codyn/cdn-import.h>
 #include <codyn/cdn-import-alias.h>
 #include <codyn/cdn-selector.h>
-#include <codyn/cdn-layout.h>
 #include <codyn/cdn-attribute.h>
 #include <codyn/cdn-event.h>
 #include <codyn/cdn-io.h>
@@ -55,6 +54,17 @@ typedef struct _CdnParserContextClassPrivate	CdnParserContextClassPrivate;
 typedef struct _CdnFunctionArgumentSpec CdnFunctionArgumentSpec;
 typedef struct _CdnFunctionPolynomialPieceSpec CdnFunctionPolynomialPieceSpec;
 
+/**
+ * CdnParserContextDeleteType:
+ * @CDN_PARSER_CONTEXT_SELECTOR_TYPE_OBJECT: object
+ * @CDN_PARSER_CONTEXT_SELECTOR_TYPE_NODE: node
+ * @CDN_PARSER_CONTEXT_SELECTOR_TYPE_EDGE: edge
+ * @CDN_PARSER_CONTEXT_SELECTOR_TYPE_VARIABLE: variable
+ * @CDN_PARSER_CONTEXT_SELECTOR_TYPE_ACTION: action
+ * @CDN_PARSER_CONTEXT_SELECTOR_TYPE_FUNCTION: function
+ *
+ * Delete types.
+ */
 typedef enum
 {
 	CDN_PARSER_CONTEXT_SELECTOR_TYPE_OBJECT,
@@ -82,9 +92,6 @@ struct _CdnParserContextClass
 GType                  cdn_parser_context_get_type             (void) G_GNUC_CONST;
 
 CdnParserContext      *cdn_parser_context_new                  (CdnNetwork                 *network);
-
-void                   cdn_parser_context_set_emit             (CdnParserContext           *context,
-                                                                gboolean                    emit);
 
 GFile                 *cdn_parser_context_get_file             (CdnParserContext           *context);
 
@@ -114,14 +121,6 @@ void                   cdn_parser_context_get_error_location   (CdnParserContext
                                                                 GFile                     **file);
 
 gchar                 *cdn_parser_context_get_error_lines      (CdnParserContext           *context);
-
-void                   cdn_parser_context_get_last_selector_item_line (CdnParserContext *context,
-                                                                       gint             *line_start,
-                                                                       gint             *line_end);
-
-void                   cdn_parser_context_get_last_selector_item_column (CdnParserContext *context,
-                                                                         gint             *start,
-                                                                         gint             *end);
 
 void                   cdn_parser_context_set_token            (CdnParserContext           *context,
                                                                 gchar const                *token);
@@ -259,9 +258,6 @@ void                   cdn_parser_context_define               (CdnParserContext
                                                                 gboolean                    optional,
                                                                 gboolean                    fromenv);
 
-void                   cdn_parser_context_set_integrator       (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *value);
-
 void                   cdn_parser_context_push_input_from_path (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *filename,
                                                                 gboolean                    only_in_context,
@@ -297,9 +293,6 @@ void                   cdn_parser_context_push_annotation      (CdnParserContext
 void                   cdn_parser_context_push_scope           (CdnParserContext           *context);
 
 void                   cdn_parser_context_push_define          (CdnParserContext           *context);
-
-void                   cdn_parser_context_push_layout          (CdnParserContext           *context);
-void                   cdn_parser_context_pop_layout           (CdnParserContext           *context);
 
 void                   cdn_parser_context_add_layout_position  (CdnParserContext           *context,
                                                                 CdnSelector                *selector,

@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -42,6 +42,14 @@ typedef struct _CdnSelector		CdnSelector;
 typedef struct _CdnSelectorClass	CdnSelectorClass;
 typedef struct _CdnSelectorPrivate	CdnSelectorPrivate;
 
+/**
+ * CdnSelectorPartType:
+ * @CDN_SELECTOR_PART_TYPE_IDENTIFIER: identifier
+ * @CDN_SELECTOR_PART_TYPE_REGEX: regular expression
+ * @CDN_SELECTOR_PART_TYPE_PSEUDO: pseudo selector
+ *
+ * Part type.
+ */
 typedef enum
 {
 	CDN_SELECTOR_PART_TYPE_IDENTIFIER,
@@ -49,6 +57,21 @@ typedef enum
 	CDN_SELECTOR_PART_TYPE_PSEUDO
 } CdnSelectorPartType;
 
+/**
+ * CdnSelectorType:
+ * @CDN_SELECTOR_TYPE_NONE: none
+ * @CDN_SELECTOR_TYPE_ANY: any
+ * @CDN_SELECTOR_TYPE_STATE: state
+ * @CDN_SELECTOR_TYPE_EDGE: edge
+ * @CDN_SELECTOR_TYPE_NODE: node
+ * @CDN_SELECTOR_TYPE_VARIABLE: variable
+ * @CDN_SELECTOR_TYPE_ACTION: action
+ * @CDN_SELECTOR_TYPE_FUNCTION: function
+ * @CDN_SELECTOR_TYPE_TEMPLATE: template
+ * @CDN_SELECTOR_TYPE_OBJECT: all object types
+ *
+ * Selector type.
+ */
 typedef enum
 {
 	CDN_SELECTOR_TYPE_NONE = 0,
@@ -66,6 +89,54 @@ typedef enum
 	                            CDN_SELECTOR_TYPE_FUNCTION | CDN_SELECTOR_TYPE_TEMPLATE)
 } CdnSelectorType;
 
+/**
+ * CdnSelectorPseudoType:
+ * @CDN_SELECTOR_PSEUDO_TYPE_ROOT: root
+ * @CDN_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT: templates root
+ * @CDN_SELECTOR_PSEUDO_TYPE_CHILDREN: children
+ * @CDN_SELECTOR_PSEUDO_TYPE_PARENT: parent
+ * @CDN_SELECTOR_PSEUDO_TYPE_FIRST: first
+ * @CDN_SELECTOR_PSEUDO_TYPE_LAST: last
+ * @CDN_SELECTOR_PSEUDO_TYPE_SUBSET: subset
+ * @CDN_SELECTOR_PSEUDO_TYPE_EDGES: edges
+ * @CDN_SELECTOR_PSEUDO_TYPE_NODES: nodes
+ * @CDN_SELECTOR_PSEUDO_TYPE_IMPORTS: imports
+ * @CDN_SELECTOR_PSEUDO_TYPE_VARIABLES: variables
+ * @CDN_SELECTOR_PSEUDO_TYPE_ACTIONS: actions
+ * @CDN_SELECTOR_PSEUDO_TYPE_FUNCTIONS: functions
+ * @CDN_SELECTOR_PSEUDO_TYPE_OBJECTS: objects
+ * @CDN_SELECTOR_PSEUDO_TYPE_SIBLINGS: siblings
+ * @CDN_SELECTOR_PSEUDO_TYPE_TEMPLATES: templates
+ * @CDN_SELECTOR_PSEUDO_TYPE_COUNT: count
+ * @CDN_SELECTOR_PSEUDO_TYPE_INPUT: input
+ * @CDN_SELECTOR_PSEUDO_TYPE_OUTPUT: output
+ * @CDN_SELECTOR_PSEUDO_TYPE_INPUTS: inputs
+ * @CDN_SELECTOR_PSEUDO_TYPE_OUTPUTS: outputs
+ * @CDN_SELECTOR_PSEUDO_TYPE_INPUT_NAME: input name
+ * @CDN_SELECTOR_PSEUDO_TYPE_OUTPUT_NAME: output name
+ * @CDN_SELECTOR_PSEUDO_TYPE_SELF: self
+ * @CDN_SELECTOR_PSEUDO_TYPE_DEBUG: debug
+ * @CDN_SELECTOR_PSEUDO_TYPE_NAME: name
+ * @CDN_SELECTOR_PSEUDO_TYPE_UNIQUE: unique
+ * @CDN_SELECTOR_PSEUDO_TYPE_IF: if
+ * @CDN_SELECTOR_PSEUDO_TYPE_NOT: not
+ * @CDN_SELECTOR_PSEUDO_TYPE_IFSTR: ifstr
+ * @CDN_SELECTOR_PSEUDO_TYPE_NOTSTR: notstr
+ * @CDN_SELECTOR_PSEUDO_TYPE_FROM_SET: from set
+ * @CDN_SELECTOR_PSEUDO_TYPE_TYPE: type
+ * @CDN_SELECTOR_PSEUDO_TYPE_HAS_FLAG: has flag
+ * @CDN_SELECTOR_PSEUDO_TYPE_HAS_TEMPLATE: has template
+ * @CDN_SELECTOR_PSEUDO_TYPE_REVERSE: reverse
+ * @CDN_SELECTOR_PSEUDO_TYPE_RECURSE: recurse
+ * @CDN_SELECTOR_PSEUDO_TYPE_APPEND_CONTEXT: append context
+ * @CDN_SELECTOR_PSEUDO_TYPE_APPLIED_TEMPLATES: applied templates
+ * @CDN_SELECTOR_PSEUDO_TYPE_REDUCE: reduce
+ * @CDN_SELECTOR_PSEUDO_TYPE_SORT: sort
+ * @CDN_SELECTOR_PSEUDO_TYPE_XOR: xor
+ * @CDN_SELECTOR_PSEUDO_NUM: num
+ *
+ * Pseudo selector type.
+ */
 typedef enum
 {
 	CDN_SELECTOR_PSEUDO_TYPE_ROOT,

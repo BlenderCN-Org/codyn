@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -126,6 +126,14 @@ static void on_import_parent_changed (CdnImport  *import,
                                       GParamSpec *spec,
                                       CdnNetwork *network);
 
+/**
+ * cdn_network_load_error_quark:
+ *
+ * Get the error quark for the network load error type.
+ *
+ * Returns: a #GQuark for the network load error type
+ *
+ */
 GQuark
 cdn_network_load_error_quark ()
 {
@@ -139,6 +147,14 @@ cdn_network_load_error_quark ()
 	return quark;
 }
 
+/**
+ * cdn_network_error_quark:
+ *
+ * Get the error quark for the network error type.
+ *
+ * Returns: a #GQuark for the network error type
+ *
+ */
 GQuark
 cdn_network_error_quark ()
 {
@@ -1181,7 +1197,7 @@ load_from_path (CdnNetwork   *network,
  * @network: A #CdnNetwork
  * @path: The filename of the file to load
  * @error: A #GError
- * 
+ *
  * Load a network from a path into an existing network instance.
  *
  * Returns: %TRUE if the path could be loaded, %FALSE otherwise
@@ -1219,7 +1235,7 @@ load_from_string (CdnNetwork   *network,
  * @network: A #CdnNetwork
  * @s: The network to load
  * @error: A #GError
- * 
+ *
  * Load a network from text into an existing network instance.
  *
  * Returns: %TRUE if the text could be loaded, %FALSE otherwise
@@ -1304,7 +1320,7 @@ cdn_network_new_from_file (GFile   *file,
  * cdn_network_new_from_path:
  * @path: The network file path
  * @error: A #GError
- * 
+ *
  * Create a new CDN network by reading the network definition from a file path.
  * See #cdn_network_new_from_file for more information.
  *
@@ -1435,7 +1451,7 @@ cdn_network_begin (CdnNetwork  *network,
  * cdn_network_end:
  * @network: a #CdnNetwork
  * @error: a #GError
- * 
+ *
  * Finalize the network after integration. Note that you do not need to use
  * this if you are using #cdn_network_run since it will call
  * #cdn_network_end for you.
@@ -1576,7 +1592,7 @@ cdn_network_get_integrator (CdnNetwork *network)
 /**
  * cdn_network_get_template_node:
  * @network: A #CdnNetwork
- * 
+ *
  * Get the group containing the templates.
  *
  * Returns: (transfer none): A #CdnNode
@@ -1719,6 +1735,14 @@ cdn_init_real ()
 	cdn_network_xml_init ();
 }
 
+/**
+ * cdn_init:
+ *
+ * Global codyn library initialization. This initializes the gobject type
+ * system, debugging and input/output modules. Note that you normally do not need
+ * to call this as it codyn initializes automatically on first use. This function
+ * can be called multiple times and will only initialize once.
+ */
 void
 cdn_init ()
 {

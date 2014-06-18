@@ -4,6 +4,9 @@ static CdnDebugSection debug_level = 0;
 static gboolean inited = FALSE;
 static gint log_indent = 0;
 
+/**
+ * cdn_debug_message: (skip)
+ */
 void
 cdn_debug_message (CdnDebugSection  section,
                    const gchar     *file,
@@ -43,6 +46,9 @@ cdn_debug_message (CdnDebugSection  section,
 	}
 }
 
+/**
+ * cdn_debug: (skip)
+ */
 void
 cdn_debug (CdnDebugSection  section,
            gchar const     *file,
@@ -117,18 +123,27 @@ cdn_debug_log_handler (gchar const    *log_domain,
 	g_free (id);
 }
 
+/**
+ * cdn_debug_push_indent: (skip)
+ */
 void
 cdn_debug_push_indent ()
 {
 	++log_indent;
 }
 
+/**
+ * cdn_debug_pop_indent: (skip)
+ */
 void
 cdn_debug_pop_indent ()
 {
 	--log_indent;
 }
 
+/**
+ * cdn_debug_init: (skip)
+ */
 void
 cdn_debug_init ()
 {
@@ -179,6 +194,9 @@ cdn_debug_init ()
 	}
 }
 
+/**
+ * cdn_debug_is_enabled: (skip)
+ */
 gboolean
 cdn_debug_is_enabled (CdnDebugSection section)
 {

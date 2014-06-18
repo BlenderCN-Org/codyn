@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -87,7 +87,7 @@ static void
 cdn_attribute_class_init (CdnAttributeClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
-	
+
 	object_class->finalize = cdn_attribute_finalize;
 
 	object_class->get_property = cdn_attribute_get_property;

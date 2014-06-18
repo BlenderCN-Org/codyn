@@ -1,0 +1,10 @@
+node "segment_{1:@n}" : "segment" {}
+
+# Segment coupling
+edge from "oscillator_{1:@n}_{right,left}"
+       to "segment_@1"
+{
+    @@2 <= "x"
+}
+
+layout "segment_{1:@n}" at 2, $(@1 ∙ 3)

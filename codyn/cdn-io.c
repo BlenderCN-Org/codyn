@@ -16,12 +16,59 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
 #include "cdn-io.h"
 #include "cdn-enum-types.h"
+
+/**
+ * CdnIo:
+ *
+ * Io module interface.
+ *
+ * #CdnIo is an interface which can be implemented to add new types
+ * of IO to codyn. Once implemented and registered, the new IO type
+ * is also available in the codyn modeling language and can be easily
+ * instantiated. This is useful for direct integration of external
+ * input/output in codyn, such that all existing codyn tools can still
+ * be used.
+ *
+ * A #CdnIo interface implementation must be a subclass of #CdnObject.
+ * Any input or output values must be represented by #CdnVariable
+ * in the object, which allows them to be accessed from the network.
+ * The #CdnIo implementation is thus simply another node in the network,
+ * but one which updates its contents based on external IO.
+ *
+ * Usually, custom IO is implemented in a dynamically loaded module.
+ * Such modules are compiled as shared libraries and export at least
+ * one of the following methods:
+ *
+ * 1. cdn_input_<name>_get_type
+ * 2. cdn_output_<name>_get_type
+ * 3. cdn_io_<name>_get_type
+ *
+ * depending on whether the io module implements only input, only output
+ * or both input and output. Multiple io types can be defined within the
+ * same dynamic module and are identified by their name. The returned
+ * #GType must be a concrete class which implements #CdnIo.
+ *
+ * Io objects are initialized before every run of a network and finalized
+ * afterwards. Initialization and finalization is usually done asynchronously
+ * such that all custom IO instantiations can be initialized and finalized
+ * in parallel. The default implementation of #CdnIo::initialize_async and
+ * #CdnIo::finalize_async will create a new thread in which #CdnIo::initialize and
+ * #CdnIo::finalize are respectively executed. If needed, these default implementations
+ * can be overridden to implement your own means of asynchronous initialization
+ * and finalization.
+ *
+ * During numerical integration, #CdnIo::update is called which should update
+ * any of the #CdnVariable that the io object exposes based on the current
+ * integration time. It is up to the implementation whether or not it is required
+ * to perform the actual updates asynchronously in the background.
+ *
+ */
 
 G_DEFINE_INTERFACE (CdnIo, cdn_io, CDN_TYPE_OBJECT)
 
@@ -157,6 +204,18 @@ cdn_io_default_init (CdnIoInterface *iface)
 	}
 }
 
+/**
+ * cdn_io_initialize:
+ * @io: the #CdnIo
+ * @cancellable: a #GCancellable
+ * @error: a #GError or %NULL
+ *
+ * Initialize the IO module. This will call the initialize method on the
+ * #CdnIo interface.
+ *
+ * Returns: %TRUE if the io module has been initialized, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_io_initialize (CdnIo         *io,
                    GCancellable  *cancellable,
@@ -186,11 +245,24 @@ cdn_io_initialize (CdnIo         *io,
 	return iface->initialize (io, cancellable, error);
 }
 
+/**
+ * cdn_io_initialize_async:
+ * @io: the #CdnIo
+ * @cancellable: a #GCancellable
+ * @callback: a callback
+ * @user_data: user data
+ *
+ * Initialize the IO module asynchronously. This will call the initialize_async
+ * method on the #CdnIo interface. Once initialized, @callback will be called
+ * with the specified @user_data. Call #cdn_io_initialize_finish from @callback
+ * to finalize the asynchronous initialization and check for possible errors.
+ *
+ */
 void
-cdn_io_initialize_async (CdnIo            *io,
-                            GCancellable        *cancellable,
-                            GAsyncReadyCallback  callback,
-                            gpointer             user_data)
+cdn_io_initialize_async (CdnIo               *io,
+                         GCancellable        *cancellable,
+                         GAsyncReadyCallback  callback,
+                         gpointer             user_data)
 {
 	CdnIoInterface *iface;
 
@@ -203,10 +275,21 @@ cdn_io_initialize_async (CdnIo            *io,
 	iface->initialize_async (io, cancellable, callback, user_data);
 }
 
+/**
+ * cdn_io_initialize_finish:
+ * @io: the #CdnIo
+ * @result: the result
+ * @error: a #GError or %NULL
+ *
+ * Finish the asynchronous initialization of the io.
+ *
+ * Returns: %TRUE if the io module has been initialized, %FALSE otherwise.
+ *
+ */
 gboolean
-cdn_io_initialize_finish (CdnIo      *io,
-                             GAsyncResult  *result,
-                             GError       **error)
+cdn_io_initialize_finish (CdnIo         *io,
+                          GAsyncResult  *result,
+                          GError       **error)
 {
 	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
 	g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
@@ -224,10 +307,22 @@ cdn_io_initialize_finish (CdnIo      *io,
 	return TRUE;
 }
 
+/**
+ * cdn_io_finalize:
+ * @io: the #CdnIo
+ * @cancellable: a #GCancellable
+ * @error: a #GError or %NULL
+ *
+ * Finalize the IO module. This will call the finalize method on the
+ * #CdnIo interface.
+ *
+ * Returns: %TRUE if finalization was successful, %FALSE otherwise
+ *
+ */
 gboolean
-cdn_io_finalize (CdnIo      *io,
-                    GCancellable  *cancellable,
-                    GError       **error)
+cdn_io_finalize (CdnIo         *io,
+                 GCancellable  *cancellable,
+                 GError       **error)
 {
 	CdnIoInterface *iface;
 
@@ -253,11 +348,24 @@ cdn_io_finalize (CdnIo      *io,
 	return iface->finalize (io, cancellable, error);
 }
 
+/**
+ * cdn_io_finalize_async:
+ * @io: the #CdnIo
+ * @cancellable: a #GCancellable
+ * @callback: a callback
+ * @user_data: user data
+ *
+ * Finalize the IO module asynchronously. This will call the finalize_async
+ * method on the #CdnIo interface. Once finalized, @callback will be called
+ * with the specified @user_data. Call #cdn_io_finalize_finish from @callback
+ * to finalize the asynchronous finalization and check for possible errors.
+ *
+ */
 void
-cdn_io_finalize_async (CdnIo            *io,
-                          GCancellable        *cancellable,
-                          GAsyncReadyCallback  callback,
-                          gpointer             user_data)
+cdn_io_finalize_async (CdnIo               *io,
+                       GCancellable        *cancellable,
+                       GAsyncReadyCallback  callback,
+                       gpointer             user_data)
 {
 	CdnIoInterface *iface;
 
@@ -270,10 +378,21 @@ cdn_io_finalize_async (CdnIo            *io,
 	iface->finalize_async (io, cancellable, callback, user_data);
 }
 
+/**
+ * cdn_io_finalize_finish:
+ * @io: the #CdnIo
+ * @result: the result
+ * @error: a #GError or %NULL
+ *
+ * Finish the asynchronous finalization of the io.
+ *
+ * Returns: %TRUE if the io module has been finalized, %FALSE otherwise.
+ *
+ */
 gboolean
-cdn_io_finalize_finish (CdnIo      *io,
-                           GAsyncResult  *result,
-                           GError       **error)
+cdn_io_finalize_finish (CdnIo         *io,
+                        GAsyncResult  *result,
+                        GError       **error)
 {
 	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
 	g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
@@ -291,9 +410,18 @@ cdn_io_finalize_finish (CdnIo      *io,
 	return TRUE;
 }
 
+/**
+ * cdn_io_update:
+ * @io: the #CdnIo
+ * @integrator: the current #CdnIntegrator
+ *
+ * Update the IO. This will call the update method on the
+ * #CdnIo interface.
+ *
+ */
 void
-cdn_io_update (CdnIo      *io,
-                  CdnIntegrator *integrator)
+cdn_io_update (CdnIo         *io,
+               CdnIntegrator *integrator)
 {
 	CdnIoInterface *iface;
 
@@ -305,6 +433,15 @@ cdn_io_update (CdnIo      *io,
 	}
 }
 
+/**
+ * cdn_io_get_mode:
+ * @io: the #CdnIo
+ *
+ * Get the io mode of @io.
+ *
+ * Returns: the io mode
+ *
+ */
 CdnIoMode
 cdn_io_get_mode (CdnIo *io)
 {

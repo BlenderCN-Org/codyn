@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write output the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -52,8 +52,8 @@ typedef struct _CdnEdgePrivate CdnEdgePrivate;
  *
  * <refsect2 id="CdnEdge-COPY">
  * <title>CdnEdge Copy Semantics</title>
- * When a link is copied with #cdn_object_copy, the link actions are also
- * copied. However, the link #CdnEdge:input and #CdnEdge:output properties are
+ * When a edge is copied with #cdn_object_copy, the edge actions are also
+ * copied. However, the edge #CdnEdge:input and #CdnEdge:output properties are
  * <emphasis>NOT</emphasis> copied, so that you are free output attach it output
  * two new objects.
  * </refsect2>
@@ -71,8 +71,8 @@ struct _CdnEdgeClass
 	/*< private >*/
 	CdnObjectClass parent_class;
 
-	void (*action_added)   (CdnEdge *link, CdnEdgeAction *action);
-	void (*action_removed) (CdnEdge *link, CdnEdgeAction *action);
+	void (*action_added)   (CdnEdge *edge, CdnEdgeAction *action);
+	void (*action_removed) (CdnEdge *edge, CdnEdgeAction *action);
 };
 
 GType            cdn_edge_get_type              (void) G_GNUC_CONST;
@@ -81,28 +81,28 @@ CdnEdge       *cdn_edge_new                   (const gchar   *id,
                                                CdnNode       *input,
                                                CdnNode       *output);
 
-CdnNode       *cdn_edge_get_input             (CdnEdge       *link);
-CdnNode       *cdn_edge_get_output            (CdnEdge       *link);
+CdnNode       *cdn_edge_get_input             (CdnEdge       *edge);
+CdnNode       *cdn_edge_get_output            (CdnEdge       *edge);
 
-gboolean       cdn_edge_add_action            (CdnEdge       *link,
+gboolean       cdn_edge_add_action            (CdnEdge       *edge,
                                                CdnEdgeAction *action);
 
-gboolean       cdn_edge_remove_action         (CdnEdge       *link,
+gboolean       cdn_edge_remove_action         (CdnEdge       *edge,
                                                CdnEdgeAction *action);
 
-const GSList  *cdn_edge_get_actions           (CdnEdge       *link);
-CdnEdgeAction *cdn_edge_get_action            (CdnEdge       *link,
+const GSList  *cdn_edge_get_actions           (CdnEdge       *edge);
+CdnEdgeAction *cdn_edge_get_action            (CdnEdge       *edge,
                                                const gchar   *target);
 
-void           cdn_edge_attach                (CdnEdge       *link,
+void           cdn_edge_attach                (CdnEdge       *edge,
                                                CdnNode       *input,
                                                CdnNode       *output);
 
-CdnEdge       *cdn_edge_get_action_template   (CdnEdge       *link,
+CdnEdge       *cdn_edge_get_action_template   (CdnEdge       *edge,
                                                CdnEdgeAction *action,
                                                gboolean       match_full);
 
-CdnEdgeAction *cdn_edge_get_action_with_index (CdnEdge       *link,
+CdnEdgeAction *cdn_edge_get_action_with_index (CdnEdge       *edge,
                                                gchar const   *target,
                                                CdnExpression *index);
 

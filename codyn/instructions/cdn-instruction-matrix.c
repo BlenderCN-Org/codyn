@@ -8,6 +8,23 @@ struct _CdnInstructionMatrixPrivate
 	CdnStackManipulation smanip;
 };
 
+/**
+ * CdnInstructionMatrix:
+ *
+ * Matrix instruction.
+ *
+ * #CdnInstructionMatrix is a special #CdnInstruction subtype representing a
+ * matrixing instruction. The purpose of this instruction is solely to provide
+ * structure in the instruction stream. As all expressions in codyn are statically
+ * sized, matrices can be simply encoded in the dimensionality of the arguments
+ * on the stack. However, it can be useful to explicitly encode the matrix construction
+ * (i.e. [1, 2, 3; 4, 5 6]) in the instruction stream for later reconstruction of the
+ * expression.
+ *
+ * When executed, this instruction does nothing since it only encodes dimensionality.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionMatrix, cdn_instruction_matrix, CDN_TYPE_INSTRUCTION)
 
 static CdnMiniObject *
@@ -129,6 +146,17 @@ cdn_instruction_matrix_init (CdnInstructionMatrix *self)
 	self->priv = CDN_INSTRUCTION_MATRIX_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_instruction_matrix_new:
+ * @args: the #CdnStackArgs
+ * @dim: the result dimension
+ *
+ * Create a new #CdnInstructionMatrix for the given @args. The dimension of the matrix
+ * is given by @dim.
+ *
+ * Returns: (transfer full) (type CdnInstructionMatrix): a new #CdnInstructionMatrix.
+ *
+ */
 CdnInstruction *
 cdn_instruction_matrix_new (CdnStackArgs const *args,
                             CdnDimension const *dim)

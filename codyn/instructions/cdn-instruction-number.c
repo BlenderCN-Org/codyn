@@ -11,6 +11,15 @@ struct _CdnInstructionNumberPrivate
 	CdnStackManipulation smanip;
 };
 
+/**
+ * CdnInstructionNumber:
+ *
+ * Number instruction.
+ *
+ * #CdnInstructionNumber is a special #CdnInstruction subtype which represents
+ * a single number. When executed, it pushes exactly one number onto the stack.
+ *
+ */
 G_DEFINE_TYPE (CdnInstructionNumber, cdn_instruction_number, CDN_TYPE_INSTRUCTION)
 
 static void
@@ -121,6 +130,15 @@ cdn_instruction_number_init (CdnInstructionNumber *self)
 	self->priv->smanip.push.columns = 1;
 }
 
+/**
+ * cdn_instruction_number_new:
+ * @value: the value
+ *
+ * Create a new number instruction representing the given value.
+ *
+ * Returns: (transfer full) (type CdnInstructionNumber): a new #CdnInstructionNumber.
+ *
+ */
 CdnInstruction *
 cdn_instruction_number_new (gdouble value)
 {
@@ -136,17 +154,35 @@ cdn_instruction_number_new (gdouble value)
 	return CDN_INSTRUCTION (ret);
 }
 
+/**
+ * cdn_instruction_number_new_from_string:
+ * @repr: the value
+ *
+ * Create a new number instruction representing the given value.
+ *
+ * Returns: (transfer full) (type CdnInstructionNumber): a new #CdnInstructionNumber.
+ *
+ */
 CdnInstruction *
-cdn_instruction_number_new_from_string (gchar const *s)
+cdn_instruction_number_new_from_string (gchar const *repr)
 {
 	CdnInstructionNumber *self;
 
-	self = CDN_INSTRUCTION_NUMBER (cdn_instruction_number_new (g_ascii_strtod (s, NULL)));
-	self->priv->repr = g_strdup (s);
+	self = CDN_INSTRUCTION_NUMBER (cdn_instruction_number_new (g_ascii_strtod (repr, NULL)));
+	self->priv->repr = g_strdup (repr);
 
 	return CDN_INSTRUCTION (self);
 }
 
+/**
+ * cdn_instruction_number_get_value:
+ * @number: the #CdnInstructioNumber
+ *
+ * Get the value of the number instruction.
+ *
+ * Returns: the number instruction value.
+ *
+ */
 gdouble
 cdn_instruction_number_get_value (CdnInstructionNumber *number)
 {
@@ -155,6 +191,14 @@ cdn_instruction_number_get_value (CdnInstructionNumber *number)
 	return number->priv->value;
 }
 
+/**
+ * cdn_instruction_number_set_value:
+ * @number: the #CdnInstructioNumber
+ * @value: the value
+ *
+ * Set the value of the number instruction.
+ *
+ */
 void
 cdn_instruction_number_set_value (CdnInstructionNumber *number,
                                   gdouble               value)
@@ -170,6 +214,19 @@ cdn_instruction_number_set_value (CdnInstructionNumber *number,
 	}
 }
 
+/**
+ * cdn_instruction_number_get_representation:
+ * @number: the #CdnInstructioNumber
+ *
+ * Get the textual representation of the number instruction. If the
+ * instruction was created using #cdn_instruction_number_new_from_string,
+ * then the string provided to construct it will be returned. Otherwise,
+ * the textual representation of the actual numerical value will be
+ * returned.
+ *
+ * Returns: (transfer full): the textual representation of the value.
+ *
+ */
 gchar *
 cdn_instruction_number_get_representation (CdnInstructionNumber *number)
 {
@@ -187,6 +244,16 @@ cdn_instruction_number_get_representation (CdnInstructionNumber *number)
 	return g_strdup (buf);
 }
 
+/**
+ * cdn_instruction_number_set_representation:
+ * @number: the #CdnInstructioNumber
+ * @repr: the textual representation
+ *
+ * Set the textual representation of the number instruction. This does not
+ * change the numerical value that the instruction encodes, only its textual
+ * representation as returned by #cdn_instruction_number_get_representation.
+ *
+ */
 void
 cdn_instruction_number_set_representation (CdnInstructionNumber *number,
                                            gchar const          *repr)

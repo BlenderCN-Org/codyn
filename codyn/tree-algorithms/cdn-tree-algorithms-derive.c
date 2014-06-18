@@ -24,6 +24,14 @@ typedef struct
 static CdnExpressionTreeIter *derive_iter (CdnExpressionTreeIter *iter,
                                            DeriveContext         *ctx);
 
+/**
+ * cdn_expression_tree_iter_derive_error_quark:
+ *
+ * Get the derive error quark.
+ *
+ * Returns: a #GQuark for the derive error type.
+ *
+ */
 GQuark
 cdn_expression_tree_iter_derive_error_quark ()
 {

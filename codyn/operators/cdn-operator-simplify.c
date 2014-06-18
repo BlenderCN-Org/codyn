@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -299,6 +299,14 @@ cdn_operator_simplify_init (CdnOperatorSimplify *self)
 	self->priv = CDN_OPERATOR_SIMPLIFY_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_simplify_new:
+ *
+ * Create a new simplify operator
+ *
+ * Returns: (transfer full): a new simplify operator
+ *
+ */
 CdnOperatorSimplify *
 cdn_operator_simplify_new ()
 {

@@ -1,0 +1,14 @@
+defines
+{
+    # Define the number of oscillators to generate, if not yet defined. This
+    # define can afterwards be used anywhere else by writing @n.
+    n ?= 8
+}
+
+# Generate @n oscillators for both right and left sides of the chain
+node "oscillator_{1:@n}_{right,left}" : "oscillator"
+{
+}
+
+# Set the (x, y) layout of the nodes so they appear as a chain when visualized
+layout "oscillator_{1:@n}_{right,left}" at $(@2[!] ∙ 4), $(@1 ∙ 3)

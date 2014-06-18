@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -119,7 +119,7 @@ foreach_element2 (CdnStack           *stack,
 		cdn_stack_set (stack, op (cdn_stack_peek (stack), second));
 	}
 	else if (num1 == 1)
-	{	
+	{
 		gdouble first;
 		gint start;
 		gint i;
@@ -2888,6 +2888,22 @@ qr_work_space (CdnDimension const *dim)
 }
 #endif
 
+/**
+ * cdn_math_function_get_stack_manipulation:
+ * @type: the math function type
+ * @inargs: the input arguments
+ * @outarg: (out): the output arguments
+ * @extra_space: (out): extra space required for the operation
+ * @error: a #GError or %NULL
+ *
+ * Calculate the required stack manipulation of a mathematical function or
+ * operator given @inargs. If possible, @outarg and @extra_space will be set
+ * to the resulting output dimensionality of the operation and any extra space
+ * which is required on the stack for this operation.
+ *
+ * Returns: %TRUE if the stack manipulation could be determined correctly, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
                                           CdnStackArgs const    *inargs,

@@ -27,6 +27,20 @@ typedef struct
 #endif
 } CdnInstructionRandStatePrivate;
 
+/**
+ * CdnInstructionRand:
+ *
+ * Random number instruction.
+ *
+ * #CdnInstructionRand is a special subtype of #CdnInstruction which represents
+ * a random number. Random number instructions are handled a bit differently from
+ * other instructions. Each random number instruction contains a cache and new
+ * random numbers have to be explicitly requested. This is done such that evaluation
+ * order does not have an effect on observation of random values. Also, this keeps
+ * the evaluation of a single integration step consistent.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionRand, cdn_instruction_rand, CDN_TYPE_INSTRUCTION)
 
 static void
@@ -171,7 +185,7 @@ cdn_instruction_rand_init (CdnInstructionRand *self)
  *
  * Create a new #CdnInstructionRand.
  *
- * Returns: A #CdnInstruction
+ * Returns: (transfer full) (type CdnInstructionRand): a new #CdnInstructionRand
  *
  **/
 CdnInstruction *
@@ -248,12 +262,33 @@ cdn_instruction_rand_next (CdnInstructionRand *self)
 	}
 }
 
+/**
+ * cdn_instruction_rand_set_use_streams:
+ * @use: whether or not to use streams
+ *
+ * Sets whether or not random instructions should work in a streaming
+ * manner. If needed, this should be always called at program initialization,
+ * before any instructions are being created. Random instructions in streaming
+ * mode each carry their own random seed. This allows for external control of
+ * random number generation and is used by rawc to ensure deterministic validation
+ * of networks across code generation.
+ *
+ */
 void
 cdn_instruction_rand_set_use_streams (gboolean use)
 {
 	use_streams = use;
 }
 
+/**
+ * cdn_instruction_rand_set_seed:
+ * @self: the #CdnInstructionRand
+ * @seed: the new seed
+ *
+ * Set the random instruction seed when using rand streams. Note that
+ * this function does nothing if #cdn_instruction_rand_set_use_streams
+ * is not set.
+ */
 void
 cdn_instruction_rand_set_seed (CdnInstructionRand *self,
                                guint               seed)
@@ -271,6 +306,17 @@ cdn_instruction_rand_set_seed (CdnInstructionRand *self,
 #endif
 }
 
+/**
+ * cdn_instruction_rand_get_seed:
+ * @self: the #CdnInstructionRand
+ *
+ * Get the random instruction seed when using rand streams. Note that
+ * this function always returns 0 if #cdn_instruction_rand_set_use_streams
+ * is not set.
+ *
+ * Returns: the seed.
+ *
+ */
 guint
 cdn_instruction_rand_get_seed (CdnInstructionRand *self)
 {
@@ -287,6 +333,14 @@ cdn_instruction_rand_get_seed (CdnInstructionRand *self)
 	return 0;
 }
 
+/**
+ * cdn_instruction_rand_reset:
+ * @self: the #CdnInstructionRand
+ *
+ * Reset the random number generator. When using streams, this initializes
+ * the random number generator with the specified seed. Otherwise, this
+ * will simply reduce to calling #cdn_instruction_rand_next.
+ */
 void
 cdn_instruction_rand_reset (CdnInstructionRand *self)
 {

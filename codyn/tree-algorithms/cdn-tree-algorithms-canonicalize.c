@@ -801,6 +801,17 @@ iter_canonicalize (CdnExpressionTreeIter *iter,
 	return ret;
 }
 
+/**
+ * cdn_expression_tree_iter_canonicalize:
+ * @iter: the #CdnExpressionTreeIter
+ *
+ * Transform @iter to its canonical form. This reorders arguments
+ * of commutative operators and otherwise normalizes the expression such
+ * that they can be compared easily.
+ *
+ * Returns: (transfer none): @iter
+ *
+ */
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_canonicalize (CdnExpressionTreeIter *iter)
 {

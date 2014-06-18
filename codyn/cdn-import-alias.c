@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -187,7 +187,7 @@ cdn_import_alias_init (CdnImportAlias *self)
 /**
  * cdn_import_alias_new:
  * @source: A #CdnImport
- * 
+ *
  * Create a new alias for an existing import.
  *
  * Returns: A #CdnImportAlias

@@ -13,6 +13,20 @@ struct _CdnInstructionFunctionPrivate
 	GError *error;
 };
 
+/**
+ * CdnInstructionFunction:
+ *
+ * Function call instruction.
+ *
+ * The #CdnInstructionFunction type is a special #CdnInstruction subtype
+ * which represents a builtin function call. This instruction type is used
+ * both for builtin functions and builtin operators (which can be seen as a
+ * special type of function). This instruction is only used to call builtin
+ * functions and operators. To call a custom defined user function, use
+ * #CdnInstructionCustomFunction instead.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionFunction, cdn_instruction_function, CDN_TYPE_INSTRUCTION)
 
 static void
@@ -138,6 +152,26 @@ cdn_instruction_function_init (CdnInstructionFunction *self)
 	self->priv = CDN_INSTRUCTION_FUNCTION_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_instruction_function_new:
+ * @id: the function id
+ * @name: (allow-none): the function name
+ * @args: the function arguments
+ *
+ * Create a new function call instruction. The @id refers to
+ * #CdnMathFunctionType for builtin functions in libcodyn, but is of
+ * type guint because it may also refer to external, dynamically loaded
+ * functions which get their own identifier > #CDN_MATH_FUNCTION_TYPE_NUM.
+ *
+ * @name may be specified for the purpose of the distinction of multiple
+ * aliases for the same underlying function. This is useful when expressions
+ * are reconstructed from instruction streams, but is usually only used
+ * internally. @args defines the arguments that this instruction takes from the
+ * stack when executed.
+ *
+ * Returns: (transfer full) (type CdnInstructionFunction): a new #CdnInstructionFunction
+ *
+ */
 CdnInstruction *
 cdn_instruction_function_new (guint               id,
                               const gchar        *name,
@@ -172,12 +206,11 @@ cdn_instruction_function_new (guint               id,
 /**
  * cdn_instruction_function_set_name:
  * @func: A #CdnInstructionFunction
- * @name: (transfer none): The function name
+ * @name: (allow-none): The function name
  *
  * Set the function name.
  *
  **/
-
 void
 cdn_instruction_function_set_name (CdnInstructionFunction *func,
                                    gchar const            *name)
@@ -188,6 +221,17 @@ cdn_instruction_function_set_name (CdnInstructionFunction *func,
 	func->priv->name = g_strdup (name);
 }
 
+/**
+ * cdn_instruction_function_get_id:
+ * @func: the #CdnInstructionFunction
+ *
+ * Get the id of the instruction call. This usually refers to a
+ * #CdnMathFunctionType, but may also refer to external, dynamically
+ * loaded functions (which have ids > #CDN_MATH_FUNCTION_TYPE_NUM).
+ *
+ * Returns: the function id
+ *
+ */
 guint
 cdn_instruction_function_get_id (CdnInstructionFunction *func)
 {

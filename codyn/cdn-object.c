@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -120,6 +120,14 @@ G_DEFINE_TYPE_WITH_CODE (CdnObject,
 
 static guint object_signals[NUM_SIGNALS] = {0,};
 
+/**
+ * cdn_object_error_quark:
+ *
+ * Get the error quark for the object error type.
+ *
+ * Returns: a #GQuark for the object error type
+ *
+ */
 GQuark
 cdn_object_error_quark (void)
 {
@@ -2211,6 +2219,16 @@ cdn_object_get_full_id (CdnObject *object)
 	return cdn_object_get_relative_id (object, parent);
 }
 
+/**
+ * cdn_object_get_full_id_for_display:
+ * @object: the #CdnObject
+ *
+ * Get a human readable full id of the object for display to the
+ * user.
+ *
+ * Returns: (transfer full): the full id for display.
+ *
+ */
 gchar *
 cdn_object_get_full_id_for_display (CdnObject *object)
 {
@@ -2333,9 +2351,19 @@ get_relative_id (CdnObject *object,
 	return ret;
 }
 
+/**
+ * cdn_object_get_relative_id:
+ * @object: the #CdnObject
+ * @parent: the parent
+ *
+ * Get the relative id from @parent to @object.
+ *
+ * Returns: (transfer full): the relative id
+ *
+ */
 gchar *
 cdn_object_get_relative_id (CdnObject *object,
-                            CdnNode  *parent)
+                            CdnNode   *parent)
 {
 	g_return_val_if_fail (CDN_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (CDN_IS_NODE (parent), NULL);
@@ -2343,6 +2371,17 @@ cdn_object_get_relative_id (CdnObject *object,
 	return get_relative_id (object, parent, FALSE);
 }
 
+/**
+ * cdn_object_get_relative_id_for_display:
+ * @object: the #CdnObject
+ * @parent: the parent
+ *
+ * Get the human readable relative id from @parent to @object for display
+ * to the user.
+ *
+ * Returns: (transfer full): the relative id for display
+ *
+ */
 gchar *
 cdn_object_get_relative_id_for_display (CdnObject *object,
                                         CdnNode  *parent)

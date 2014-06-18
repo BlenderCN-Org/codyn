@@ -1,0 +1,17 @@
+## up/down coupling to generate a traveling wave
+<bidirectional>
+edge from "oscillator_{1:@n}_{right,left}"
+       to "oscillator_$(@1 + 1)_@2" : "coupling"
+{
+    d = ["1", "-1"]
+    Φ = "d ∙ 2 ∙ π / @n"
+}
+
+## left/right coupling to generate anti-phase coupling
+<bidirectional>
+edge from "oscillator_{1:@n}_right"
+       to "oscillator_@1_left" : "coupling"
+{
+    d = ["1", "-1"]
+    Φ = "d ∙ π"
+}

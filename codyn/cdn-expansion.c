@@ -16,12 +16,25 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
 #include "cdn-expansion.h"
 #include <glib/gprintf.h>
+
+/**
+ * CdnExpansion:
+ *
+ * Expansion class.
+ *
+ * The #CdnExpansion boxed class, is a simple object which represents a single level
+ * of expansion, i.e. something which can be referred to in the codyn modeling language
+ * by @N where N is a number. The #CdnExpansion stores an ordered list of strings, where
+ * each string can be associated by an index. Normally, a #CdnExpansion is created as
+ * a product of generators and selectors, i.e. they represent a group of expansions.
+ *
+ */
 
 GType
 cdn_expansion_get_type (void)
@@ -103,6 +116,14 @@ struct _CdnExpansion
 	guint is_one : 1;
 };
 
+/**
+ * cdn_expansion_unref:
+ * @expansion: the #CdnExpansion
+ *
+ * Decrease the reference count of @expansion. If the reference count
+ * reaches 0, then the memory associated with @expansion will be freed.
+ *
+ */
 void
 cdn_expansion_unref (CdnExpansion *expansion)
 {
@@ -123,6 +144,14 @@ cdn_expansion_unref (CdnExpansion *expansion)
 	g_slice_free (CdnExpansion, expansion);
 }
 
+/**
+ * cdn_expansion_ref:
+ * @expansion: the #CdnExpansion
+ *
+ * Increase the reference count of @expansion.
+ *
+ * Returns: (transfer none): @expansion
+ */
 CdnExpansion *
 cdn_expansion_ref (CdnExpansion *expansion)
 {
@@ -296,6 +325,18 @@ copy_on_write (CdnExpansion *expansion,
 	return copy_on_write_sized (expansion, make_multi, 0);
 }
 
+/**
+ * cdn_expansion_newv:
+ * @item: the first item to add
+ *
+ * Create a new #CdnExpansion from a variadic list of items.
+ * The provided must be %NULL terminated. Make sure to use
+ * #cdn_expansion_unref to free the newly created expansion
+ * when done.
+ *
+ * Returns: (transfer full): a new #CdnExpansion.
+ *
+ */
 CdnExpansion *
 cdn_expansion_newv (gchar const *item,
                     ...)
@@ -324,6 +365,15 @@ cdn_expansion_newv (gchar const *item,
 	return ret;
 }
 
+/**
+ * cdn_expansion_new_one:
+ * @item: an item
+ *
+ * Create a new #CdnExpansion with a single item.
+ *
+ * Returns: (transfer full): the new #CdnExpansion
+ *
+ */
 CdnExpansion *
 cdn_expansion_new_one (gchar const *item)
 {
@@ -337,12 +387,37 @@ cdn_expansion_new_one (gchar const *item)
 	return ret;
 }
 
+/**
+ * cdn_expansion_new:
+ * @items: a %NULL terminated list of items
+ *
+ * Create a new #CdnExpansion from a list of items. The provided
+ * @items must be %NULL terminated.
+ *
+ * Returns: (transfer full): the new #CdnExpansion
+ *
+ */
 CdnExpansion *
 cdn_expansion_new (gchar const * const *items)
 {
 	return cdn_expansion_new_sized (items, 2);
 }
 
+/**
+ * cdn_expansion_new_sized:
+ * @items: a %NULL terminated list of items
+ * @sized: the number of items to reserve space for
+ *
+ * Create a new expansion with an initial capacity of @sized. Note
+ * that @items must still be %NULL terminated, @sized only indicates
+ * an initial capacity for the number of items in the expansion.
+ *
+ * If @items is empty, an empty item will be automatically appended
+ * to the expansion.
+ *
+ * Returns: (transfer full): the new #CdnExpansion
+ *
+ */
 CdnExpansion *
 cdn_expansion_new_sized (gchar const * const *items,
                          gint                 sized)
@@ -373,75 +448,128 @@ cdn_expansion_new_sized (gchar const * const *items,
 
 }
 
+/**
+ * cdn_expansion_num:
+ * @expansion: the #CdnExpansion
+ *
+ * Get the number of items in the expansion.
+ *
+ * Returns: the number of items in @expansion
+ *
+ */
 gint
-cdn_expansion_num (CdnExpansion *id)
+cdn_expansion_num (CdnExpansion *expansion)
 {
-	return id->is_one ? 1 : id->expansions->len;
+	return expansion->is_one ? 1 : expansion->expansions->len;
 }
 
+/**
+ * cdn_expansion_get:
+ * @expansion: the #CdnExpansion
+ * @idx: the index
+ *
+ * Get a single item from the expansion at index @idx. If @idx is larger
+ * or equal than the number of items in the expansion, then this function
+ * returns %NULL.
+ *
+ * Returns: the item at @idx or %NULL.
+ *
+ */
 gchar const *
-cdn_expansion_get (CdnExpansion *id,
+cdn_expansion_get (CdnExpansion *expansion,
                    gint          idx)
 {
 	Expansion *ex;
 
-	ex = get_ex (id, idx);
+	ex = get_ex (expansion, idx);
 
 	return ex ? ex->text : NULL;
 }
 
+/**
+ * cdn_expansion_get_index:
+ * @expansion: the #CdnExpansion
+ * @idx: the index
+ *
+ * Get a single item index from the expansion at index @idx. If @idx is larger
+ * or equal than the number of items in the expansion, then this function
+ * returns 0.
+ *
+ * Returns: the item index at @idx or %NULL.
+ *
+ */
 gint
-cdn_expansion_get_index (CdnExpansion *id,
+cdn_expansion_get_index (CdnExpansion *expansion,
                          gint          idx)
 {
 	Expansion *ex;
 
-	ex = get_ex (id, idx);
+	ex = get_ex (expansion, idx);
 
 	return ex ? ex->idx : 0;
 }
 
+/**
+ * cdn_expansion_set_index:
+ * @expansion: the #CdnExpansion
+ * @idx: the index
+ * @val: the item index
+ *
+ * Set the index of a particular item. @idx indicates the item in the
+ * list of items in the expansion, while @val represents the corresponding
+ * item index.
+ *
+ */
 void
-cdn_expansion_set_index (CdnExpansion *id,
+cdn_expansion_set_index (CdnExpansion *expansion,
                          gint          idx,
                          gint          val)
 {
 	Expansion *ex;
 
-	ex = get_ex (id, idx);
+	ex = get_ex (expansion, idx);
 
 	if (ex)
 	{
-		if (copy_on_write (id, FALSE))
+		if (copy_on_write (expansion, FALSE))
 		{
-			ex = get_ex (id, idx);
+			ex = get_ex (expansion, idx);
 		}
 
 		ex->idx = val;
 	}
 }
 
+/**
+ * cdn_expansion_set:
+ * @expansion: the #CdnExpansion
+ * @idx: the index
+ * @val: the item
+ *
+ * Set the value of an item at the specified index.
+ *
+ */
 void
-cdn_expansion_set (CdnExpansion *id,
+cdn_expansion_set (CdnExpansion *expansion,
                    gint          idx,
                    gchar const  *val)
 {
 	Expansion *ex;
 
-	ex = get_ex (id, idx);
+	ex = get_ex (expansion, idx);
 
 	if (ex)
 	{
-		copy_on_write (id, FALSE);
-		ex = get_ex_real (id, idx, TRUE);
+		copy_on_write (expansion, FALSE);
+		ex = get_ex_real (expansion, idx, TRUE);
 
-		if (id->is_one)
+		if (expansion->is_one)
 		{
-			ex = id->text;
+			ex = expansion->text;
 		}
 		else
 		{
-			ex = id->expansions->pdata[idx];
+			ex = expansion->expansions->pdata[idx];
 		}
 
 		g_free (ex->text);
@@ -451,7 +579,7 @@ cdn_expansion_set (CdnExpansion *id,
 
 /**
  * cdn_expansion_copy:
- * @id: A #CdnExpansion
+ * @expansion: A #CdnExpansion
  *
  * Copy an expansion.
  *
@@ -459,25 +587,25 @@ cdn_expansion_set (CdnExpansion *id,
  *
  **/
 CdnExpansion *
-cdn_expansion_copy (CdnExpansion *id)
+cdn_expansion_copy (CdnExpansion *expansion)
 {
 	CdnExpansion *ret;
 
-	if (id == NULL)
+	if (expansion == NULL)
 	{
 		return NULL;
 	}
 
 	ret = cdn_expansion_create ();
 
-	if (id->is_one)
+	if (expansion->is_one)
 	{
 		ret->is_one = TRUE;
-		ret->text = expansion_ref (id->text);
+		ret->text = expansion_ref (expansion->text);
 	}
 	else
 	{
-		ret->expansions = g_ptr_array_ref (id->expansions);
+		ret->expansions = g_ptr_array_ref (expansion->expansions);
 	}
 
 	ret->copy_on_write = TRUE;
@@ -485,33 +613,50 @@ cdn_expansion_copy (CdnExpansion *id)
 	return ret;
 }
 
+/**
+ * cdn_expansion_add:
+ * @expansion: the #CdnExpansion
+ * @item: the item
+ *
+ * Add a single item (append) to the expansion.
+ *
+ */
 void
-cdn_expansion_add (CdnExpansion *id,
+cdn_expansion_add (CdnExpansion *expansion,
                    gchar const  *item)
 {
-	copy_on_write (id, TRUE);
+	copy_on_write (expansion, TRUE);
 
-	g_ptr_array_add (id->expansions,
+	g_ptr_array_add (expansion->expansions,
 	                 expansion_new (item));
 }
 
+/**
+ * cdn_expansion_insert:
+ * @expansion: the #CdnExpansion
+ * @idx: the index
+ * @item: the item
+ *
+ * Insert a single item at the specified index.
+ *
+ */
 void
-cdn_expansion_insert (CdnExpansion *id,
+cdn_expansion_insert (CdnExpansion *expansion,
                       gint          idx,
                       gchar const  *item)
 {
 	gint n;
 	gint i;
 
-	copy_on_write_sized (id, TRUE, 1);
-	n = cdn_expansion_num (id);
+	copy_on_write_sized (expansion, TRUE, 1);
+	n = cdn_expansion_num (expansion);
 
 	for (i = n - 1; i > idx; --i)
 	{
-		id->expansions->pdata[i] = id->expansions->pdata[i - 1];
+		expansion->expansions->pdata[i] = expansion->expansions->pdata[i - 1];
 	}
 
-	id->expansions->pdata[idx] = expansion_new (item);
+	expansion->expansions->pdata[idx] = expansion_new (item);
 }
 
 static gboolean
@@ -565,6 +710,10 @@ annotate_group (GSList *expansions,
  * @expansions: (element-type CdnExpansion): expansions
  * @start: the start
  *
+ * Annotate the indices of the expansion items starting at the
+ * provided start. Items with the same value will be assigned the
+ * same index.
+ *
  **/
 void
 cdn_expansions_annotate_indices (GSList *expansions,
@@ -583,8 +732,18 @@ cdn_expansions_annotate_indices (GSList *expansions,
 	}
 }
 
+/**
+ * cdn_expansion_append:
+ * @expansion: the #CdnExpansion
+ * @other: another #CdnExpansion
+ * @idx: the index
+ *
+ * Append the items in @other to the items in @expansion,
+ * starting at @idx.
+ *
+ */
 void
-cdn_expansion_append (CdnExpansion *id,
+cdn_expansion_append (CdnExpansion *expansion,
                       CdnExpansion *other,
                       gint          idx)
 {
@@ -599,21 +758,31 @@ cdn_expansion_append (CdnExpansion *id,
 		return;
 	}
 
-	oldsize = cdn_expansion_num (id);
+	oldsize = cdn_expansion_num (expansion);
 
-	copy_on_write_sized (id, TRUE, onum - idx);
+	copy_on_write_sized (expansion, TRUE, onum - idx);
 
 	for (i = idx; i < onum; ++i)
 	{
 		Expansion *ex;
 
 		ex = expansion_copy (get_ex (other, i));
-		id->expansions->pdata[oldsize + i - idx] = ex;
+		expansion->expansions->pdata[oldsize + i - idx] = ex;
 	}
 }
 
+/**
+ * cdn_expansion_prepend:
+ * @expansion: the #CdnExpansion
+ * @other: another #CdnExpansion
+ * @idx: the index
+ *
+ * Prepend the items in @other before the items in @expansion,
+ * starting at @idx.
+ *
+ */
 void
-cdn_expansion_prepend (CdnExpansion *id,
+cdn_expansion_prepend (CdnExpansion *expansion,
                        CdnExpansion *other,
                        gint          idx)
 {
@@ -632,31 +801,31 @@ cdn_expansion_prepend (CdnExpansion *id,
 
 	num = onum - idx;
 
-	oldsize = cdn_expansion_num (id);
+	oldsize = cdn_expansion_num (expansion);
 	newsize = oldsize + num;
 
-	copy_on_write_sized (id, TRUE, num);
+	copy_on_write_sized (expansion, TRUE, num);
 
 	// move data
 	for (i = 0; i < oldsize - 1; ++i)
 	{
 		gint end = newsize - i - 1;
 
-		id->expansions->pdata[end] =
-			id->expansions->pdata[end - num];
+		expansion->expansions->pdata[end] =
+			expansion->expansions->pdata[end - num];
 	}
 
 	for (i = idx; i < onum; ++i)
 	{
 		gint pidx = i - idx + 1;
 
-		id->expansions->pdata[pidx] = expansion_copy (get_ex (other, i));
+		expansion->expansions->pdata[pidx] = expansion_copy (get_ex (other, i));
 	}
 }
 
 void
-cdn_expansion_debug_print (CdnExpansion *expansion,
-                           FILE         *file)
+_cdn_expansion_debug_print (CdnExpansion *expansion,
+                            FILE         *file)
 {
 	gint i;
 

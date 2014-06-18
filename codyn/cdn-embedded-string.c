@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -59,6 +59,21 @@ struct _CdnEmbeddedStringPrivate
 
 static void cdn_statement_iface_init (gpointer iface);
 
+/**
+ * CdnEmbeddedString:
+ *
+ * Embedded string class.
+ *
+ * CdnEmbeddedString is a special type of string which can have embedded
+ * references, calculations, map/reduce and conditions. Embedded strings
+ * are a fundamental part of the codyn modeling language. All strings in
+ * the language are represented by a #CdnEmbeddedString. Embedded strings
+ * are constructed during parsing of a model. They can then be expanded
+ * providing a certain context into one or more concrete strings, evaluating
+ * all the embedded components.
+ *
+ */
+
 G_DEFINE_TYPE_WITH_CODE (CdnEmbeddedString,
                          cdn_embedded_string,
                          G_TYPE_OBJECT,
@@ -73,6 +88,14 @@ enum
 	PROP_COLUMN_END
 };
 
+/**
+ * cdn_embedded_string_error_quark:
+ *
+ * Get the error quark for embedded string errors
+ *
+ * Returns: the #GQuark representing embedded string errors
+ *
+ */
 GQuark
 cdn_embedded_string_error_quark ()
 {
@@ -255,12 +278,29 @@ cdn_embedded_string_init (CdnEmbeddedString *self)
 	cdn_embedded_string_push (self, CDN_EMBEDDED_STRING_NODE_TEXT, 0);
 }
 
+/**
+ * cdn_embedded_string_new:
+ *
+ * Create a new and empty embedded string.
+ *
+ * Returns: (transfer full): a new #CdnEmbeddedString
+ *
+ */
 CdnEmbeddedString *
 cdn_embedded_string_new ()
 {
 	return g_object_new (CDN_TYPE_EMBEDDED_STRING, NULL);
 }
 
+/**
+ * cdn_embedded_string_new_from_string:
+ * @s: the value
+ *
+ * Create a new embedded string with a single text element.
+ *
+ * Returns: (transfer full): a new #CdnEmbeddedString
+ *
+ */
 CdnEmbeddedString *
 cdn_embedded_string_new_from_string (gchar const *s)
 {
@@ -272,6 +312,17 @@ cdn_embedded_string_new_from_string (gchar const *s)
 	return ret;
 }
 
+/**
+ * cdn_embedded_string_new_from_double:
+ * @s: the value
+ *
+ * Create a new embedded string containing the textual
+ * representing of the provided number in a single text
+ * element.
+ *
+ * Returns: (transfer full): a new #CdnEmbeddedString
+ *
+ */
 CdnEmbeddedString *
 cdn_embedded_string_new_from_double (gdouble s)
 {
@@ -281,6 +332,17 @@ cdn_embedded_string_new_from_double (gdouble s)
 	return cdn_embedded_string_new_from_string (buffer);
 }
 
+/**
+ * cdn_embedded_string_new_from_integer:
+ * @s: the value
+ *
+ * Create a new embedded string containing the textual
+ * representing of the provided number in a single text
+ * element.
+ *
+ * Returns: (transfer full): a new #CdnEmbeddedString
+ *
+ */
 CdnEmbeddedString *
 cdn_embedded_string_new_from_integer (gint s)
 {
@@ -673,7 +735,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 			{
 				exidx = cdn_expansion_num (ex) - (-exidx % cdn_expansion_num (ex));
 			}
-			
+
 			if (ex && *(cdn_expansion_get (ex, exidx > 0 ? exidx : 0)))
 			{
 				ret = g_strdup ("1");
@@ -991,6 +1053,25 @@ embedded_string_expand (CdnEmbeddedString    *s,
 	return s->priv->cached;
 }
 
+/**
+ * cdn_embedded_string_expand:
+ * @s: the #CdnEmbeddedString
+ * @ctx: the expansion context
+ * @error: a #GError or %NULL.
+ *
+ * Expands the embedded string given the provided expansion context.
+ * If an error occurred during expansion, then @error will be set
+ * accordingly and %NULL will be returned. This will only expand
+ * the embedded string to a single value. To obtain multiple values
+ * in case the embedded string holds a generator, use
+ * #cdn_embedded_string_expand_multiple.
+ *
+ * Note that this function returns an internally cached version of the
+ * expanded string.
+ *
+ * Returns: the expanded string or %NULL on error.
+ *
+ */
 gchar const *
 cdn_embedded_string_expand (CdnEmbeddedString    *s,
                             CdnExpansionContext  *ctx,
@@ -2085,9 +2166,16 @@ expand_multiple (CdnEmbeddedString   *s,
  * @s: A #CdnEmbeddedString
  * @ctx: A #CdnExpansionContext
  *
- * Expand string with braces syntax.
+ * Expand the embedded string in the provided context. This evaluates
+ * all components given @ctx and returns possible multiple expansions
+ * resulting from embedded generators. If an error occurs during
+ * expansion, @error will be set and %NULL will be returned.
  *
- * Returns: (element-type CdnExpansion) (transfer full): A #GSList of #CdnExpansion
+ * Note that the returned list contains #CdnExpansion (which are owned
+ * by the caller). The expansions keep track of their corresponding
+ * expanded indices.
+ *
+ * Returns: (element-type CdnExpansion) (transfer full): a #GSList of #CdnExpansion
  *
  **/
 GSList *
@@ -2121,6 +2209,13 @@ cdn_embedded_string_expand_multiple (CdnEmbeddedString   *s,
 	return ret;
 }
 
+/**
+ * cdn_embedded_string_clear_cache:
+ * @s: the #CdnEmbeddedString
+ *
+ * Forcefully clear the cache of the embedded string.
+ *
+ */
 void
 cdn_embedded_string_clear_cache (CdnEmbeddedString *s)
 {
@@ -2135,6 +2230,16 @@ cdn_embedded_string_clear_cache (CdnEmbeddedString *s)
 	s->priv->filters = NULL;
 }
 
+/**
+ * cdn_embedded_string_escape:
+ * @s: a string
+ *
+ * Escape a string such that subsequent parsing of it as an embedded
+ * string would result in the exact same textual value.
+ *
+ * Returns: (transfer full): the escaped string representation.
+ *
+ */
 gchar *
 cdn_embedded_string_escape (gchar const *s)
 {
@@ -2376,6 +2481,21 @@ expand_multiple_escape (CdnEmbeddedString   *s,
 	return ret;
 }
 
+/**
+ * cdn_embedded_string_expand_escape:
+ * @s: the #CdnEmbeddedString
+ * @ctx: a #CdnExpansionContext
+ * @error: a #GError or %NULL
+ *
+ * Get the escaped string representation of the expanded
+ * version of the embedded string. This can be useful to obtain
+ * a textual representation of the embedded string as a single
+ * list of pre-expanded elements. If an error occurs during expansion,
+ * then @error will be set and %NULL will be returned.
+ *
+ * Returns: (transfer full): the escaped expanded string representation or %NULL.
+ *
+ */
 gchar *
 cdn_embedded_string_expand_escape (CdnEmbeddedString   *s,
                                    CdnExpansionContext  *ctx,
@@ -2446,6 +2566,15 @@ cdn_embedded_string_pop_brace (CdnEmbeddedString *s)
 	return s;
 }
 
+/**
+ * cdn_embedded_string_brace_level:
+ * @s: the #CdnEmbeddedString
+ *
+ * Get the current open brace level of the embedded string.
+ *
+ * Returns: the current open brace level.
+ *
+ */
 gint
 cdn_embedded_string_brace_level (CdnEmbeddedString *s)
 {

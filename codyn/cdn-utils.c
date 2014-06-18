@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -24,6 +24,9 @@
 #include "cdn-network.h"
 #include <string.h>
 
+/**
+ * cdn_signal_accumulator_false_handled: (skip)
+ */
 gboolean
 cdn_signal_accumulator_false_handled (GSignalInvocationHint *ihint,
                                       GValue                *return_accu,
@@ -357,6 +360,9 @@ static const FromStringConversionMap from_string_conv_map[] =
 	{G_TYPE_ULONG, string_to_uint}
 };
 
+/**
+ * cdn_string_to_value: (skip)
+ */
 gboolean
 cdn_string_to_value (gchar const  *s,
                      GType         type,
@@ -398,6 +404,19 @@ cdn_string_to_value (gchar const  *s,
 	return FALSE;
 }
 
+/**
+ * cdn_compose_dot:
+ * @name: the name to compose a dot on
+ * @order: the dot order
+ *
+ * Create a new name which represents the @order th derivative
+ * of @name. If @order is smaller or equal to 2, then a utf-8 dot
+ * or double dot compose character will be used. For orders larger
+ * than 2 primes will be appended to the given name.
+ *
+ * Returns: (transfer full): the dot composed name
+ *
+ */
 gchar *
 cdn_compose_dot (gchar const *name,
                  gint         order)
@@ -441,6 +460,19 @@ cdn_compose_dot (gchar const *name,
 	return g_string_free (s, FALSE);
 }
 
+/**
+ * cdn_decompose_dot:
+ * @name: the name to decompose
+ * @order: (out): result value for decomposed order
+ *
+ * Decompose a name into its actual name and the derivative order. This can
+ * parse composed utf-8 dot and double dot characters on the first character,
+ * as well as primes at the end of @name. The derivative order is returned
+ * in @order.
+ *
+ * Returns: (transfer full): the decomposed name
+ *
+ */
 gchar *
 cdn_decompose_dot (gchar const *name,
                    gint        *order)

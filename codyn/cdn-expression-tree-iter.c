@@ -8,6 +8,19 @@
 #include "cdn-debug.h"
 #include "tree-algorithms/cdn-tree-algorithms-private.h"
 
+/**
+ * CdnExpressionTreeIter:
+ *
+ * Expression tree iterator.
+ *
+ * #CdnExpressionTreeIter is a class which deconstructs a #CdnExpression into
+ * a tree of operations. This is a useful representation for manipulating an expression
+ * symbolically. Various symbolic operations, such as derivation, are implemented for
+ * these tree iters. After the symbolic manipulation, a linear #CdnExpression can
+ * be reconstructed from the iter using #cdn_expression_tree_iter_to_expression.
+ *
+ */
+
 GType
 cdn_expression_tree_iter_get_type ()
 {
@@ -23,38 +36,45 @@ cdn_expression_tree_iter_get_type ()
 	return gtype;
 }
 
+/**
+ * cdn_expression_tree_iter_free:
+ * @iter: the #CdnExpressionTreeIter
+ *
+ * Free the expression tree iter.
+ *
+ */
 void
-cdn_expression_tree_iter_free (CdnExpressionTreeIter *self)
+cdn_expression_tree_iter_free (CdnExpressionTreeIter *iter)
 {
-	if (!self)
+	if (!iter)
 	{
 		return;
 	}
 
-	if (self->children)
+	if (iter->children)
 	{
 		gint i;
 
-		for (i = 0; i < self->num_children; ++i)
+		for (i = 0; i < iter->num_children; ++i)
 		{
-			cdn_expression_tree_iter_free (self->children[i]);
+			cdn_expression_tree_iter_free (iter->children[i]);
 		}
 
-		g_free (self->children);
+		g_free (iter->children);
 
-		self->children = NULL;
-		self->num_children = 0;
+		iter->children = NULL;
+		iter->num_children = 0;
 	}
 
-	if (self->instruction)
+	if (iter->instruction)
 	{
-		cdn_mini_object_unref (CDN_MINI_OBJECT (self->instruction));
+		cdn_mini_object_unref (CDN_MINI_OBJECT (iter->instruction));
 	}
 
-	g_free (self->cached_to_string);
-	self->cached_to_string = NULL;
+	g_free (iter->cached_to_string);
+	iter->cached_to_string = NULL;
 
-	g_slice_free (CdnExpressionTreeIter, self);
+	g_slice_free (CdnExpressionTreeIter, iter);
 }
 
 static CdnExpressionTreeIter *
@@ -177,12 +197,30 @@ cdn_expression_tree_iter_set_instruction (CdnExpressionTreeIter *iter,
 	iter_invalidate_cache_up (iter);
 }
 
+/**
+ * cdn_expression_tree_iter_get_num_children:
+ * @iter: the #CdnExpressionTreeIter
+ *
+ * Get the number of children of the tree iter.
+ *
+ * Returns: the number of children
+ *
+ */
 gint
 cdn_expression_tree_iter_get_num_children (CdnExpressionTreeIter *iter)
 {
 	return iter->num_children;
 }
 
+/**
+ * cdn_expression_tree_iter_set_num_children:
+ * @iter: the #CdnExpressionTreeIter
+ * @num: the number of children
+ *
+ * Reserve space for @num children in the iter. Any existing children
+ * will be detroyed first.
+ *
+ */
 void
 cdn_expression_tree_iter_set_num_children (CdnExpressionTreeIter *iter,
                                            gint                   num)
@@ -306,6 +344,18 @@ cdn_expression_tree_iter_copy (CdnExpressionTreeIter *iter)
 	return iter_copy (iter);
 }
 
+/**
+ * cdn_expression_tree_iter_equal:
+ * @iter: the #CdnExpressionTreeIter
+ * @other: the other iter
+ * @asstring: whether to compare on string equality
+ *
+ * Compare two expression tree iters for equality. The two iters are first
+ * compared by their instruction and then by their children.
+ *
+ * Returns: %TRUE if the iters are equal, %FALSE otherwise
+ *
+ */
 gboolean
 cdn_expression_tree_iter_equal (CdnExpressionTreeIter *iter,
                                 CdnExpressionTreeIter *other,
@@ -353,6 +403,15 @@ cdn_expression_tree_iter_new_from_instruction (CdnInstruction *instruction)
 	return iter_new (instruction);
 }
 
+/**
+ * cdn_expression_tree_iter_new_from_instruction_take:
+ * @instruction: (transfer full): the instruction
+ *
+ * Create a new tree iter for a given instruction.
+ *
+ * Returns: (transfer full): a new #CdnExpressionTreeIter
+ *
+ */
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_new_from_instruction_take (CdnInstruction *instruction)
 {
@@ -476,6 +535,15 @@ cdn_expression_tree_iter_initialize_stack (CdnExpressionTreeIter *iter,
 	g_queue_clear (&queue);
 }
 
+/**
+ * cdn_expression_tree_iter_swap_children:
+ * @iter: the #CdnExpressionTreeIter
+ * @first: the first child index
+ * @second: the second child index
+ *
+ * Swap two children in the tree iter.
+ *
+ */
 void
 cdn_expression_tree_iter_swap_children (CdnExpressionTreeIter *iter,
                                         gint                   first,

@@ -6,6 +6,63 @@
 #include "cdn-instruction-custom-operator.h"
 #include "cdn-instruction-custom-operator-ref.h"
 
+/**
+ * CdnInstructionBoxed:
+ *
+ * Boxed instruction.
+ *
+ * #CdnInstructionBoxed provides boxed versions of the instructions. Instructions
+ * are not full GObject types, which provides difficulties for language bindings.
+ * The boxed values can be easily bound for other languages, but are of little
+ * use otherwise.
+ *
+ */
+
+/**
+ * CdnInstructionCustomFunctionBoxed:
+ *
+ * Boxed custom function instruction.
+ *
+ * Boxed version of #CdnInstructionCustomFunction, only used for language bindings.
+ *
+ */
+
+/**
+ * CdnInstructionCustomFunctionRefBoxed:
+ *
+ * Boxed custom function ref instruction.
+ *
+ * Boxed version of #CdnInstructionCustomFunctionRef, only used for language bindings.
+ *
+ */
+
+/**
+ * CdnInstructionCustomOperatorBoxed:
+ *
+ * Boxed custom operator instruction.
+ *
+ * Boxed version of #CdnInstructionCustomOperator, only used for language bindings.
+ *
+ */
+
+/**
+ * CdnInstructionCustomOperatorRefBoxed:
+ *
+ * Boxed custom operator ref instruction.
+ *
+ * Boxed version of #CdnInstructionCustomOperatorRef, only used for language bindings.
+ *
+ */
+
+/**
+ * CdnInstructionVariableBoxed:
+ *
+ * Boxed variable instruction.
+ *
+ * Boxed version of #CdnInstructionVariable, only used for language bindings.
+ *
+ */
+
 static gpointer
 copy_func (gpointer instr)
 {

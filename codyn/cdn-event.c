@@ -36,6 +36,17 @@
 
 typedef CdnEventLogicalNode LogicalNode;
 
+
+/**
+ * CdnEventLogicalNode:
+ *
+ * Logical event condition node
+ *
+ * #CdnEventLogicalNode is a struct which contains a tree representation an event
+ * condition.
+ *
+ */
+
 struct _CdnEventLogicalNode
 {
 	CdnMathFunctionType type;
@@ -65,6 +76,16 @@ struct _CdnEventPrivate
 
 	guint terminal : 1;
 };
+
+/**
+ * CdnEventSetVariable:
+ *
+ * Event set variable.
+ *
+ * #CdnEventSetVariable contains information on a set variable which
+ * gets executed when an event fires.
+ *
+ */
 
 struct _CdnEventSetVariable
 {
@@ -693,6 +714,12 @@ extract_condition_parts (CdnEvent        *event,
 	LogicalNode *node;
 	CdnExpressionTreeIter *iter;
 
+	if (event->priv->condition_node)
+	{
+		logical_node_free (event->priv->condition_node);
+		event->priv->condition_node = NULL;
+	}
+
 	iter = cdn_expression_tree_iter_new (event->priv->condition);
 	node = logical_node_new (event, iter, error);
 
@@ -733,19 +760,22 @@ cdn_event_compile_impl (CdnObject         *object,
 
 	context = CDN_OBJECT_CLASS (cdn_event_parent_class)->get_compile_context (object, context);
 
-	if (!cdn_expression_compile (event->priv->condition, context, error))
+	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (event->priv->condition)))
 	{
+		if (!cdn_expression_compile (event->priv->condition, context, error))
+		{
+			cdn_compile_context_restore (context);
+			g_object_unref (context);
+			return FALSE;
+		}
+
 		cdn_compile_context_restore (context);
 		g_object_unref (context);
-		return FALSE;
-	}
 
-	cdn_compile_context_restore (context);
-	g_object_unref (context);
-
-	if (!extract_condition_parts (event, error))
-	{
-		return FALSE;
+		if (!extract_condition_parts (event, error))
+		{
+			return FALSE;
+		}
 	}
 
 	for (item = event->priv->set_variables; item; item = g_slist_next (item))

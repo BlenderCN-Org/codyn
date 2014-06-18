@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -241,7 +241,7 @@ monitor_get_variable (GObject    *object,
                       GParamSpec *pspec)
 {
 	CdnMonitor *self = CDN_MONITOR (object);
-	
+
 	switch (prop_id)
 	{
 		case PROP_NETWORK:
@@ -300,7 +300,7 @@ monitor_set_property (GObject      *object,
                       GParamSpec   *pspec)
 {
 	CdnMonitor *self = CDN_MONITOR (object);
-	
+
 	switch (prop_id)
 	{
 		case PROP_NETWORK:
@@ -508,7 +508,7 @@ cdn_monitor_get_data_resampled (CdnMonitor     *monitor,
 	CdnDimension dim;
 
 	g_return_val_if_fail (CDN_IS_MONITOR (monitor), FALSE);
-	
+
 	if (!sites || size == 0 || !monitor || !monitor->priv->property)
 	{
 		memset (ret, 0, sizeof (double) * size);

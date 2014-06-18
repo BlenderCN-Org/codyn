@@ -1,0 +1,59 @@
+#cldoc {
+  width: 650px;
+  margin: 0 auto;
+  position: relative;
+  line-height: 1.75;
+}
+
+#cldoc #cldoc_sidebar, #cldoc #cldoc_sidebar_items, #cldoc #cldoc_search {
+  left: 50%;
+  margin-left: -570px;
+}
+
+#cldoc #cldoc_content {
+  margin-left: 20px;
+  padding-bottom: 30px;
+  background-color: #fff;
+  border-right: 5px solid #d4d4d4;
+}
+
+#cldoc {
+  background-color: #fafafa;
+}
+
+#cldoc #cldoc_search {
+  margin-left: -562px;
+}
+
+#cldoc #cldoc_sidebar {
+  border-left: 1px solid #d4d4d4;
+  border-right: 5px solid #d4d4d4;
+}
+
+#cldoc h1, #cldoc h2, #cldoc h3 {
+  border: 0;
+  margin-bottom: 0px;
+  padding-bottom: 0px;
+}
+
+#cldoc h2 {
+  margin-top: 30px;
+}
+
+h2 + p {
+  margin-top: 0px;
+}
+
+.CodeMirror.cm-s-default {
+  border: 1px solid #d4d4d4;
+}
+
+#cldoc .play {
+  text-align: right;
+}
+
+#cldoc a {
+  text-decoration: none;
+}
+
+/* vi:ts=2:et */

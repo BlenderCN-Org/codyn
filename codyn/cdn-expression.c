@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -3422,12 +3422,12 @@ make_static_index (CdnExpression *expression,
 
 		if (isi1)
 		{
-			cdn_instruction_index_set_range_end (r1, d3->rows);
+			_cdn_instruction_index_set_range_end (r1, d3->rows);
 		}
 
 		if (isi2)
 		{
-			cdn_instruction_index_set_range_end (r2, d3->columns);
+			_cdn_instruction_index_set_range_end (r2, d3->columns);
 		}
 
 		if (isi1 && isi2)
@@ -3592,7 +3592,7 @@ make_static_index (CdnExpression *expression,
 			CdnInstruction *ret;
 			CdnIndexRange r;
 
-			cdn_instruction_index_set_range_end (idx, cdn_stack_arg_size (d3));
+			_cdn_instruction_index_set_range_end (idx, cdn_stack_arg_size (d3));
 			r = *cdn_instruction_index_get_range (idx);
 
 			ret = cdn_instruction_index_new_range (&r, d3);
@@ -3945,11 +3945,11 @@ parse_custom_operator (CdnExpression *expression,
 
 	if ((isdiff || islinsolve) && multiret == &multiexpr)
 	{
-		cdn_compile_context_set_function_ref_priority (context->context,
-		                                               TRUE);
+		_cdn_compile_context_set_function_ref_priority (context->context,
+		                                                TRUE);
 
-		cdn_compile_context_set_function_arg_priority (context->context,
-		                                               TRUE);
+		_cdn_compile_context_set_function_arg_priority (context->context,
+		                                                TRUE);
 	}
 
 	while (loopit)
@@ -3967,8 +3967,8 @@ parse_custom_operator (CdnExpression *expression,
 
 		if (isdiff && multiret == &multiexpr)
 		{
-			cdn_compile_context_set_function_ref_priority (context->context,
-			                                               FALSE);
+			_cdn_compile_context_set_function_ref_priority (context->context,
+			                                                FALSE);
 		}
 
 		while (expression->priv->instructions != start)
@@ -4056,8 +4056,8 @@ parse_custom_operator (CdnExpression *expression,
 				{
 					if (islinsolve)
 					{
-						cdn_compile_context_set_function_ref_priority (context->context,
-						                                               FALSE);
+						_cdn_compile_context_set_function_ref_priority (context->context,
+						                                                FALSE);
 					}
 
 					*multiret = g_slist_prepend (*multiret,
@@ -4936,7 +4936,7 @@ parse_variable (CdnExpression *expression,
 
 	gchar *nname = g_strdup (propname);
 
-	if (cdn_compile_context_get_function_arg_priority (context->context))
+	if (_cdn_compile_context_get_function_arg_priority (context->context))
 	{
 		while (TRUE)
 		{
@@ -4965,7 +4965,7 @@ parse_variable (CdnExpression *expression,
 
 	property = lookup_variable (expression, context, nname);
 	f = cdn_compile_context_lookup_function (context->context, nname);
-	prio = cdn_compile_context_get_function_ref_priority (context->context);
+	prio = _cdn_compile_context_get_function_ref_priority (context->context);
 
 	dotname = cdn_decompose_dot (nname, &order);
 
@@ -5766,9 +5766,13 @@ set_cache_from_stack (CdnExpression *expression)
  * cdn_expression_evaluate_values:
  * @expression: a #CdnExpression
  *
- * Returns: the result of evaluating the expression
+ * Evaluate the given expression and return its value as a matrix. Note that
+ * values are always cached in expressions, and this function thus returns
+ * an internal reference to the resulting matrix.
  *
- **/
+ * Returns: (transfer none): the result of evaluating the expression
+ *
+ */
 CdnMatrix const *
 cdn_expression_evaluate_values (CdnExpression *expression)
 {
@@ -5937,6 +5941,12 @@ _cdn_expression_reset_rand_cache (CdnExpression *expression)
 	reset_cache (expression, FALSE);
 }
 
+/**
+ * cdn_expression_force_reset_cache:
+ * @expression: the #CdnExpression
+ *
+ * Forcefully reset the cache of the expression
+ */
 void
 cdn_expression_force_reset_cache (CdnExpression *expression)
 {
@@ -5973,6 +5983,16 @@ expression_depends_on (CdnExpression *expression,
 	return FALSE;
 }
 
+/**
+ * cdn_expression_depends_on:
+ * @expression: the #CdnExpression
+ * @depends_on: the expression to check dependency for
+ *
+ * Check whether @expression has a dependency (possibly deep) on @depends_on.
+ *
+ * Returns: %TRUE if @expression depends on @depends_on, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_expression_depends_on (CdnExpression *expression,
                            CdnExpression *depends_on)
@@ -6323,6 +6343,15 @@ cdn_expression_get_error_start (CdnExpression *expression)
 	return expression->priv->error_start ? GPOINTER_TO_INT (expression->priv->error_start->data) : expression->priv->error_at;
 }
 
+/**
+ * cdn_expression_get_has_cache:
+ * @expression: the #CdnExpression
+ *
+ * Get whether the expression caches values
+ *
+ * Returns: %TRUE if the expression caches values, %FALSE otherwise
+ *
+ */
 gboolean
 cdn_expression_get_has_cache (CdnExpression *expression)
 {
@@ -6331,6 +6360,14 @@ cdn_expression_get_has_cache (CdnExpression *expression)
 	return expression->priv->has_cache;
 }
 
+/**
+ * cdn_expression_set_has_cache:
+ * @expression: the #CdnExpression
+ * @cache: whether or not to cache
+ *
+ * Set whether the expression currently has a cached value
+ *
+ */
 void
 cdn_expression_set_has_cache (CdnExpression *expression,
                               gboolean       cache)
@@ -6364,6 +6401,18 @@ cdn_expression_get_dimension (CdnExpression *expression,
 	return !expression->priv->modified;
 }
 
+/**
+ * cdn_expression_set_cache_notify:
+ * @expression: the #CdnExpression
+ * @notify: notification callback
+ * @userdata: user data
+ * @destroy_notify: user data destroy notification
+ *
+ * Set a cache notification callback handler for the expression. Each time
+ * the cache is invalidated, the provided callback will be called. Note
+ * that only a single callback can be installed per expression.
+ *
+ */
 void
 cdn_expression_set_cache_notify (CdnExpression            *expression,
                                  CdnExpressionCacheNotify  notify,
@@ -6382,6 +6431,20 @@ cdn_expression_set_cache_notify (CdnExpression            *expression,
 	expression->priv->cache_notify = notify;
 }
 
+/**
+ * cdn_expression_set_evaluate_notify:
+ * @expression: the #CdnExpression
+ * @notify: notification callback
+ * @userdata: user data
+ * @destroy_notify: user data destroy notification
+ *
+ * Set an evaluation notification callback handler for the expression. Each time
+ * the expression needs to be evaluated, the provided callback will be called. This
+ * can be used to intercept evaluation of the expression and make sure that external
+ * dependencies are updated accordingly. Note that only a single callback can be
+ * installed per expression.
+ *
+ */
 void
 cdn_expression_set_evaluate_notify (CdnExpression               *expression,
                                     CdnExpressionEvaluateNotify  notify,
@@ -6417,6 +6480,15 @@ cdn_expression_get_stack_size (CdnExpression *expression)
 	return cdn_stack_size (&expression->priv->output);
 }
 
+/**
+ * cdn_expression_is_cached:
+ * @expression: the #CdnExpression
+ *
+ * Get whether the expression is currently cached.
+ *
+ * Returns: %TRUE if the expression is cached, %FALSE otherwise
+ *
+ */
 gboolean
 cdn_expression_is_cached (CdnExpression *expression)
 {

@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -1126,6 +1126,17 @@ inifini_io (CdnIntegrator  *integrator,
 	return ret;
 }
 
+/**
+ * cdn_integrator_begin:
+ * @start: the start
+ * @error: a #GError or %NULL
+ *
+ * Initialize the integrator for integration starting at @start. This
+ * emits the ::begin signal.
+ *
+ * Returns: %TRUE if the integrator was initialized properly, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_integrator_begin (CdnIntegrator  *integrator,
                       gdouble         start,
@@ -1164,6 +1175,15 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 	return TRUE;
 }
 
+/**
+ * cdn_integrator_end:
+ * @error: a #GError or %NULL
+ *
+ * Finalize the integrator for ending integration. This emits the ::end signal.
+ *
+ * Returns: %TRUE if the integrator was finalized properly, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_integrator_end (CdnIntegrator  *integrator,
                     GError        **error)
@@ -1296,6 +1316,18 @@ cdn_integrator_evaluate (CdnIntegrator *integrator,
 	simulation_step (integrator);
 }
 
+/**
+ * cdn_integrator_step_prepare:
+ * @integrator: the #CdnIntegrator
+ * @t: the time
+ * @timestep: the time step
+ *
+ * Prepare the integrator for the next time step. This can be called by integrator
+ * implementations. You usually do not need to call this manually.
+ *
+ * Returns: %TRUE if the step was prepared, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_integrator_step_prepare (CdnIntegrator *integrator,
                              gdouble        t,
@@ -1331,6 +1363,14 @@ cdn_integrator_get_time	(CdnIntegrator *integrator)
 	return cdn_variable_get_value (integrator->priv->property_time);
 }
 
+/**
+ * cdn_integrator_set_time:
+ * @integrator: A #CdnIntegrator
+ * @t: the time
+ *
+ * Set the current time at which the object is being integrated.
+ *
+ **/
 void
 cdn_integrator_set_time (CdnIntegrator *integrator,
                          gdouble        t)
@@ -1409,7 +1449,7 @@ cdn_integrator_get_state (CdnIntegrator *integrator)
  * cdn_integrator_set_state:
  * @integrator: A #CdnIntegrator
  * @state: A #CdnIntegratorState
- * 
+ *
  * Set the integrator state. You should normally not need to use this function.
  *
  **/
@@ -1464,6 +1504,15 @@ cdn_integrator_get_real_time (CdnIntegrator *integrator)
 	return integrator->priv->real_time;
 }
 
+/**
+ * cdn_integrator_get_terminate:
+ * @integrator: the #CdnIntegrator
+ *
+ * Get whether the integration has been terminated by an event.
+ *
+ * Returns: %TRUE if the integration has been terminated, %FALSE otherwise
+ *
+ */
 gboolean
 cdn_integrator_get_terminate (CdnIntegrator *integrator)
 {
@@ -1472,6 +1521,15 @@ cdn_integrator_get_terminate (CdnIntegrator *integrator)
 	return integrator->priv->terminate;
 }
 
+/**
+ * cdn_integrator_get_default_timestep:
+ * @integrator: the #CdnIntegrator
+ *
+ * Get the default integration time step
+ *
+ * Returns: the default integration time step
+ *
+ */
 gdouble
 cdn_integrator_get_default_timestep (CdnIntegrator *integrator)
 {
@@ -1480,12 +1538,20 @@ cdn_integrator_get_default_timestep (CdnIntegrator *integrator)
 	return integrator->priv->default_timestep;
 }
 
+/**
+ * cdn_integrator_set_default_timestep:
+ * @integrator: the #CdnIntegrator
+ * @timestep: the default time step
+ *
+ * Set the default integration time step
+ *
+ */
 void
 cdn_integrator_set_default_timestep (CdnIntegrator *integrator,
-                                     gdouble        value)
+                                     gdouble        timestep)
 {
 	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
 
-	integrator->priv->default_timestep = value;
+	integrator->priv->default_timestep = timestep;
 	g_object_notify (G_OBJECT (integrator), "default-timestep");
 }

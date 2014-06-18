@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -41,6 +41,17 @@ typedef struct _CdnEmbeddedString		CdnEmbeddedString;
 typedef struct _CdnEmbeddedStringClass		CdnEmbeddedStringClass;
 typedef struct _CdnEmbeddedStringPrivate	CdnEmbeddedStringPrivate;
 
+/**
+ * CdnEmbeddedStringNodeType:
+ * @CDN_EMBEDDED_STRING_NODE_TEXT: text
+ * @CDN_EMBEDDED_STRING_NODE_EQUATION: equation
+ * @CDN_EMBEDDED_STRING_NODE_INDIRECTION: indirection
+ * @CDN_EMBEDDED_STRING_NODE_REDUCE: reduce
+ * @CDN_EMBEDDED_STRING_NODE_MAP: map
+ * @CDN_EMBEDDED_STRING_NODE_CONDITION: condition
+ *
+ * Types of embedded string nodes.
+ */
 typedef enum
 {
 	CDN_EMBEDDED_STRING_NODE_TEXT,
@@ -65,6 +76,13 @@ struct _CdnEmbeddedStringClass
 	GObjectClass parent_class;
 };
 
+/**
+ * CdnEmbeddedStringError:
+ * @CDN_EMBEDDED_STRING_ERROR_BRACES: non matching braces
+ * @CDN_EMBEDDED_STRING_ERROR_INVALID_EXPANSION: invalid expansion
+ *
+ * Embedded string error codes.
+ */
 typedef enum
 {
 	CDN_EMBEDDED_STRING_ERROR_BRACES,
@@ -112,15 +130,13 @@ GSList            *cdn_embedded_string_expand_multiple  (CdnEmbeddedString      
                                                          CdnExpansionContext       *ctx,
                                                          GError                   **error);
 
-gchar             *cdn_embedded_string_escape           (gchar const               *item);
+gchar             *cdn_embedded_string_escape           (gchar const               *s);
 
 gchar             *cdn_embedded_string_expand_escape    (CdnEmbeddedString         *s,
                                                          CdnExpansionContext       *ctx,
                                                          GError                   **error);
 
 void               cdn_embedded_string_clear_cache      (CdnEmbeddedString         *s);
-
-gchar             *cdn_embedded_string_collapse         (gchar const * const       *s);
 
 CdnExpansion      *cdn_embedded_string_as_expansion     (CdnEmbeddedString         *s,
                                                          CdnExpansionContext       *context,

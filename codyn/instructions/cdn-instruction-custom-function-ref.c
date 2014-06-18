@@ -1,5 +1,18 @@
 #include "cdn-instruction-custom-function-ref.h"
 
+/**
+ * CdnInstructionCustomFunctionRef:
+ *
+ * Custom function ref instruction.
+ *
+ * The #CdnInstructionCustomFunctionRef is a special #CdnInstruction subtype
+ * which represents a reference to a custom function. This is different from
+ * #CdnInstructionCustomFunction since it does not actually execute. This
+ * instruction type is only used internally to create symbolic references
+ * to custom functions and never ends up in the final instruction stream.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionCustomFunctionRef, cdn_instruction_custom_function_ref, CDN_TYPE_INSTRUCTION)
 
 #define CDN_INSTRUCTION_CUSTOM_FUNCTION_REF_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_CUSTOM_FUNCTION_REF, CdnInstructionCustomFunctionRefPrivate))
@@ -104,6 +117,16 @@ cdn_instruction_custom_function_ref_init (CdnInstructionCustomFunctionRef *self)
 	self->priv = CDN_INSTRUCTION_CUSTOM_FUNCTION_REF_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_instruction_custom_function_ref_new:
+ * @function: a #CdnFunction
+ *
+ * Create a new instruction which represents a reference to a
+ * function.
+ *
+ * Returns: (transfer full) (type CdnInstructionCustomFunctionRef): a new #CdnInstructionCustomFunctionRef
+ *
+ */
 CdnInstruction *
 cdn_instruction_custom_function_ref_new (CdnFunction *function)
 {
@@ -127,7 +150,7 @@ cdn_instruction_custom_function_ref_new (CdnFunction *function)
  **/
 void
 cdn_instruction_custom_function_ref_set_function (CdnInstructionCustomFunctionRef *function,
-                                                  CdnFunction                  *func)
+                                                  CdnFunction                     *func)
 {
 	g_return_if_fail (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (function));
 	g_return_if_fail (function == NULL || CDN_IS_FUNCTION (func));

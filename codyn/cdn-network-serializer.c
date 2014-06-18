@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -1551,7 +1551,7 @@ cdn_network_serializer_serialize (CdnNetworkSerializer  *serializer,
  * @serializer: A #CdnNetworkSerializer
  * @file: A #GFile
  * @error: A #GError
- * 
+ *
  * Convenience function to serialize to a file.
  *
  * Returns: %TRUE if the serialization was successful, %FALSE otherwise
@@ -1591,7 +1591,7 @@ cdn_network_serializer_serialize_file (CdnNetworkSerializer  *serializer,
  * @serializer: A #CdnNetworkSerializer
  * @path: The file path
  * @error: A #GError
- * 
+ *
  * Convenience function to serialize to a file path.
  *
  * Returns: %TRUE if the serialization was successful, %FALSE otherwise

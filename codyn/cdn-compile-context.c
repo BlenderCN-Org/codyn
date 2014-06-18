@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -43,6 +43,16 @@ struct _CdnCompileContextPrivate
 {
 	GSList *contexts;
 };
+
+/**
+ * CdnCompileContext:
+ *
+ * The expression compile context
+ *
+ * The compile context provides information for compiling expressions such
+ * as the available user defined functions and the objects that can be used
+ * to lookup properties used in the expression.
+ */
 
 G_DEFINE_TYPE (CdnCompileContext, cdn_compile_context, G_TYPE_OBJECT)
 
@@ -445,8 +455,8 @@ cdn_compile_context_lookup_function (CdnCompileContext *context,
 }
 
 void
-cdn_compile_context_set_function_ref_priority (CdnCompileContext *context,
-                                               gboolean           prio)
+_cdn_compile_context_set_function_ref_priority (CdnCompileContext *context,
+                                                gboolean           prio)
 {
 	Context *ctx;
 
@@ -463,7 +473,7 @@ cdn_compile_context_set_function_ref_priority (CdnCompileContext *context,
 }
 
 gboolean
-cdn_compile_context_get_function_ref_priority (CdnCompileContext *context)
+_cdn_compile_context_get_function_ref_priority (CdnCompileContext *context)
 {
 	Context *ctx;
 
@@ -480,8 +490,8 @@ cdn_compile_context_get_function_ref_priority (CdnCompileContext *context)
 }
 
 void
-cdn_compile_context_set_function_arg_priority (CdnCompileContext *context,
-                                               gboolean           prio)
+_cdn_compile_context_set_function_arg_priority (CdnCompileContext *context,
+                                                gboolean           prio)
 {
 	Context *ctx;
 
@@ -498,7 +508,7 @@ cdn_compile_context_set_function_arg_priority (CdnCompileContext *context,
 }
 
 gboolean
-cdn_compile_context_get_function_arg_priority (CdnCompileContext *context)
+_cdn_compile_context_get_function_arg_priority (CdnCompileContext *context)
 {
 	Context *ctx;
 

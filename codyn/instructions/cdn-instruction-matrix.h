@@ -17,13 +17,6 @@ typedef struct _CdnInstructionMatrix		CdnInstructionMatrix;
 typedef struct _CdnInstructionMatrixClass	CdnInstructionMatrixClass;
 typedef struct _CdnInstructionMatrixPrivate	CdnInstructionMatrixPrivate;
 
-/**
- * CdnInstructionMatrix:
- * @value: the numeric value
- *
- * The instruction class for %CDN_INSTRUCTION_TYPE_MATRIX
- *
- */
 struct _CdnInstructionMatrix
 {
 	/*< private >*/

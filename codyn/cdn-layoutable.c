@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -117,7 +117,7 @@ cdn_layoutable_default_init (CdnLayoutableInterface *iface)
  *
  * Get the location of the layoutable.
  *
- **/
+ */
 void
 cdn_layoutable_get_location (CdnLayoutable *layoutable,
                              gint          *x,
@@ -189,6 +189,15 @@ cdn_layoutable_supports_location (CdnLayoutable *layoutable)
 	return CDN_LAYOUTABLE_GET_INTERFACE (layoutable)->supports_location (layoutable);
 }
 
+/**
+ * cdn_layoutable_get_has_location:
+ * @layoutable: the #CdnLayoutable
+ *
+ * Get whether the layoutable has a location set.
+ *
+ * Returns: %TRUE if the layoutable has a location set, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_layoutable_get_has_location (CdnLayoutable *layoutable)
 {
@@ -197,6 +206,14 @@ cdn_layoutable_get_has_location (CdnLayoutable *layoutable)
 	return CDN_LAYOUTABLE_GET_INTERFACE (layoutable)->get_has_location (layoutable);
 }
 
+/**
+ * cdn_layoutable_set_has_location:
+ * @layoutable: the #CdnLayoutable
+ * @has_location: whether or not the layoutable has a location set
+ *
+ * Set whether the layoutable has a location set.
+ *
+ */
 void
 cdn_layoutable_set_has_location (CdnLayoutable *layoutable,
                                  gboolean       has_location)

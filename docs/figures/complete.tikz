@@ -1,0 +1,17 @@
+\documentclass{article}
+\usepackage{codyn}
+\usepackage{tikz}
+\usepackage[active,tightpage]{preview}
+
+\usetikzlibrary{calc,positioning,arrows,shapes}
+
+\PreviewEnvironment{tikzpicture}
+\setlength\PreviewBorder{5pt}
+
+\include{complete.inc}
+
+\begin{document}
+	\begin{tikzpicture}
+		\rendercodyn
+	\end{tikzpicture}
+\end{document}

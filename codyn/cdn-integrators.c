@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -56,7 +56,7 @@ ensure_defaults ()
 
 /**
  * cdn_integrators_list:
- * 
+ *
  * Get the list of integrators.
  *
  * Returns: (element-type GTypeClass) (transfer none): A GSList of #GType
@@ -73,7 +73,7 @@ cdn_integrators_list (void)
 /**
  * cdn_integrators_register:
  * @gtype: A #GType
- * 
+ *
  * Register a new integrator.
  *
  **/
@@ -96,7 +96,7 @@ cdn_integrators_register (GType gtype)
 /**
  * cdn_integrators_unregister:
  * @gtype: A #GType
- * 
+ *
  * Unregister an integrator.
  *
  **/
@@ -114,7 +114,7 @@ cdn_integrators_unregister (GType gtype)
 /**
  * cdn_integrators_find:
  * @id: The integrator id
- * 
+ *
  * Find an integrator by id.
  *
  * Returns: A #GType of the integrator or #G_TYPE_INVALID when the integrator
@@ -126,7 +126,7 @@ cdn_integrators_find (gchar const *id)
 {
 	GSList const *ints = cdn_integrators_list ();
 	GType ret = G_TYPE_INVALID;
-	
+
 	while (ints)
 	{
 		CdnIntegratorClass *klass = ints->data;

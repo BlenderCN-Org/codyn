@@ -17,16 +17,6 @@ typedef struct _CdnInstructionFunction		CdnInstructionFunction;
 typedef struct _CdnInstructionFunctionClass	CdnInstructionFunctionClass;
 typedef struct _CdnInstructionFunctionPrivate	CdnInstructionFunctionPrivate;
 
-/**
- * CdnInstructionFunction:
- * @id: The function/operator id (see #cdn_math_function_lookup)
- * @name: The function/operator name
- * @arguments: The number of arguments the function receives
- *
- * The instruction class for %CDN_INSTRUCTION_TYPE_FUNCTION. Note: this
- * instruction is used both for functions and for operators!
- *
- */
 struct _CdnInstructionFunction
 {
 	/*< private >*/

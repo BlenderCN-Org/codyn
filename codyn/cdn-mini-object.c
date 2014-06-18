@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -46,6 +46,32 @@ static CdnMiniObject *cdn_mini_object_copy_default (CdnMiniObject *obj);
 static void cdn_mini_object_finalize (CdnMiniObject *obj);
 static void cdn_mini_object_init (CdnMiniObject *obj);
 
+/**
+ * CdnMiniObject:
+ *
+ * A minimum object class.
+ *
+ * #CdnMiniObject is a special type which implements only the inheritance part
+ * of normal #GObject. Mini objects are therefore lighter to construct which
+ * allows for increased performance. They are primarily used for #CdnInstruction.
+ */
+
+/**
+ * CdnParamSpecMiniObject:
+ *
+ * A mini object param spec.
+ *
+ * #CdnParamSpecMiniObject is a #GParamSpec implementation for #CdnMiniObject.
+ */
+
+/**
+ * cdn_mini_object_get_type:
+ *
+ * Get the #CdnMiniObject gtype.
+ *
+ * Returns: the mini object #GType
+ *
+ */
 GType
 cdn_mini_object_get_type (void)
 {
@@ -127,6 +153,16 @@ cdn_mini_object_finalize (CdnMiniObject * obj)
 	g_type_free_instance ((GTypeInstance *)obj);
 }
 
+/**
+ * cdn_mini_object_new:
+ * @type: the #GType mini object subclass
+ *
+ * Create a new mini object of the given type. Note that @type
+ * must be a subclass of #CdnMiniObject
+ *
+ * Returns: (transfer full): a new mini object
+ *
+ */
 CdnMiniObject *
 cdn_mini_object_new (GType type)
 {
@@ -301,6 +337,14 @@ cdn_value_mini_object_lcopy (GValue const *value,
 	return NULL;
 }
 
+/**
+ * cdn_value_set_mini_object:
+ * @value: the #GValue
+ * @mini_object: the object
+ *
+ * Set the contents of @value to the object specified by @mini_object.
+ *
+ */
 void
 cdn_value_set_mini_object (GValue        *value,
                            CdnMiniObject *mini_object)
@@ -323,6 +367,15 @@ cdn_value_set_mini_object (GValue        *value,
 	}
 }
 
+/**
+ * cdn_value_take_mini_object:
+ * @value: the #GValue
+ * @mini_object: (transfer full): the object
+ *
+ * Set the contents of @value to the object specified by @mini_object.
+ * The ownership of @mini_object is transferred to @value.
+ *
+ */
 void
 cdn_value_take_mini_object (GValue        *value,
                             CdnMiniObject *mini_object)
@@ -418,6 +471,14 @@ param_mini_object_values_cmp (GParamSpec   *pspec,
 	return p1 < p2 ? -1 : p1 > p2;
 }
 
+/**
+ * cdn_param_spec_mini_object_get_type:
+ *
+ * Get the #GType of #CdnParamSpecMiniObject
+ *
+ * Returns: the mini object param spec #GType
+ *
+ */
 GType
 cdn_param_spec_mini_object_get_type (void)
 {

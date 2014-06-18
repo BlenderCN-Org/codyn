@@ -17,13 +17,6 @@ typedef struct _CdnInstructionNumber		CdnInstructionNumber;
 typedef struct _CdnInstructionNumberClass	CdnInstructionNumberClass;
 typedef struct _CdnInstructionNumberPrivate	CdnInstructionNumberPrivate;
 
-/**
- * CdnInstructionNumber:
- * @value: the numeric value
- *
- * The instruction class for %CDN_INSTRUCTION_TYPE_NUMBER
- *
- */
 struct _CdnInstructionNumber
 {
 	/*< private >*/

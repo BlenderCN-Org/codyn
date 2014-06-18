@@ -20,6 +20,21 @@ struct _CdnInstructionVariablePrivate
 	CdnDimension slice_dim;
 };
 
+/**
+ * CdnInstructionVariable:
+ *
+ * Variable instruction.
+ *
+ * #CdnInstructionVariable is a special #CdnInstruction subtype which represents
+ * referencing of a #CdnVariable. When executed, the current value of the corresponding
+ * variable is pushed onto the stack. Additionally, a #CdnInstructionVariable can also
+ * encode a linear slice of the corresponding variable, instead of pushing the entire
+ * variable value (in the case of multidimensional values). This is equivalent to
+ * a #CdnInstructionVariable followed by an appropriate #CdnInstructionIndex, however
+ * allowing slicing in the #CdnInstructionVariable directly allows for better performance.
+ *
+ */
+
 G_DEFINE_TYPE (CdnInstructionVariable, cdn_instruction_variable, CDN_TYPE_INSTRUCTION)
 
 static void
@@ -355,6 +370,14 @@ cdn_instruction_variable_get_variable (CdnInstructionVariable *instruction)
 	return instruction->priv->property;
 }
 
+/**
+ * cdn_instruction_variable_set_binding:
+ * @instruction: the #CdnInstructionVariable
+ * @binding: the binding
+ *
+ * Set the binding of the variable instruction.
+ *
+ */
 void
 cdn_instruction_variable_set_binding (CdnInstructionVariable        *instruction,
                                       CdnInstructionVariableBinding  binding)
@@ -364,6 +387,15 @@ cdn_instruction_variable_set_binding (CdnInstructionVariable        *instruction
 	instruction->priv->binding = binding;
 }
 
+/**
+ * cdn_instruction_variable_get_binding:
+ * @instruction: the #CdnInstructionVariable
+ *
+ * Get the binding of the variable instruction.
+ *
+ * Returns: the binding
+ *
+ */
 CdnInstructionVariableBinding
 cdn_instruction_variable_get_binding (CdnInstructionVariable *instruction)
 {
@@ -373,6 +405,17 @@ cdn_instruction_variable_get_binding (CdnInstructionVariable *instruction)
 	return instruction->priv->binding;
 }
 
+/**
+ * cdn_instruction_variable_apply_slice:
+ * @instruction: the #CdnInstructionVariable
+ * @slice: (array length=length): the slice
+ * @length: the length of the slice
+ * @dim: the dimension of the slice
+ *
+ * Apply the provided slicing of the variable. If the instruction currently does
+ * not contain a slice, then the new slice will simply be set. Otherwise, the
+ * slicing operates on the original slice (i.e. the intersection of the two slices).
+ */
 void
 cdn_instruction_variable_apply_slice (CdnInstructionVariable *instruction,
                                       guint const            *slice,
@@ -408,6 +451,15 @@ cdn_instruction_variable_apply_slice (CdnInstructionVariable *instruction,
 	instruction->priv->slice_dim = *dim;
 }
 
+/**
+ * cdn_instruction_variable_set_slice:
+ * @instruction: the #CdnInstructionVariable
+ * @slice: (array length=length): the slice
+ * @length: the length of the slice
+ * @dim: the dimension of the slice
+ *
+ * Set the slice of the instruction. Any existing slicing will be overridden.
+ */
 void
 cdn_instruction_variable_set_slice (CdnInstructionVariable *instruction,
                                     guint const            *slice,

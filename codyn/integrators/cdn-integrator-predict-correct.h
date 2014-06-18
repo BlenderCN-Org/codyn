@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -52,7 +52,7 @@ struct _CdnIntegratorPredictCorrect
 {
 	/*< private >*/
 	CdnIntegrator parent;
-	
+
 	CdnIntegratorPredictCorrectPrivate *priv;
 };
 

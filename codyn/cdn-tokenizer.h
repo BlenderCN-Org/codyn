@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with codyn; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -51,7 +51,7 @@ typedef enum
 typedef enum
 {
 	CDN_TOKEN_OPERATOR_TYPE_NONE,
-	
+
 	// arithmetic operators
 	CDN_TOKEN_OPERATOR_TYPE_ARITHMETIC,
 	CDN_TOKEN_OPERATOR_TYPE_MULTIPLY,
@@ -61,7 +61,7 @@ typedef enum
 	CDN_TOKEN_OPERATOR_TYPE_PLUS,
 	CDN_TOKEN_OPERATOR_TYPE_MINUS,
 	CDN_TOKEN_OPERATOR_TYPE_POWER,
-	
+
 	// logical operators
 	CDN_TOKEN_OPERATOR_TYPE_LOGICAL,
 	CDN_TOKEN_OPERATOR_TYPE_NEGATE,
@@ -73,12 +73,12 @@ typedef enum
 	CDN_TOKEN_OPERATOR_TYPE_NEQUAL,
 	CDN_TOKEN_OPERATOR_TYPE_OR,
 	CDN_TOKEN_OPERATOR_TYPE_AND,
-	
+
 	// ternary operator
 	CDN_TOKEN_OPERATOR_TYPE_TERNARY,
 	CDN_TOKEN_OPERATOR_TYPE_TERNARY_TRUE,
 	CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE,
-	
+
 	// group 'operator'
 	CDN_TOKEN_OPERATOR_TYPE_NODE,
 	CDN_TOKEN_OPERATOR_TYPE_NODE_START,

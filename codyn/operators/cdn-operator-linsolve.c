@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -768,6 +768,14 @@ cdn_operator_linsolve_init (CdnOperatorLinsolve *self)
 	self->priv = CDN_OPERATOR_LINSOLVE_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_linsolve_new:
+ *
+ * Create a new linsolve operator
+ *
+ * Returns: (transfer full): a new linsolve operator
+ *
+ */
 CdnOperatorLinsolve *
 cdn_operator_linsolve_new ()
 {

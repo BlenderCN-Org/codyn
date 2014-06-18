@@ -55,7 +55,6 @@ COMMON_SOURCES = 		\
 	cdn-utils.c \
 	cdn-parser.y \
 	cdn-parser-tokens.l \
-	cdn-layout.c \
 	cdn-expansion.c \
 	cdn-selection.c \
 	cdn-attribute.c \
@@ -117,7 +116,6 @@ INST_H_FILES = \
 	cdn-stack.h \
 	cdn-usable.h \
 	cdn-utils.h \
-	cdn-layout.h \
 	cdn-embedded-string.h \
 	cdn-expansion-context.h \
 	cdn-expansion.h \

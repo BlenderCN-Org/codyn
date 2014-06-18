@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -313,6 +313,14 @@ cdn_operator_dt_init (CdnOperatorDt *self)
 	self->priv = CDN_OPERATOR_DT_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_operator_dt_new:
+ *
+ * Create a new dt operator
+ *
+ * Returns: (transfer full): a new dt operator
+ *
+ */
 CdnOperatorDt *
 cdn_operator_dt_new ()
 {

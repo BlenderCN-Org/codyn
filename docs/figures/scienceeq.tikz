@@ -1,0 +1,18 @@
+\documentclass{article}[12pt]
+\usepackage{amsmath}
+\usepackage{ubuntu}
+\usepackage[active,tightpage]{preview}
+
+\PreviewEnvironment{align}
+\setlength\PreviewBorder{5pt}
+
+\begin{document}
+\LARGE
+\begin{align}
+    \dot{\theta}_i & = 2 \pi \nu_i + \sum_j{r_j w_{ij} \sin(\theta_j - \theta_i - \phi_{ij})} \\
+    \ddot{r}_i & = a_i \left(\frac{a_i}{4}(R_i - r_i) - \dot{r}_i\right) \\
+    x_i & = r_i(1 + \cos(\theta_i))
+\end{align}
+\end{document}
+
+% vi:ts=4:et

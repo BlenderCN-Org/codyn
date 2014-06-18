@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -73,6 +73,15 @@ cdn_statement_default_init (CdnStatementInterface *iface)
 	}
 }
 
+/**
+ * cdn_statement_get_line:
+ * @statement: the #CdnStatement
+ * @start: (out): return value for the start line of the statement
+ * @end: (out): return value for the end line of the statement
+ *
+ * Get the start and end line of the statement.
+ *
+ */
 void
 cdn_statement_get_line (CdnStatement *statement,
                         gint         *start,
@@ -91,6 +100,15 @@ cdn_statement_get_line (CdnStatement *statement,
 	}
 }
 
+/**
+ * cdn_statement_set_line:
+ * @statement: the #CdnStatement
+ * @start: the start line
+ * @end: the end line
+ *
+ * Set the start and end line of the statement
+ *
+ */
 void
 cdn_statement_set_line (CdnStatement *statement,
                         gint          start,
@@ -101,6 +119,15 @@ cdn_statement_set_line (CdnStatement *statement,
 	g_object_set (statement, "line-start", start, "line-end", end, NULL);
 }
 
+/**
+ * cdn_statement_get_column:
+ * @statement: the #CdnStatement
+ * @start: (out): return value for the start column of the statement
+ * @end: (out): return value for the end column of the statement
+ *
+ * Get the start and end column of the statement.
+ *
+ */
 void
 cdn_statement_get_column (CdnStatement *statement,
                           gint         *start,
@@ -119,6 +146,15 @@ cdn_statement_get_column (CdnStatement *statement,
 	}
 }
 
+/**
+ * cdn_statement_set_column:
+ * @statement: the #CdnStatement
+ * @start: the start column
+ * @end: the end column
+ *
+ * Set the start and end column of the statement
+ *
+ */
 void
 cdn_statement_set_column (CdnStatement *statement,
                           gint          start,

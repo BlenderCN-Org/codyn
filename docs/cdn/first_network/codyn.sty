@@ -1,0 +1,200 @@
+\RequirePackage{listings}
+\RequirePackage{tikz}
+
+\input{cdn-listings.tex}
+
+% Tikz definitions
+
+\newif\ifcdnself
+\newif\ifcdnlabel
+\newif\ifcdnedgelabel
+\tikzset{cdn self/.is if=cdnself,cdn self=false}
+\tikzset{cdn label show/.is if=cdnlabel,cdn label show=true}
+\tikzset{cdn edge label show/.is if=cdnedgelabel,cdn edge label show=false}
+
+\tikzset{cdn node/.style={oscillator,draw,minimum size=1cm,label distance=1mm}}
+\tikzset{cdn edge/.style={-stealth',max distance=1cm}}
+\tikzset{cdn label/.style={font=\scriptsize,fill=white,inner ysep=1pt,inner xsep=0}}
+\tikzset{cdn edge label/.style={font=\scriptsize,fill=white,inner ysep=1pt,inner xsep=0}}
+
+\tikzset{cdn edge end/.style={bend left=\cdnedgebend}}
+\tikzset{cdn self end/.style={loop,in=60,out=120,distance=\cdnedgedistance}}
+
+\tikzset{cdn offset/.initial=0}
+\tikzset{cdn bend/.initial=30}
+\tikzset{cdn self skip/.initial=1.5cm}
+\tikzset{cdn self step/.initial=0.5cm}
+\tikzset{cdn name/.initial=undefined}
+\tikzset{cdn label text/.initial=\pgfkeys{/tikz/cdn verb/.expanded=\pgfkeysvalueof{/tikz/cdn name}}}
+\tikzset{cdn edge label text/.initial=\pgfkeys{/tikz/cdn verb/.expanded=\pgfkeysvalueof{/tikz/cdn name}}}
+
+\tikzset{cdn edge calc/.code={
+    \ifcdnself
+        \pgfmathsetmacro{\cdnedgedistance}{\pgfkeysvalueof{/tikz/cdn self skip} + \pgfkeysvalueof{/tikz/cdn offset} * \pgfkeysvalueof{/tikz/cdn self step}}
+        \pgfkeysalso{cdn edge endall/.style={cdn self end}}
+    \else
+        \pgfmathsetmacro{\cdnedgebend}{\pgfkeysvalueof{/tikz/cdn offset} * \pgfkeysvalueof{/tikz/cdn bend}}
+        \pgfkeysalso{cdn edge endall/.style={cdn edge end}}
+    \fi
+}}
+
+\tikzset{/tikz/cdn verb/.code={\lstinline`#1`}}
+
+\def\cdnlabel[#1] (#2){
+  \begin{scope}[cdn name={#2},#1]
+    \ifcdnlabel
+    \path (#2) [late options={label={[rectangle,minimum size=0,cdn label]\pgfkeysvalueof{/tikz/cdn label text}}}];
+    \fi
+  \end{scope}
+}
+
+\def\cdnconnect[#1] (#2) from (#3) to (#4) {
+  \begin{scope}[cdn name={#2},#1]
+    \ifcdnedgelabel
+	\path (#3) edge [#1,cdn edge calc,cdn edge endall] node [cdn edge label] {\pgfkeysvalueof{/tikz/cdn edge label text}} (#4);
+    \else
+	\path (#3) edge [#1,cdn edge calc,cdn edge endall] (#4);
+    \fi
+  \end{scope}
+}
+
+\def\cdnnode[#1] (#2) at (#3, #4) {
+    \node [cdn name={#2},#1] (#2) at (#3, #4) {};
+}
+
+% Tikz oscillator shape
+
+% Keys for the oscillator wave, in fraction of the node dimensions:
+\pgfset{
+  wave width/.initial = 0.7,
+  wave height/.initial = 0.25
+}
+% Oscillator shape, based on the 'circle' shape:
+\pgfdeclareshape{oscillator}{%
+  % Inherit all anchors from the 'circle' shape:
+  \inheritsavedanchors[from={circle}]%
+  \inheritanchor[from={circle}]{center}%
+  \inheritanchor[from={circle}]{mid}%
+  \inheritanchor[from={circle}]{base}%
+  \inheritanchor[from={circle}]{north}%
+  \inheritanchor[from={circle}]{south}%
+  \inheritanchor[from={circle}]{west}%
+  \inheritanchor[from={circle}]{east}%
+  \inheritanchor[from={circle}]{mid west}%
+  \inheritanchor[from={circle}]{mid east}%
+  \inheritanchor[from={circle}]{base west}%
+  \inheritanchor[from={circle}]{base east}%
+  \inheritanchor[from={circle}]{north west}%
+  \inheritanchor[from={circle}]{south west}%
+  \inheritanchor[from={circle}]{north east}%
+  \inheritanchor[from={circle}]{south east}%
+  \inheritanchorborder[from={circle}]%
+  %
+  % Add anchors for the wave boundaries:
+  %
+  \anchor{wave start}{%
+    \pgfutil@tempdima=\radius%
+    \pgfmathsetlength{\pgf@xb}{\pgfkeysvalueof{/pgf/outer xsep}}%
+    \pgfmathsetlength{\pgf@yb}{\pgfkeysvalueof{/pgf/outer ysep}}%
+    \ifdim\pgf@xb<\pgf@yb%
+      \advance\pgfutil@tempdima by-\pgf@yb%
+    \else%
+      \advance\pgfutil@tempdima by-\pgf@xb%
+    \fi%
+    \pgfpointadd{\centerpoint}{\pgfpoint{-\pgfkeysvalueof{/pgf/wave width}\pgfutil@tempdima}{0pt}}%
+  }%
+  \anchor{wave end}{%
+    \pgfutil@tempdima=\radius%
+    \pgfmathsetlength{\pgf@xb}{\pgfkeysvalueof{/pgf/outer xsep}}%
+    \pgfmathsetlength{\pgf@yb}{\pgfkeysvalueof{/pgf/outer ysep}}%
+    \ifdim\pgf@xb<\pgf@yb%
+      \advance\pgfutil@tempdima by-\pgf@yb%
+    \else%
+      \advance\pgfutil@tempdima by-\pgf@xb%
+    \fi%
+    \pgfpointadd{\centerpoint}{\pgfpoint{\pgfkeysvalueof{/pgf/wave width}\pgfutil@tempdima}{0pt}}%
+  }%
+  %
+  \backgroundpath{%
+    %
+    % Path code from the circle shape:
+    %
+    \pgfutil@tempdima=\radius%
+    \pgfmathsetlength{\pgf@xb}{\pgfkeysvalueof{/pgf/outer xsep}}%
+    \pgfmathsetlength{\pgf@yb}{\pgfkeysvalueof{/pgf/outer ysep}}%
+    \ifdim\pgf@xb<\pgf@yb%
+      \advance\pgfutil@tempdima by-\pgf@yb%
+    \else%
+      \advance\pgfutil@tempdima by-\pgf@xb%
+    \fi%
+    \begingroup%
+    \tikz@mode%
+    \iftikz@mode@fill%
+    \pgfpathcircle{\centerpoint}{\pgfutil@tempdima}%
+    \pgfusepath{fill}%
+    \fi%
+    \iftikz@mode@draw%
+    %
+    % The sine wave:
+    %
+    \pgfpathcircle{\centerpoint}{\pgfutil@tempdima}%
+    \pgfmathsetlength{\pgf@xb}{\pgfkeysvalueof{/pgf/wave width}\pgfutil@tempdima}%
+    \pgfmathsetlength{\pgf@yb}{2*\pgfkeysvalueof{/pgf/wave height}\pgfutil@tempdima}%
+    \pgfpathmoveto{\pgfpointadd{\centerpoint}{\pgfpoint{-\pgf@xb}{0pt}}}%
+    \pgfpathsine{\pgfpoint{0.5\pgf@xb}{0.5\pgf@yb}}%
+    \pgfpathmoveto{\pgfpointadd{\centerpoint}{\pgfpoint{-0.5\pgf@xb}{0.5\pgf@yb}}}%
+    \pgfpathcosine{\pgfpoint{0.5\pgf@xb}{-0.5\pgf@yb}}%
+    \pgfpathmoveto{\centerpoint}%
+    \pgfpathsine{\pgfpoint{0.5\pgf@xb}{-0.5\pgf@yb}}%
+    \pgfpathmoveto{\pgfpointadd{\centerpoint}{\pgfpoint{0.5\pgf@xb}{-0.5\pgf@yb}}}%
+    \pgfpathcosine{\pgfpoint{0.5\pgf@xb}{0.5\pgf@yb}}%
+    \fi%
+    \endgroup%
+  }%
+}
+
+% Custom arrows
+
+\newdimen\arrowsize
+\pgfset{
+  inhibitor size/.code={\pgfsetarrowoptions{inhibitor}{#1}},
+  excitator size/.code={\pgfsetarrowoptions{excitator}{#1}}
+}
+\pgfsetarrowoptions{inhibitor}{3}
+\pgfsetarrowoptions{excitator}{4}
+
+\pgfarrowsdeclare{inhibitor}{inhibitor}
+{
+  \arrowsize=0pt
+  \pgfmathparse{\pgfgetarrowoptions{inhibitor} * sqrt(\pgflinewidth)}
+  \advance\arrowsize by \pgfmathresult pt
+  \pgfarrowsleftextend{\arrowsize}
+  \pgfarrowsrightextend{\arrowsize}
+}
+{
+  \arrowsize=0pt
+  \pgfmathparse{\pgfgetarrowoptions{inhibitor} * sqrt(\pgflinewidth)}
+  \advance\arrowsize by \pgfmathresult pt
+  \pgfcircle{\pgfpointorigin}{\arrowsize}
+  \pgfusepathqfill
+}
+
+\pgfarrowsdeclare{excitator}{excitator}
+{
+  \arrowsize=0pt
+  \pgfmathparse{\pgfgetarrowoptions{excitator} * sqrt(\pgflinewidth) + 0.25 * 1.4142135623731 * \pgflinewidth}
+  \advance\arrowsize by \pgfmathresult pt
+  \pgfarrowsleftextend{0}
+  \pgfarrowsrightextend{\arrowsize}
+}
+{
+  \arrowsize=0pt
+  \pgfmathparse{\pgfgetarrowoptions{excitator} * sqrt(\pgflinewidth)}
+  \advance\arrowsize by \pgfmathresult pt
+  \pgfsetdash{}{0pt} % do not dash
+  \pgfpathmoveto{\pgfpointorigin}
+  \pgfpathlineto{\pgfpoint{\arrowsize}{\arrowsize}}
+  \pgfpathmoveto{\pgfpointorigin}
+  \pgfpathlineto{\pgfpoint{\arrowsize}{-\arrowsize}}
+  \pgfusepathqstroke
+}

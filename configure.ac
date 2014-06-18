@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.6)
+AC_INIT(codyn, 3.6.1)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
@@ -492,6 +492,23 @@ AC_SUBST(EXPANDED_PYTHONDIR)
 
 AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
 
+dnl ===========================================================================
+dnl Enable docs
+
+AC_ARG_ENABLE([docs],
+              AS_HELP_STRING([--enable-docs=[yes/no]],[Enable documentation generation (default: no)]),
+              [enable_tar=$enableval],
+              [enable_tar=no])
+
+if test "x$enable_docs" == "xyes"; then
+	AC_PATH_PROG([CLDOC],
+	             [cldoc],
+	             [AC_MSG_ERROR([could not find cldoc])])
+fi
+
+AC_SUBST(CLDOC)
+AM_CONDITIONAL(ENABLE_DOCS, test "x$enable_docs" = "xyes")
+
 AC_CONFIG_FILES([
 Makefile
 codyn.pc
@@ -510,6 +527,7 @@ data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile
 data/library/physics/algorithms/Makefile
+docs/Makefile
 examples/Makefile
 io/Makefile
 io/file/Makefile
@@ -552,5 +570,6 @@ Configuration:
 	python support:         $enable_python
 	blas:                   $have_blas
 	lapack:                 $have_lapack
+	documentation:          $enable_docs
 "
 

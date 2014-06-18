@@ -2,19 +2,30 @@
 #include "cdn-tree-algorithms-private.h"
 #include <codyn/cdn-debug.h>
 
+/**
+ * cdn_expression_tree_iter_substitute:
+ * @iter: the #CdnExpressionTreeIter
+ * @variable: the variable to substitute
+ * @subst: the expression to substitute with
+ *
+ * Substitute a variable with a given expression in a tree iter.
+ *
+ * Returns: (transfer none): @iter
+ *
+ */
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_substitute (CdnExpressionTreeIter *iter,
-                                     CdnVariable           *property,
+                                     CdnVariable           *variable,
                                      CdnExpressionTreeIter *subst)
 {
 	GSList *props;
 
 	cdn_debug_message (DEBUG_LINSOLVE, "Substitute {%s} in {%s} with {%s}",
-	                   cdn_variable_get_name (property),
+	                   cdn_variable_get_name (variable),
 	                   cdn_expression_tree_iter_to_string (iter),
 	                   cdn_expression_tree_iter_to_string (subst));
 
-	props = iter_remove_variables (iter, property, NULL);
+	props = iter_remove_variables (iter, variable, NULL);
 
 	while (props)
 	{
@@ -29,17 +40,27 @@ cdn_expression_tree_iter_substitute (CdnExpressionTreeIter *iter,
 	return iter;
 }
 
+/**
+ * cdn_expression_tree_iter_substitute_hash:
+ * @iter: the #CdnExpressionTreeIter
+ * @table: (element-type CdnVariable CdnExpressionTreeIter): the variables to substitute
+ *
+ * Substitute multiple variables from a hash table, #CdnVariable to #CdnExpressionTreeIter.
+ *
+ * Returns: (transfer none): @iter
+ *
+ */
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_substitute_hash (CdnExpressionTreeIter *iter,
                                           GHashTable            *table)
 {
-	GSList *props;
+	GSList *variables;
 
-	props = iter_remove_variables (iter, NULL, NULL);
+	variables = iter_remove_variables (iter, NULL, NULL);
 
-	while (props)
+	while (variables)
 	{
-		CdnExpressionTreeIter *it = props->data;
+		CdnExpressionTreeIter *it = variables->data;
 		CdnVariable *p;
 		CdnExpressionTreeIter *sub;
 
@@ -52,7 +73,7 @@ cdn_expression_tree_iter_substitute_hash (CdnExpressionTreeIter *iter,
 			iter_copy_into (sub, it);
 		}
 
-		props = g_slist_delete_link (props, props);
+		variables = g_slist_delete_link (variables, variables);
 	}
 
 	iter_invalidate_cache_down (iter);
