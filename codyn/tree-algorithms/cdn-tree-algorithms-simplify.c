@@ -92,20 +92,6 @@ iter_is_number_matrix (CdnExpressionTreeIter  *iter,
 	return FALSE;
 }
 
-static gint
-compute_index (gdouble const *valuesa,
-               gdouble const *valuesb,
-               gint           idx,
-               gint           numr)
-{
-	if (valuesb)
-	{
-		return ((gint)(valuesa[idx] + 0.5)) + (gint)(valuesb[idx] + 0.5) * numr;
-	}
-
-	return ((gint)(valuesa[idx] + 0.5));
-}
-
 static gboolean
 is_single_item_matrix (CdnExpressionTreeIter *iter)
 {
@@ -583,65 +569,93 @@ static gboolean
 simplify_index (CdnExpressionTreeIter *iter)
 {
 	CdnExpressionTreeIter *last;
-	CdnDimension dima;
-	CdnDimension dimb;
-	gint num;
-	gboolean isnuma;
-	gdouble *valuesa;
-	gdouble *valuesb = NULL;
 	CdnExpressionTreeIter *ret;
 	CdnStackManipulation const *smanip;
 	gboolean waschanged;
+	guint *lindices;
+	gint nindices;
+	CdnStackManipulation const *retsmanip;
 
 	last = iter->children[iter->num_children - 1];
 
-	waschanged = simplify_inline_matrix (last);
-
-	// Check if first (and second) arg are numeric
-	isnuma = iter_is_number_matrix (iter->children[0],
-	                                &valuesa,
-	                                &dima);
-
-	if (!isnuma)
-	{
-		return waschanged;
-	}
-
-	if (iter->num_children == 3)
-	{
-		// Double index
-		if (!iter_is_number_matrix (iter->children[1],
-		                            &valuesb,
-		                            &dimb))
-		{
-			g_free (valuesa);
-			return waschanged;
-		}
-	}
+	retsmanip = cdn_instruction_get_stack_manipulation (iter->instruction,
+	                                                    NULL);
 
 	smanip = cdn_instruction_get_stack_manipulation (last->instruction,
 	                                                 NULL);
 
+	waschanged = simplify_inline_matrix (last);
+
+	nindices = cdn_dimension_size (&retsmanip->push.dimension);
+
+	if (CDN_IS_INSTRUCTION_INDEX (iter->instruction))
+	{
+		gint *lidx;
+		gint i;
+
+		lidx = g_new0 (gint, nindices);
+
+		cdn_instruction_index_write_indices (CDN_INSTRUCTION_INDEX (iter->instruction),
+		                                     lidx,
+		                                     nindices);
+
+		lindices = g_new0 (guint, nindices);
+
+		for (i = 0; i < nindices; i++)
+		{
+			lindices[i] = (guint)lidx[i];
+		}
+
+		g_free (lidx);
+	}
+	else
+	{
+		gboolean isnuma;
+		gdouble *valuesa;
+		gdouble *valuesb = NULL;
+		CdnDimension dima;
+		CdnDimension dimb;
+
+		// Check if first (and second) arg are numeric
+		isnuma = iter_is_number_matrix (iter->children[0],
+		                                &valuesa,
+		                                &dima);
+
+		if (!isnuma)
+		{
+			return waschanged;
+		}
+
+		if (iter->num_children == 3)
+		{
+			// Double index
+			if (!iter_is_number_matrix (iter->children[1],
+			                            &valuesb,
+			                            &dimb))
+			{
+				g_free (valuesa);
+				return waschanged;
+			}
+		}
+
+		lindices = make_index_slice (valuesa,
+		                             &dima,
+		                             valuesb,
+		                             &dimb,
+		                             &smanip->push.dimension);
+
+		g_free (valuesa);
+		g_free (valuesb);
+	}
+
 	if (CDN_IS_INSTRUCTION_VARIABLE (last->instruction))
 	{
-		guint *slice;
-		CdnStackManipulation const *retsmanip;
-
-		slice = make_index_slice (valuesa,
-		                          &dima,
-		                          valuesb,
-		                          &dimb,
-		                          &smanip->push.dimension);
-
-		retsmanip = cdn_instruction_get_stack_manipulation (iter->instruction,
-		                                                    NULL);
-
 		cdn_instruction_variable_apply_slice (CDN_INSTRUCTION_VARIABLE (last->instruction),
-		                                      slice,
+		                                      lindices,
 		                                      cdn_dimension_size (&retsmanip->push.dimension),
 		                                      &retsmanip->push.dimension);
 
-		g_free (slice);
+		g_free (lindices);
 
 		// Make a variable slice
 		iter_replace_into (last, iter);
@@ -649,30 +663,19 @@ simplify_index (CdnExpressionTreeIter *iter)
 	}
 	else if (!iter_is_matrix (last))
 	{
+		g_free (lindices);
 		return waschanged;
 	}
 
-	dimb = smanip->push.dimension;
-	num = cdn_dimension_size (&dima);
-
-	if (num == 1)
+	if (nindices == 1)
 	{
-		gint idx;
-
-		idx = compute_index (valuesa,
-		                     valuesb,
-		                     0,
-		                     dimb.rows);
-
-		if (idx < last->num_children)
+		if (lindices[0] < last->num_children)
 		{
-			ret = iter_copy (last->children[idx]);
+			ret = iter_copy (last->children[lindices[0]]);
 		}
 		else
 		{
-			g_free (valuesa);
-			g_free (valuesb);
-
+			g_free (lindices);
 			return FALSE;
 		}
 	}
@@ -681,24 +684,22 @@ simplify_index (CdnExpressionTreeIter *iter)
 		CdnStackArgs args;
 		gint i;
 
-		cdn_stack_args_init (&args, num);
-		ret = iter_new_sized (NULL, num);
+		cdn_stack_args_init (&args, nindices);
+		ret = iter_new_sized (NULL, nindices);
 
-		// Single index, sample
-		for (i = 0; i < num; ++i)
+		for (i = 0; i < nindices; ++i)
 		{
 			gint idx;
 			CdnExpressionTreeIter *piter;
 
-			idx = compute_index (valuesa, valuesb, i, dimb.rows);
+			idx = lindices[i];
 
 			if (idx >= last->num_children)
 			{
 				cdn_expression_tree_iter_free (ret);
-
-				g_free (valuesa);
-				g_free (valuesb);
 				cdn_stack_args_destroy (&args);
+
+				g_free (lindices);
 
 				return FALSE;
 			}
@@ -714,12 +715,14 @@ simplify_index (CdnExpressionTreeIter *iter)
 		}
 
 		ret->instruction = cdn_instruction_matrix_new (&args,
-		                                               &dima);
+		                                               &retsmanip->push.dimension);
 
 		cdn_stack_args_destroy (&args);
 	}
 
 	iter_replace_into (ret, iter);
+	g_free (lindices);
+
 	return TRUE;
 }
 
@@ -1827,6 +1830,13 @@ iter_simplify (CdnExpressionTreeIter *iter,
 	else if (CDN_IS_INSTRUCTION_FUNCTION (iter->instruction))
 	{
 		if (simplify_function (iter))
+		{
+			ret = TRUE;
+		}
+	}
+	else if (CDN_IS_INSTRUCTION_INDEX (iter->instruction))
+	{
+		if (simplify_index (iter))
 		{
 			ret = TRUE;
 		}
