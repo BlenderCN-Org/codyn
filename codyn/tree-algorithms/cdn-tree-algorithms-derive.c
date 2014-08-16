@@ -1554,6 +1554,29 @@ derive_matrix (CdnExpressionTreeIter *iter,
 }
 
 static CdnExpressionTreeIter *
+derive_index_instr (CdnExpressionTreeIter *iter,
+                    CdnInstructionIndex   *index,
+                    DeriveContext         *context)
+{
+	CdnExpressionTreeIter *ret = NULL;
+	CdnExpressionTreeIter *deriv;
+
+	deriv = derive_iter (iter->children[0], context);
+
+	if (!deriv)
+	{
+		return NULL;
+	}
+
+	// Index into the derived
+	ret = iter_copy (iter);
+	cdn_expression_tree_iter_free (ret->children[0]);
+	ret->children[0] = deriv;
+
+	return ret;
+}
+
+static CdnExpressionTreeIter *
 derive_iter (CdnExpressionTreeIter *iter,
              DeriveContext         *ctx)
 {
@@ -1615,6 +1638,12 @@ derive_iter (CdnExpressionTreeIter *iter,
 		ret = derive_matrix (iter,
 		                     CDN_INSTRUCTION_MATRIX (instr),
 		                     ctx);
+	}
+	else if (CDN_IS_INSTRUCTION_INDEX (instr))
+	{
+		ret = derive_index_instr (iter,
+		                          CDN_INSTRUCTION_INDEX (instr),
+		                          ctx);
 	}
 	else
 	{
