@@ -568,8 +568,15 @@ Configuration:
 	network support:        $have_networking
 	wii support:            $enable_wii
 	python support:         $enable_python
+
 	blas:                   $have_blas
+	  cflags:               $BLAS_CFLAGS
+	  libs:                 $BLAS_LIBS
+
 	lapack:                 $have_lapack
+	  cflags:               $LAPACK_CFLAGS
+	  libs:                 $LAPACK_LIBS
+
 	documentation:          $enable_docs
 "
 
