@@ -184,6 +184,7 @@ void                _cdn_function_set_arguments_dimension     (CdnFunction      
 
 void                cdn_function_set_rand_as_argument         (gboolean              rand_as_argument);
 GSList const       *_cdn_function_get_rand_arguments          (CdnFunction          *function);
+void                _cdn_function_expression_changed          (CdnFunction          *function);
 
 G_END_DECLS
 

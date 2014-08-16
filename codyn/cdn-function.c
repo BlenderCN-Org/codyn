@@ -520,6 +520,15 @@ promote_rand_instructions (CdnFunction *self)
 	cdn_expression_set_instructions_take (self->priv->expression, ret);
 }
 
+void
+_cdn_function_expression_changed (CdnFunction *function)
+{
+	g_return_if_fail (CDN_IS_FUNCTION (function));
+
+	mark_unused_arguments (function);
+	update_stack_manipulation (function);
+}
+
 static gboolean
 cdn_function_compile_impl (CdnObject         *object,
                            CdnCompileContext *context,

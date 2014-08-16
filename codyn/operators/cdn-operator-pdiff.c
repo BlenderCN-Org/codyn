@@ -475,6 +475,8 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 		cdn_expression_set_instructions_take (cdn_function_get_expression (nf),
 		                                      instructions);
+
+		_cdn_function_expression_changed (nf);
 	}
 	else
 	{
