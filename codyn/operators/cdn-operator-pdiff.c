@@ -415,21 +415,6 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 		instructions = g_slist_concat (g_slist_reverse (cdn_expression_tree_iter_to_instructions (derived)),
 		                               instructions);
 
-		if (fsmanip->push.rows != 1)
-		{
-			CdnStackArgs targs;
-
-			cdn_stack_args_init (&targs, 1);
-			cdn_stack_arg_copy (&targs.args[0], &fsmanip->push);
-
-			instructions = g_slist_prepend (instructions,
-			                                cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
-			                                                              NULL,
-			                                                              &targs));
-
-			cdn_stack_args_destroy (&targs);
-		}
-
 		cdn_expression_tree_iter_free (derived);
 	}
 
@@ -438,25 +423,14 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 	if (retval)
 	{
-		CdnStackArgs targs;
 		CdnDimension ndim;
 
-		ndim.rows = cdn_dimension_size (&dim);
-		ndim.columns = cdn_dimension_size (&fsmanip->push.dimension);
-
-		cdn_stack_args_init (&targs, 1);
-		targs.args[0].dimension = ndim;
+		ndim.rows = cdn_dimension_size (&fsmanip->push.dimension);
+		ndim.columns = cdn_dimension_size (&dim);
 
 		instructions = g_slist_prepend (instructions,
 		                                cdn_instruction_matrix_new (&popargs,
 		                                                            &ndim));
-
-		instructions = g_slist_prepend (instructions,
-		                                cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
-		                                                              NULL,
-		                                                              &targs));
-
-		cdn_stack_args_destroy (&targs);
 
 		instructions = g_slist_reverse (instructions);
 
