@@ -482,7 +482,7 @@ if test "x$enable_python" = "xyes"; then
 	PKG_CHECK_MODULES(PYTHON,
 	                  [$PYGOBJECT_PKG >= $PYGOBJECT_REQUIRED])
 
-	pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '$prefix'), 'gi', 'overrides'))"`
+	pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '\\$' '{prefix}'), 'gi', 'overrides'))"`
 
 	AC_SUBST(pyoverridesdir)
 fi
