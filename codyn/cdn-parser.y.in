@@ -192,7 +192,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 @BISON_PURE_PARSER@
 
-%name-prefix="cdn_parser_"
+%name-prefix "cdn_parser_"
 
 %parse-param {CdnParserContext *context}
 %lex-param {void *scanner}
