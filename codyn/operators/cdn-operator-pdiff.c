@@ -121,32 +121,56 @@ derived_function (CdnExpression       *expr,
 	return cdn_function_for_dimension (ret, argdim);
 }
 
-static CdnFunctionArgument *
-derived_arg (CdnFunction   *func,
-             CdnExpression *expr)
+static gboolean
+derived_arg_or_t (CdnFunction         *func,
+                 CdnExpression        *expr,
+                 CdnFunctionArgument **arg,
+                 CdnVariable         **t)
 {
 	GSList const *instr;
 	gchar const *pname;
+	CdnVariable *v;
+	CdnObject *p;
+
+	*arg = NULL;
+	*t = NULL;
 
 	instr = cdn_expression_get_instructions (expr);
 
 	if (instr->next || !CDN_IS_INSTRUCTION_VARIABLE (instr->data))
 	{
-		return NULL;
+		return FALSE;
 	}
 
-	pname = cdn_variable_get_name (cdn_instruction_variable_get_variable (instr->data));
-	return cdn_function_get_argument (func, pname);
+	v = cdn_instruction_variable_get_variable (instr->data);
+	p = cdn_variable_get_object (v);
+
+	if (CDN_IS_INTEGRATOR (p) && v == cdn_object_get_variable (p, "t"))
+	{
+		*t = v;
+		return TRUE;
+	}
+
+	pname = cdn_variable_get_name (v);
+
+	*arg = cdn_function_get_argument (func, pname);
+
+	if (!*arg)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static gboolean
-validate_arguments (GSList const        *expressions,
-                    GSList const        *towardsexpr,
-                    CdnFunction        **func,
-                    CdnStackArgs const  *argdim,
-                    GSList             **towards,
-                    gint                *order,
-                    GError             **error)
+validate_arguments (GSList const         *expressions,
+                    GSList const         *towardsexpr,
+                    CdnFunction         **func,
+                    CdnStackArgs const   *argdim,
+                    GSList              **towards,
+                    gint                 *order,
+                    GError              **error)
 {
 	*func = derived_function (expressions->data, argdim, error);
 
@@ -181,10 +205,9 @@ validate_arguments (GSList const        *expressions,
 	while (towardsexpr)
 	{
 		CdnFunctionArgument *arg;
+		CdnVariable *t;
 
-		arg = derived_arg (*func, towardsexpr->data);
-
-		if (!arg)
+		if (!derived_arg_or_t (*func, towardsexpr->data, &arg, &t))
 		{
 			g_set_error (error,
 			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
@@ -195,7 +218,21 @@ validate_arguments (GSList const        *expressions,
 			return FALSE;
 		}
 
-		*towards = g_slist_prepend (*towards, arg);
+		if (arg)
+		{
+			*towards = g_slist_prepend (*towards, g_object_ref (arg));
+		}
+		else if (t)
+		{
+			CdnDimension dim = CDN_DIMENSION(1, 1);
+
+			arg = cdn_function_argument_new ("t", TRUE, NULL);
+			_cdn_function_argument_set_variable (arg, t);
+			cdn_function_argument_set_dimension (arg, &dim);
+
+			*towards = g_slist_prepend (*towards, g_object_ref_sink (arg));
+		}
+
 		towardsexpr = g_slist_next (towardsexpr);
 	}
 
@@ -487,7 +524,7 @@ cdn_operator_pdiff_initialize (CdnOperator         *op,
 	CdnOperatorPDiff *diff;
 	CdnFunction *func;
 	CdnFunction *nf = NULL;
-	GSList *towards;
+	GSList *towards = NULL;
 	gint order;
 	CdnFunctionArgument *arg;
 	CdnDimension dim;
@@ -530,6 +567,9 @@ cdn_operator_pdiff_initialize (CdnOperator         *op,
 	                         &order,
 	                         error))
 	{
+		g_slist_foreach (towards, (GFunc)g_object_unref, NULL);
+		g_slist_free (towards);
+
 		return FALSE;
 	}
 
@@ -585,7 +625,9 @@ cdn_operator_pdiff_initialize (CdnOperator         *op,
 	g_object_unref (func);
 	diff->priv->function = nf;
 
+	g_slist_foreach (towards, (GFunc)g_object_unref, NULL);
 	g_slist_free (towards);
+
 	return diff->priv->function != NULL;
 }
 
