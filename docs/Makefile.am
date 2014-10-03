@@ -5,7 +5,7 @@ girfile = $(top_builddir)/codyn/Cdn-3.0.gir
 #girfile = Cdn-3.0.gir
 
 tikzfigures = $(wildcard figures/*.tikz)
-pngfigures = $(patsubst %.tikz,%.png,$(tikzfigures))
+pngfigures = $(patsubst %.tikz,%.png,$(tikzfigures)) $(wildcard figures/*.png)
 
 javascript = $(wildcard javascript/*.js)
 javascript_opts = $(addprefix --custom-js=,$(javascript))
