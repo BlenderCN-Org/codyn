@@ -182,8 +182,6 @@ cdn_instruction_custom_operator_class_init (CdnInstructionCustomOperatorClass *k
 static void
 cdn_instruction_custom_operator_init (CdnInstructionCustomOperator *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_instruction_custom_operator_get_instance_private (self);
 	self->priv = CDN_INSTRUCTION_CUSTOM_OPERATOR_GET_PRIVATE (self);
 }
 

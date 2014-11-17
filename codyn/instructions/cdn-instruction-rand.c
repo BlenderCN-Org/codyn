@@ -173,8 +173,6 @@ cdn_instruction_rand_class_init (CdnInstructionRandClass *klass)
 static void
 cdn_instruction_rand_init (CdnInstructionRand *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_instruction_rand_get_instance_private (self);
 	self->priv = CDN_INSTRUCTION_RAND_GET_PRIVATE (self);
 
 	self->priv->smanip.push.rows = 1;

@@ -543,8 +543,6 @@ cdn_function_polynomial_class_init (CdnFunctionPolynomialClass *klass)
 static void
 cdn_function_polynomial_init (CdnFunctionPolynomial *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_function_polynomial_get_instance_private (self);
 	self->priv = CDN_FUNCTION_POLYNOMIAL_GET_PRIVATE (self);
 
 	/* Add 't' argument */

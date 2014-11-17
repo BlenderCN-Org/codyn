@@ -103,8 +103,6 @@ cdn_compile_context_class_init (CdnCompileContextClass *klass)
 static void
 cdn_compile_context_init (CdnCompileContext *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_compile_context_get_instance_private (self);
 	self->priv = CDN_COMPILE_CONTEXT_GET_PRIVATE (self);
 
 	self->priv->contexts = g_slist_prepend (NULL, g_slice_new0 (Context));

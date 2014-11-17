@@ -131,8 +131,6 @@ cdn_compile_error_class_init (CdnCompileErrorClass *klass)
 static void
 cdn_compile_error_init (CdnCompileError *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_compile_error_get_instance_private (self);
 	self->priv = CDN_COMPILE_ERROR_GET_PRIVATE (self);
 }
 

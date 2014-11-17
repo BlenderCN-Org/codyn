@@ -386,8 +386,6 @@ cdn_operator_class_init (CdnOperatorClass *klass)
 static void
 cdn_operator_init (CdnOperator *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_operator_get_instance_private (self);
 	self->priv = CDN_OPERATOR_GET_PRIVATE (self);
 }
 

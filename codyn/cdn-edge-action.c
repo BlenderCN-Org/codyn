@@ -538,8 +538,6 @@ cdn_edge_action_class_init (CdnEdgeActionClass *klass)
 static void
 cdn_edge_action_init (CdnEdgeAction *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_edge_action_get_instance_private (self);
 	self->priv = CDN_EDGE_ACTION_GET_PRIVATE (self);
 }
 

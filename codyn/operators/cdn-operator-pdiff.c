@@ -711,8 +711,6 @@ cdn_operator_pdiff_class_init (CdnOperatorPDiffClass *klass)
 static void
 cdn_operator_pdiff_init (CdnOperatorPDiff *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_operator_pdiff_get_instance_private (self);
 	self->priv = CDN_OPERATOR_PDIFF_GET_PRIVATE (self);
 }
 

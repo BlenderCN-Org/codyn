@@ -124,8 +124,6 @@ cdn_instruction_number_class_init (CdnInstructionNumberClass *klass)
 static void
 cdn_instruction_number_init (CdnInstructionNumber *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_instruction_number_get_instance_private (self);
 	self->priv = CDN_INSTRUCTION_NUMBER_GET_PRIVATE (self);
 
 	self->priv->smanip.push.rows = 1;

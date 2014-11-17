@@ -155,8 +155,6 @@ cdn_io_method_class_init (CdnIoMethodClass *klass)
 static void
 cdn_io_method_init (CdnIoMethod *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_io_method_get_instance_private (self);
 	self->priv = CDN_IO_METHOD_GET_PRIVATE (self);
 }
 

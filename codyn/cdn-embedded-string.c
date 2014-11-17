@@ -273,8 +273,6 @@ cdn_embedded_string_class_init (CdnEmbeddedStringClass *klass)
 static void
 cdn_embedded_string_init (CdnEmbeddedString *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_embedded_string_get_instance_private (self);
 	self->priv = CDN_EMBEDDED_STRING_GET_PRIVATE (self);
 
 	cdn_embedded_string_push (self, CDN_EMBEDDED_STRING_NODE_TEXT, 0);

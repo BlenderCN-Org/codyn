@@ -256,8 +256,6 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 static void
 cdn_function_argument_init (CdnFunctionArgument *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_function_argument_get_instance_private (self);
 	self->priv = CDN_FUNCTION_ARGUMENT_GET_PRIVATE (self);
 }
 

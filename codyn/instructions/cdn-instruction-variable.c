@@ -280,8 +280,6 @@ cdn_instruction_variable_class_init (CdnInstructionVariableClass *klass)
 static void
 cdn_instruction_variable_init (CdnInstructionVariable *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_instruction_variable_get_instance_private (self);
 	self->priv = CDN_INSTRUCTION_VARIABLE_GET_PRIVATE (self);
 }
 

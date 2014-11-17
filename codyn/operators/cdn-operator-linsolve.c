@@ -765,8 +765,6 @@ cdn_operator_linsolve_class_init (CdnOperatorLinsolveClass *klass)
 static void
 cdn_operator_linsolve_init (CdnOperatorLinsolve *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_operator_linsolve_get_instance_private (self);
 	self->priv = CDN_OPERATOR_LINSOLVE_GET_PRIVATE (self);
 }
 

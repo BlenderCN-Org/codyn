@@ -938,8 +938,6 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 static void
 cdn_integrator_init (CdnIntegrator *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_integrator_get_instance_private (self);
 	self->priv = CDN_INTEGRATOR_GET_PRIVATE (self);
 
 	self->priv->property_time = cdn_variable_new ("t",

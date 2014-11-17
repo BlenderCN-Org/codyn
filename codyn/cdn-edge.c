@@ -1120,8 +1120,6 @@ on_parent_changed (CdnEdge *self)
 static void
 cdn_edge_init (CdnEdge *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_edge_get_instance_private (self);
 	self->priv = CDN_EDGE_GET_PRIVATE (self);
 
 	g_signal_connect (self, "notify::parent", G_CALLBACK (on_parent_changed), NULL);

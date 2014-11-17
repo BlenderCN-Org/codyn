@@ -982,8 +982,6 @@ cdn_event_class_init (CdnEventClass *klass)
 static void
 cdn_event_init (CdnEvent *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_event_get_instance_private (self);
 	self->priv = CDN_EVENT_GET_PRIVATE (self);
 }
 

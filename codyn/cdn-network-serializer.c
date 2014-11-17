@@ -166,8 +166,6 @@ cdn_network_serializer_class_init (CdnNetworkSerializerClass *klass)
 static void
 cdn_network_serializer_init (CdnNetworkSerializer *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_network_serializer_get_instance_private (self);
 	self->priv = CDN_NETWORK_SERIALIZER_GET_PRIVATE (self);
 }
 

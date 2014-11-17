@@ -349,8 +349,6 @@ cdn_monitor_class_init (CdnMonitorClass *klass)
 static void
 cdn_monitor_init (CdnMonitor *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_monitor_get_instance_private (self);
 	self->priv = CDN_MONITOR_GET_PRIVATE (self);
 }
 

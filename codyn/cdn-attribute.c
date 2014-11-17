@@ -107,8 +107,6 @@ cdn_attribute_class_init (CdnAttributeClass *klass)
 static void
 cdn_attribute_init (CdnAttribute *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_attribute_get_instance_private (self);
 	self->priv = CDN_ATTRIBUTE_GET_PRIVATE (self);
 }
 

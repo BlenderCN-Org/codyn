@@ -512,8 +512,6 @@ cdn_instruction_index_class_init (CdnInstructionIndexClass *klass)
 static void
 cdn_instruction_index_init (CdnInstructionIndex *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_instruction_index_get_instance_private (self);
 	self->priv = CDN_INSTRUCTION_INDEX_GET_PRIVATE (self);
 }
 

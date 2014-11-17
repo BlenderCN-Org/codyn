@@ -423,8 +423,6 @@ on_parent_changed (CdnImport *import)
 static void
 cdn_import_init (CdnImport *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_import_get_instance_private (self);
 	self->priv = CDN_IMPORT_GET_PRIVATE (self);
 
 	g_signal_connect (self,

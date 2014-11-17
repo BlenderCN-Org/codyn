@@ -62,8 +62,6 @@ cdn_expansion_context_stack_class_init (CdnEmbeddedContextClass *klass)
 static void
 cdn_expansion_context_stack_init (CdnEmbeddedContext *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_expansion_context_stack_get_instance_private (self);
 	self->priv = CDN_EXPANSION_CONTEXT_STACK_GET_PRIVATE (self);
 
 	cdn_expansion_context_stack_save (self);

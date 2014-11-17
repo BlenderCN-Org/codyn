@@ -504,8 +504,6 @@ cdn_integrator_predict_correct_class_init (CdnIntegratorPredictCorrectClass *kla
 static void
 cdn_integrator_predict_correct_init (CdnIntegratorPredictCorrect *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_integrator_predict_correct_get_instance_private (self);
 	self->priv = CDN_INTEGRATOR_PREDICT_CORRECT_GET_PRIVATE (self);
 	self->priv->prediction_order = 5;
 	self->priv->correction_order = 5;

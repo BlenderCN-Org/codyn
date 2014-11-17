@@ -267,8 +267,6 @@ cdn_integrator_runge_kutta_class_init (CdnIntegratorRungeKuttaClass *klass)
 static void
 cdn_integrator_runge_kutta_init (CdnIntegratorRungeKutta *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_integrator_runge_kutta_get_instance_private (self);
 	self->priv = CDN_INTEGRATOR_RUNGE_KUTTA_GET_PRIVATE (self);
 }
 

@@ -181,8 +181,6 @@ cdn_import_alias_class_init (CdnImportAliasClass *klass)
 static void
 cdn_import_alias_init (CdnImportAlias *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_import_alias_get_instance_private (self);
 	self->priv = CDN_IMPORT_ALIAS_GET_PRIVATE (self);
 }
 

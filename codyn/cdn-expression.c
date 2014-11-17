@@ -519,8 +519,6 @@ cdn_expression_class_init (CdnExpressionClass *klass)
 static void
 cdn_expression_init (CdnExpression *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_expression_get_instance_private (self);
 	self->priv = CDN_EXPRESSION_GET_PRIVATE (self);
 
 	self->priv->has_cache = TRUE;

@@ -1810,8 +1810,6 @@ on_variable_interface_verify_remove (CdnVariableInterface  *iface,
 static void
 cdn_node_init (CdnNode *self)
 {
-	/* noop call to suppress clang warning about unused function */
-	cdn_node_get_instance_private (self);
 	self->priv = CDN_NODE_GET_PRIVATE (self);
 
 	self->priv->child_hash = g_hash_table_new_full (g_str_hash,
