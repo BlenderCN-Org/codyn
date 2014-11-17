@@ -1760,7 +1760,11 @@ cdn_function_get_derivative_impl (CdnFunction                       *function,
 
 	cdn_expression_tree_iter_free (derived);
 
+	extract_helper_vars (ret);
+	extract_dependencies (ret);
+
 	mark_unused_arguments (ret);
+	update_stack_manipulation (ret);
 
 	return ret;
 }
