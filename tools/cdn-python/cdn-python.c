@@ -49,7 +49,7 @@ main (int argc, char const *argv[])
 		nargv[i + 1] = argv[i];
 	}
 
-	nargv[argc + 1] = '\0';
+	nargv[argc + 1] = NULL;
 
 	prepend_env_path ("GI_TYPELIB_PATH", LIBDIR "/girepository-1.0");
 	prepend_env_path ("GIR_DIRS", DATADIR "/gir-1.0");
