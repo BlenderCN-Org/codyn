@@ -19,6 +19,9 @@ typedef struct
 
 	GHashTable *symbols;
 	GHashTable *towards;
+
+	CdnVariable *t;
+	gboolean found_t;
 } DeriveContext;
 
 static CdnExpressionTreeIter *derive_iter (CdnExpressionTreeIter *iter,
@@ -1326,10 +1329,13 @@ find_t_variable (CdnVariable            *variable,
 static CdnVariable *
 get_t_variable (DeriveContext *ctx)
 {
-	CdnVariable *ret = NULL;
-	g_hash_table_find (ctx->towards, (GHRFunc)find_t_variable, &ret);
+	if (!ctx->found_t)
+	{
+		g_hash_table_find (ctx->towards, (GHRFunc)find_t_variable, &ctx->t);
+		ctx->found_t = TRUE;
+	}
 
-	return ret;
+	return ctx->t;
 }
 
 static CdnExpressionTreeIter *
