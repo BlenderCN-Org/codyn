@@ -1296,32 +1296,21 @@ simplify_cossin2_identity (CdnExpressionTreeIter *iter)
 }
 
 static CdnExpressionTreeIter *
-make_rest (CdnExpressionTreeIter *left,
-           gboolean               lism)
+make_rest (CdnExpressionTreeIter *left)
 {
 	CdnExpressionTreeIter *lrest = NULL;
 
 	if (left)
 	{
-		if (lism)
-		{
-			lrest = left->children[1];
+		CdnExpressionTreeIter *parent;
 
-			iter_replace (lrest, NULL);
-			iter_replace_into (left->children[0], left);
-		}
-		else
-		{
-			CdnExpressionTreeIter *parent;
+		lrest = left;
+		parent = left->parent;
 
-			lrest = left;
-			parent = left->parent;
+		iter_replace (left, NULL);
 
-			iter_replace (left, NULL);
-
-			iter_replace_into (parent->children[0],
-			                   parent);
-		}
+		iter_replace_into (parent->children[0],
+		                   parent);
 	}
 
 	return lrest;
@@ -1339,8 +1328,6 @@ simplify_factorize (CdnExpressionTreeIter *iter)
 	CdnExpressionTreeIter *lnum = NULL;
 	CdnExpressionTreeIter *rnum = NULL;
 	CdnExpressionTreeIter *ret;
-	gboolean lism = FALSE;
-	gboolean rism = FALSE;
 
 	left = lstart = iter->children[0];
 	right = rstart = iter->children[1];
@@ -1369,26 +1356,18 @@ simplify_factorize (CdnExpressionTreeIter *iter)
 		right = rstart = right->children[1];
 	}
 
+	// Walk down the left/right multiplier trees as long as
+	// the LHS is equal
 	while (TRUE)
 	{
-		CdnExpressionTreeIter *cmp1;
-		CdnExpressionTreeIter *cmp2;
-
-		lism = iter_is_multiply (left);
-		rism = iter_is_multiply (right);
-
-		cmp1 = lism ? left->children[0] : left;
-		cmp2 = rism ? right->children[0] : right;
-
-		if (!cdn_expression_tree_iter_equal (cmp1, cmp2, FALSE))
+		if (iter_is_multiply (left) &&
+		    iter_is_multiply (right) &&
+		    cdn_expression_tree_iter_equal (left->children[0], right->children[0], FALSE))
 		{
-			break;
+			left = left->children[1];
+			right = right->children[1];
 		}
-
-		left = lism ? left->children[1] : NULL;
-		right = rism ? right->children[1] : NULL;
-
-		if (!lism || !rism)
+		else
 		{
 			break;
 		}
@@ -1414,8 +1393,8 @@ simplify_factorize (CdnExpressionTreeIter *iter)
 	}
 
 	// com * (lnum * lrest + rnum * rrest)
-	lrest = make_rest (left, lism);
-	rrest = make_rest (right, rism);
+	lrest = make_rest (left);
+	rrest = make_rest (right);
 
 	ret = iter_new_multiply (lstart,
 	                         iter_new_plus (iter_new_multiply (lnum, lrest),
