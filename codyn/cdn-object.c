@@ -844,8 +844,8 @@ cdn_object_compile_impl (CdnObject         *object,
 
 	while (variables)
 	{
-		CdnVariable *property = (CdnVariable *)variables->data;
-		CdnExpression *expr = cdn_variable_get_expression (property);
+		CdnVariable *variable = (CdnVariable *)variables->data;
+		CdnExpression *expr = cdn_variable_get_expression (variable);
 		CdnExpression *cons;
 
 		if (!cdn_expression_compile (expr,
@@ -857,7 +857,7 @@ cdn_object_compile_impl (CdnObject         *object,
 				cdn_compile_error_set (error,
 				                       NULL,
 				                       object,
-				                       property,
+				                       variable,
 				                       NULL,
 				                       NULL);
 			}
@@ -866,7 +866,7 @@ cdn_object_compile_impl (CdnObject         *object,
 			break;
 		}
 
-		cons = cdn_variable_get_constraint (property);
+		cons = cdn_variable_get_constraint (variable);
 
 		if (cons && !cdn_expression_compile (cons, context, error))
 		{
@@ -875,7 +875,7 @@ cdn_object_compile_impl (CdnObject         *object,
 				cdn_compile_error_set (error,
 				                       NULL,
 				                       object,
-				                       property,
+				                       variable,
 				                       NULL,
 				                       NULL);
 			}
@@ -886,7 +886,7 @@ cdn_object_compile_impl (CdnObject         *object,
 		}
 
 		if (cdn_expression_depends_on (expr,
-		                               cdn_variable_get_expression (property)))
+		                               cdn_variable_get_expression (variable)))
 		{
 			if (error)
 			{
@@ -894,12 +894,12 @@ cdn_object_compile_impl (CdnObject         *object,
 
 				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
 				                      CDN_COMPILE_ERROR_VARIABLE_RECURSE,
-				                      "Infinite recursion in property expression");
+				                      "Infinite recursion in variable expression");
 
 				cdn_compile_error_set (error,
 				                       gerror,
 				                       object,
-				                       property,
+				                       variable,
 				                       NULL,
 				                       expr);
 
