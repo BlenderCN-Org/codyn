@@ -118,6 +118,12 @@ test_math ()
 	cdn_test_variables_with_annotated_output_from_path ("test_math.cdn");
 }
 
+static void
+test_diff ()
+{
+	cdn_test_variables_with_annotated_output_from_path ("test_diff.cdn");
+}
+
 int
 main (int   argc,
       char *argv[])
@@ -131,6 +137,7 @@ main (int   argc,
 	cdn_debug_init ();
 
 	g_test_add_func ("/expression/math", test_math);
+	g_test_add_func ("/expression/diff", test_diff);
 	g_test_add_func ("/expression/complex", test_complex);
 	g_test_add_func ("/expression/random", test_random);
 	g_test_add_func ("/expression/globals", test_globals);
