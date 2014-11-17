@@ -86,12 +86,15 @@ else
 	enable_introspection=no
 fi
 
-bison_version=`$YACC --version | head -n 1 | sed -e 's/.*[0-9.]*/\1/g'`
+AC_MSG_CHECKING([for bison version >= 2.5])
+bison_version=`$YACC --version | head -n 1 | sed -e 's/[[^0-9]]*\([[0-9]]*\.[[0-9]]*\).*/\1/g'`
 
 if test "${bison_version%.*}" -gt "2" || (test "${bison_version%.*}" -eq "2" && test "${bison_version#*.}" -ge "5" ); then
 	BISON_PURE_PARSER="%define api.pure"
+	AC_MSG_RESULT([yes])
 else
 	BISON_PURE_PARSER="%pure-parser"
+	AC_MSG_RESULT([no])
 fi
 
 AC_SUBST(BISON_PURE_PARSER)
