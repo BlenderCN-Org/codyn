@@ -513,8 +513,11 @@ derive_operator (CdnExpressionTreeIter  *iter,
                  DeriveContext          *ctx)
 {
 	CdnExpressionTreeIter *ret = NULL;
+	CdnMathFunctionType id;
 
-	switch (cdn_instruction_function_get_id (instr))
+	id = cdn_instruction_function_get_id (instr);
+
+	switch (id)
 	{
 		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
 			ret = derive_unary_minus (iter, ctx);
@@ -545,7 +548,13 @@ derive_operator (CdnExpressionTreeIter  *iter,
 
 			if (a && b)
 			{
-				ret = add_optimized (a, b, TRUE, TRUE);
+				if (id == CDN_MATH_FUNCTION_TYPE_PLUS)
+				{
+					ret = add_optimized (a, b, TRUE, TRUE);
+				}
+				else {
+					ret = subtract_optimized (a, b, TRUE, TRUE);
+				}
 			}
 		}
 		break;
