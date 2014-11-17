@@ -633,6 +633,8 @@ cdn_selector_class_init (CdnSelectorClass *klass)
 static void
 cdn_selector_init (CdnSelector *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_selector_get_instance_private (self);
 	self->priv = CDN_SELECTOR_GET_PRIVATE (self);
 }
 

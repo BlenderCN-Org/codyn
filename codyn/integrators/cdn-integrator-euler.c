@@ -136,6 +136,8 @@ cdn_integrator_euler_class_init (CdnIntegratorEulerClass *klass)
 static void
 cdn_integrator_euler_init (CdnIntegratorEuler *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_integrator_euler_get_instance_private (self);
 	/*self->priv = CDN_INTEGRATOR_EULER_GET_PRIVATE (self);*/
 }
 

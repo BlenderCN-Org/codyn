@@ -339,6 +339,8 @@ cdn_variable_interface_class_init (CdnVariableInterfaceClass *klass)
 static void
 cdn_variable_interface_init (CdnVariableInterface *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_variable_interface_get_instance_private (self);
 	self->priv = CDN_VARIABLE_INTERFACE_GET_PRIVATE (self);
 
 	self->priv->names = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free);

@@ -310,6 +310,8 @@ cdn_operator_dt_class_init (CdnOperatorDtClass *klass)
 static void
 cdn_operator_dt_init (CdnOperatorDt *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_operator_dt_get_instance_private (self);
 	self->priv = CDN_OPERATOR_DT_GET_PRIVATE (self);
 }
 

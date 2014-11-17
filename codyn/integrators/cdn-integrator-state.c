@@ -367,6 +367,8 @@ release_state_list (GSList *list)
 static void
 cdn_integrator_state_init (CdnIntegratorState *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_integrator_state_get_instance_private (self);
 	self->priv = CDN_INTEGRATOR_STATE_GET_PRIVATE (self);
 
 	self->priv->direct_variables_hash =

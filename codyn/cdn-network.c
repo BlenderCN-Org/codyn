@@ -679,6 +679,8 @@ cdn_network_init (CdnNetwork *network)
 {
 	cdn_init ();
 
+	/* noop call to suppress clang warning about unused function */
+	cdn_network_get_instance_private (network);
 	network->priv = CDN_NETWORK_GET_PRIVATE (network);
 
 #ifdef G_OS_UNIX

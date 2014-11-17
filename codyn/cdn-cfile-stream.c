@@ -197,6 +197,8 @@ cdn_cfile_stream_class_init (CdnCfileStreamClass *klass)
 static void
 cdn_cfile_stream_init (CdnCfileStream *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_cfile_stream_get_instance_private (self);
 	self->priv = CDN_CFILE_STREAM_GET_PRIVATE (self);
 }
 

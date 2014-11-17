@@ -189,6 +189,8 @@ cdn_network_deserializer_class_init (CdnNetworkDeserializerClass *klass)
 static void
 cdn_network_deserializer_init (CdnNetworkDeserializer *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_network_deserializer_get_instance_private (self);
 	self->priv = CDN_NETWORK_DESERIALIZER_GET_PRIVATE (self);
 	self->priv->queue_hash = g_hash_table_new (g_direct_hash, g_direct_equal);
 }

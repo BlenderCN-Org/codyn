@@ -34,6 +34,8 @@ cdn_integrators_class_init (CdnIntegratorsClass *klass)
 static void
 cdn_integrators_init (CdnIntegrators *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_integrators_get_instance_private (self);
 }
 
 static void

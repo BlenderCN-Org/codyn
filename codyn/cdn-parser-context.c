@@ -562,6 +562,8 @@ cdn_parser_context_class_init (CdnParserContextClass *klass)
 static void
 cdn_parser_context_init (CdnParserContext *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_parser_context_get_instance_private (self);
 	self->priv = CDN_PARSER_CONTEXT_GET_PRIVATE (self);
 
 	self->priv->start_token = T_START_DOCUMENT;

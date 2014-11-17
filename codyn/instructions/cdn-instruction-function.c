@@ -149,6 +149,8 @@ cdn_instruction_function_class_init (CdnInstructionFunctionClass *klass)
 static void
 cdn_instruction_function_init (CdnInstructionFunction *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_instruction_function_get_instance_private (self);
 	self->priv = CDN_INSTRUCTION_FUNCTION_GET_PRIVATE (self);
 }
 

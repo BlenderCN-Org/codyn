@@ -1509,6 +1509,8 @@ cdn_object_class_init (CdnObjectClass *klass)
 static void
 cdn_object_init (CdnObject *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_object_get_instance_private (self);
 	self->priv = CDN_OBJECT_GET_PRIVATE (self);
 
 	self->priv->property_hash = g_hash_table_new_full (g_str_hash,

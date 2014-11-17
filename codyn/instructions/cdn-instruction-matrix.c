@@ -143,6 +143,8 @@ cdn_instruction_matrix_class_init (CdnInstructionMatrixClass *klass)
 static void
 cdn_instruction_matrix_init (CdnInstructionMatrix *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_instruction_matrix_get_instance_private (self);
 	self->priv = CDN_INSTRUCTION_MATRIX_GET_PRIVATE (self);
 }
 

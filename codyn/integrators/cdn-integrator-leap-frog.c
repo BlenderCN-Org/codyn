@@ -317,6 +317,8 @@ cdn_integrator_leap_frog_class_init (CdnIntegratorLeapFrogClass *klass)
 static void
 cdn_integrator_leap_frog_init (CdnIntegratorLeapFrog *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_integrator_leap_frog_get_instance_private (self);
 	self->priv = CDN_INTEGRATOR_LEAP_FROG_GET_PRIVATE (self);
 }
 

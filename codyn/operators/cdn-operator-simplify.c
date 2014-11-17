@@ -296,6 +296,8 @@ cdn_operator_simplify_class_init (CdnOperatorSimplifyClass *klass)
 static void
 cdn_operator_simplify_init (CdnOperatorSimplify *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_operator_simplify_get_instance_private (self);
 	self->priv = CDN_OPERATOR_SIMPLIFY_GET_PRIVATE (self);
 }
 

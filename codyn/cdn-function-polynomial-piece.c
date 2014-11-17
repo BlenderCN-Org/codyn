@@ -186,6 +186,8 @@ cdn_function_polynomial_piece_class_init (CdnFunctionPolynomialPieceClass *klass
 static void
 cdn_function_polynomial_piece_init (CdnFunctionPolynomialPiece *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_function_polynomial_piece_get_instance_private (self);
 	self->priv = CDN_FUNCTION_POLYNOMIAL_PIECE_GET_PRIVATE (self);
 }
 

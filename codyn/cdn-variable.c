@@ -682,6 +682,8 @@ cdn_variable_class_init (CdnVariableClass *klass)
 static void
 cdn_variable_init (CdnVariable *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_variable_get_instance_private (self);
 	self->priv = CDN_VARIABLE_GET_PRIVATE (self);
 
 	self->priv->update.dimension.rows = 1;

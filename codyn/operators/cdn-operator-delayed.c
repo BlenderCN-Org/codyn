@@ -806,6 +806,8 @@ cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 static void
 cdn_operator_delayed_init (CdnOperatorDelayed *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_operator_delayed_get_instance_private (self);
 	self->priv = CDN_OPERATOR_DELAYED_GET_PRIVATE (self);
 }
 

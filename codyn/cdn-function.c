@@ -1874,6 +1874,8 @@ cdn_function_class_init (CdnFunctionClass *klass)
 static void
 cdn_function_init (CdnFunction *self)
 {
+	/* noop call to suppress clang warning about unused function */
+	cdn_function_get_instance_private (self);
 	self->priv = CDN_FUNCTION_GET_PRIVATE (self);
 
 	self->priv->arguments_hash = g_hash_table_new_full (g_str_hash,
