@@ -1367,16 +1367,19 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 
 	if ((ctx->flags & CDN_EXPRESSION_TREE_ITER_DERIVE_TIME) != 0)
 	{
-		CdnDimension dim = CDN_DIMENSION(1, 1);
 		CdnVariable *t;
 
 		t = get_t_variable (ctx);
 
 		if (t != NULL)
 		{
+			CdnDimension dim = CDN_DIMENSION(1, 1);
+
 			ft = cdn_function_argument_new ("t", TRUE, NULL);
-			_cdn_function_argument_set_variable (ft, t);
+
+			cdn_function_argument_set_explicit (ft, FALSE);
 			cdn_function_argument_set_dimension (ft, &dim);
+			_cdn_function_argument_set_variable (ft, t);
 
 			towards = g_slist_append (towards, ft);
 			newgen++;
@@ -1414,6 +1417,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 
 		if (ft)
 		{
+			_cdn_function_argument_set_variable (ft, NULL);
 			g_object_unref (ft);
 		}
 
@@ -1490,6 +1494,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 
 					if (ft)
 					{
+						_cdn_function_argument_set_variable (ft, NULL);
 						g_object_unref (ft);
 					}
 
@@ -1531,6 +1536,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 
 	if (ft)
 	{
+		_cdn_function_argument_set_variable (ft, NULL);
 		g_object_unref (ft);
 	}
 
