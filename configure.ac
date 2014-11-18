@@ -28,7 +28,7 @@ AC_PATH_PROG([ZIP], [zip])
 LT_PREREQ([2.2.6])
 LT_INIT(disable-static)
 
-AM_MAINTAINER_MODE([enable])
+AM_MAINTAINER_MODE([disable])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AC_PROG_INSTALL
