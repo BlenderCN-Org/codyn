@@ -613,6 +613,14 @@ instruction_priority (CdnInstruction *instr,
 	*priority = 1000;
 	*commutative = 0;
 
+	if (CDN_IS_INSTRUCTION_INDEX (instr))
+	{
+		*priority = 8;
+		*leftassoc = 0;
+
+		return;
+	}
+
 	if (!instruction_is_operator (instr))
 	{
 		return;
@@ -680,7 +688,7 @@ needs_paren (CdnExpressionTreeIter *parent,
 
 	instr = cdn_expression_tree_iter_get_instruction (parent);
 
-	if (!instruction_is_operator (instr))
+	if (!instruction_is_operator (instr) && !CDN_IS_INSTRUCTION_INDEX (instr))
 	{
 		return FALSE;
 	}
@@ -696,11 +704,11 @@ needs_paren (CdnExpressionTreeIter *parent,
 	}
 
 	if (cprio == pprio &&
+	    commutative &&
 	    instruction_is_operator (parent->instruction) &&
 	    instruction_is_operator (child->instruction) &&
 	    cdn_instruction_function_get_id ((CdnInstructionFunction *)(parent->instruction)) ==
-	    cdn_instruction_function_get_id ((CdnInstructionFunction *)(child->instruction)) &&
-	    commutative)
+	    cdn_instruction_function_get_id ((CdnInstructionFunction *)(child->instruction)))
 	{
 		return FALSE;
 	}

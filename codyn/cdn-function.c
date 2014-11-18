@@ -26,6 +26,7 @@
 #include "instructions/cdn-instruction-rand.h"
 #include "instructions/cdn-instruction-variable.h"
 #include "cdn-math.h"
+#include "integrators/cdn-integrator.h"
 
 #include <string.h>
 
@@ -518,6 +519,15 @@ promote_rand_instructions (CdnFunction *self)
 
 	ret = g_slist_reverse (ret);
 	cdn_expression_set_instructions_take (self->priv->expression, ret);
+}
+
+void
+_cdn_function_expression_changed (CdnFunction *function)
+{
+	g_return_if_fail (CDN_IS_FUNCTION (function));
+
+	mark_unused_arguments (function);
+	update_stack_manipulation (function);
 }
 
 static gboolean
@@ -1524,6 +1534,8 @@ create_towards_map (CdnFunction                       *function,
 	{
 		CdnFunctionArgument *arg;
 		CdnVariable *v;
+		CdnObject *p;
+		gboolean ist = FALSE;
 
 		arg = towards->data;
 		v = cdn_function_argument_get_variable (arg);
@@ -1533,21 +1545,34 @@ create_towards_map (CdnFunction                       *function,
 			g_warning ("Could not get variable from arg: %s",
 			           cdn_function_argument_get_name (arg));
 		}
-		else if (cdn_variable_get_object (v) != CDN_OBJECT (function))
+
+		p = cdn_variable_get_object (v);
+
+		if (CDN_IS_INTEGRATOR (p) && cdn_object_get_variable (p, "t") == v)
 		{
+			ist = TRUE;
+		}
+
+		if (p != CDN_OBJECT (function) && !ist)
+		{
+			v = NULL;
+
 			g_warning ("Arg %s not from func %s",
 			           cdn_variable_get_full_name (v),
 			           cdn_object_get_full_id_for_display (CDN_OBJECT (function)));
 		}
 
-		if (v && cdn_variable_get_object (v) == CDN_OBJECT (function))
+		if (v)
 		{
 			CdnVariable *diff;
 			CdnInstruction *instr;
 			CdnExpressionTreeIter *iter;
 
-			v = cdn_object_get_variable (CDN_OBJECT (newfunc),
-			                             cdn_variable_get_name (v));
+			if (!ist)
+			{
+				v = cdn_object_get_variable (CDN_OBJECT (newfunc),
+				                             cdn_variable_get_name (v));
+			}
 
 			if (ispart)
 			{
@@ -1735,7 +1760,11 @@ cdn_function_get_derivative_impl (CdnFunction                       *function,
 
 	cdn_expression_tree_iter_free (derived);
 
+	extract_helper_vars (ret);
+	extract_dependencies (ret);
+
 	mark_unused_arguments (ret);
+	update_stack_manipulation (ret);
 
 	return ret;
 }

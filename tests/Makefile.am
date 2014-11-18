@@ -80,6 +80,7 @@ TESTS = $(TEST_PROGS)
 EXTRA_DIST = \
 	import.cdn \
 	test_constraints.cdn \
+	test_diff.cdn \
 	test_direct.cdn \
 	test_direct_events.cdn \
 	test_discrete.cdn \

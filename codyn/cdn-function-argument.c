@@ -460,23 +460,23 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 	{
 		cdn_variable_add_flags (variable,
 		                        CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT);
-	}
 
-	// Set the corresponding dimensions of the variable
-	if (argument->priv->isexplicit)
-	{
-		gchar *zeros;
-		CdnExpression *expr;
+		// Set the corresponding dimensions of the variable
+		if (argument->priv->isexplicit)
+		{
+			gchar *zeros;
+			CdnExpression *expr;
 
-		zeros = make_zeros (&argument->priv->dimension);
+			zeros = make_zeros (&argument->priv->dimension);
 
-		expr = cdn_variable_get_expression (variable);
+			expr = cdn_variable_get_expression (variable);
 
-		cdn_expression_set_from_string (expr, zeros);
-		cdn_expression_compile (expr, NULL, NULL);
-		cdn_expression_set_has_cache (expr, FALSE);
+			cdn_expression_set_from_string (expr, zeros);
+			cdn_expression_compile (expr, NULL, NULL);
+			cdn_expression_set_has_cache (expr, FALSE);
 
-		g_free (zeros);
+			g_free (zeros);
+		}
 	}
 }
 

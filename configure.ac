@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.6.2)
+AC_INIT(codyn, 3.6.3)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
@@ -28,7 +28,7 @@ AC_PATH_PROG([ZIP], [zip])
 LT_PREREQ([2.2.6])
 LT_INIT(disable-static)
 
-AM_MAINTAINER_MODE([enable])
+AM_MAINTAINER_MODE([disable])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AC_PROG_INSTALL
@@ -86,12 +86,15 @@ else
 	enable_introspection=no
 fi
 
-bison_minor_version=`$YACC --version | head -n 1 | sed -e 's/.*2\.\([[0-9]]*\)/\1/g'`
+AC_MSG_CHECKING([for bison version >= 2.5])
+bison_version=`$YACC --version | head -n 1 | sed -e 's/[[^0-9]]*\([[0-9]]*\.[[0-9]]*\).*/\1/g'`
 
-if test "$bison_minor_version" -ge "5"; then
+if test "${bison_version%.*}" -gt "2" || (test "${bison_version%.*}" -eq "2" && test "${bison_version#*.}" -ge "5" ); then
 	BISON_PURE_PARSER="%define api.pure"
+	AC_MSG_RESULT([yes])
 else
 	BISON_PURE_PARSER="%pure-parser"
+	AC_MSG_RESULT([no])
 fi
 
 AC_SUBST(BISON_PURE_PARSER)
@@ -482,7 +485,7 @@ if test "x$enable_python" = "xyes"; then
 	PKG_CHECK_MODULES(PYTHON,
 	                  [$PYGOBJECT_PKG >= $PYGOBJECT_REQUIRED])
 
-	pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '$prefix'), 'gi', 'overrides'))"`
+	pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '\\$' '{prefix}'), 'gi', 'overrides'))"`
 
 	AC_SUBST(pyoverridesdir)
 fi
@@ -568,8 +571,15 @@ Configuration:
 	network support:        $have_networking
 	wii support:            $enable_wii
 	python support:         $enable_python
+
 	blas:                   $have_blas
+	  cflags:               $BLAS_CFLAGS
+	  libs:                 $BLAS_LIBS
+
 	lapack:                 $have_lapack
+	  cflags:               $LAPACK_CFLAGS
+	  libs:                 $LAPACK_LIBS
+
 	documentation:          $enable_docs
 "
 
