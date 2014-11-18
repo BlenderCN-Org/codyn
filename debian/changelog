@@ -1,3 +1,11 @@
+codyn (3.6.3-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Fix various issues with symbolic derivation
+  * Fix issue with factorization simplification
+
+ -- Jesse van den Kieboom <jessevdk@gmail.com>  Tue, 18 Nov 2014 11:25:25 +0100
+
 codyn (3.6.2-1) UNRELEASED; urgency=low
 
   * New upstream release
