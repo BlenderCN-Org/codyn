@@ -4,6 +4,7 @@ codyn (3.6.3-3) trusty; urgency=medium
   * Updates libcodyn3-io package long description
   * Removes unused debain/README.Debian
   * Adds rules not to install files in usr/lib/python2.7/site-packages
+  * Adds lintian overrides
 
  -- Alexandre Tuleu <alexandre.tuleu.2005@polytechnique.org>  Mon, 02 Feb 2015 11:28:41 +0100
 
