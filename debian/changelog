@@ -4,6 +4,7 @@ codyn (3.6.3-2) trusty; urgency=medium
   * Changes maintainer to A. Tuleu
   * Removes duplicate Section: field
   * Changes short description for gir1.2-codyn3
+  * Adds missing debian/watch
 
  -- Alexandre Tuleu <alexandre.tuleu.2005@polytechnique.org>  Mon, 02 Feb 2015 10:36:11 +0100
 
