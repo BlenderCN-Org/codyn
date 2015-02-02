@@ -1,6 +1,6 @@
 Source: codyn
 Priority: extra
-Maintainer: Jesse van den Kieboom <jesse@codyn.net>
+Maintainer: Alexandre Tuleu <alexandre.tuleu@polytechnique.org>
 Build-Depends: debhelper (>= 7),
                autotools-dev,
                cdbs,
