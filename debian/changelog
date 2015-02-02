@@ -7,6 +7,7 @@ codyn (3.6.3-2) trusty; urgency=medium
   * Adds missing debian/watch
   * Bumps Standards-Version to 3.9.5
   * Sets source format to 3.0 (quilt)
+  * Adds lintian source override
 
  -- Alexandre Tuleu <alexandre.tuleu.2005@polytechnique.org>  Mon, 02 Feb 2015 10:36:11 +0100
 
