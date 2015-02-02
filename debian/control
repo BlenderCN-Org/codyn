@@ -37,7 +37,6 @@ Description: Development files for the codyn library
  This package provides the development files for the codyn library.
 
 Package: libcodyn3
-Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
@@ -63,7 +62,6 @@ Description: Tools for the codyn library
  This package provides useful tools to work with the codyn library.
 
 Package: libcodyn3-io-wii
-Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
@@ -73,7 +71,6 @@ Description: Wii support for codyn
  This package provide wii io support for codyn.
 
 Package: libcodyn3-io-network
-Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
@@ -82,7 +79,6 @@ Description: Networking support for codyn
  This package provide network io support for codyn.
 
 Package: libcodyn3-io
-Section: libs
 Architecture: any
 Depends: ${misc:Depends},
          libcodyn3-io-wii,
@@ -91,7 +87,6 @@ Description: Meta package for codyn3 io support
  This package provides various io support for codyn.
 
 Package: gir1.2-codyn3
-Section: libs
 Architecture: any
 Depends: ${gir:Depends},
          ${misc:Depends}
