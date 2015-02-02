@@ -84,7 +84,7 @@ Depends: ${misc:Depends},
          libcodyn3-io-wii,
          libcodyn3-io-network
 Description: Meta package for codyn3 io support
- This package provides various io support for codyn.
+ This dependency package provides various io support for codyn.
 
 Package: gir1.2-codyn3
 Architecture: any
