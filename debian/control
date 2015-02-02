@@ -20,7 +20,7 @@ Build-Depends: debhelper (>= 7),
                python-gobject-dev,
                zip,
                libjson-glib-dev
-Standards-Version: 3.9.1
+Standards-Version: 3.9.5
 Section: libs
 Homepage: http://www.codyn.net
 
