@@ -4,3 +4,7 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/autotools.mk
 
 DEB_CONFIGURE_EXTRA_FLAGS := --enable-silent-rules --enable-gedit=3 --disable-docs
+
+
+install/gir1.2-codyn3::
+	mv debian/tmp/usr/lib/python2.7/site-packages/* debian/tmp/usr/lib/python2.7/dist-packages/

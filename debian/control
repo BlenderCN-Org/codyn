@@ -91,4 +91,4 @@ Architecture: any
 Depends: ${gir:Depends},
          ${misc:Depends}
 Description: Gobject introspection file for libcodyn
-  This package provides gobject introspection files for codyn.
+ This package provides gobject introspection files for codyn.
