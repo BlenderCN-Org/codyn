@@ -1863,7 +1863,7 @@ cdn_expression_tree_iter_derive (CdnExpressionTreeIter             *iter,
                                  CdnExpressionTreeIterDeriveFlags   flags,
                                  GError                           **error)
 {
-	DeriveContext ctx;
+	DeriveContext ctx = {0,};
 	CdnExpressionTreeIter *derived = NULL;
 
 	if (iter == NULL)
