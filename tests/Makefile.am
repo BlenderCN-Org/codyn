@@ -22,9 +22,8 @@ TEST_PROGS =				\
 	matrix				\
 	indices				\
 	constraints			\
-	discrete
-
-#TEST_PROGS += file
+	discrete			\
+	file
 
 progs_ldadd = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la $(CODYN_LIBS)
 
@@ -74,6 +73,9 @@ indices_LDADD = $(progs_ldadd)
 
 constraints_SOURCES = constraints.c utils.h utils.c
 constraints_LDADD = $(progs_ldadd)
+
+file_SOURCES = file.c utils.h utils.c
+file_LDADD = $(progs_ldadd)
 
 TESTS = $(TEST_PROGS)
 
