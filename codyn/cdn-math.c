@@ -36,13 +36,6 @@
 #endif
 #endif
 
-#ifdef HAVE_BLAS
-#ifdef PLATFORM_OSX
-#include <Accelerate/Accelerate.h>
-#else
-#include <cblas.h>
-#endif
-#endif
 
 #include "cdn-compile-error.h"
 
@@ -777,6 +770,10 @@ BIN_MATH_MAP_CODE (or, or_impl)
 BIN_MATH_MAP_CODE (and, and_impl)
 SIMPLE_MATH_MAP_CODE (negate, negate_impl)
 
+
+
+#if defined(HAS_BLAS) || defined(HAS_EIGEN)
+
 static void
 matrix_multiply (CdnStack           *stack,
                  CdnStackArgs const *argdim)
@@ -789,31 +786,14 @@ matrix_multiply (CdnStack           *stack,
 	gint num2 = argdim->args[0].rows * argdim->args[0].columns;
 	gint numend = argdim->args[1].rows * argdim->args[0].columns;
 
-	ptrC = cdn_stack_output_ptr (stack);
-	ptrB = ptrC - num2;
-	ptrA = ptrB - num1;
-
-#ifdef HAVE_BLAS
-	cblas_dgemm (CblasColMajor,
-	             CblasNoTrans,
-	             CblasNoTrans,
-	             argdim->args[1].rows,
-	             argdim->args[0].columns,
-	             argdim->args[1].columns,
-	             1,
-	             ptrA,
-	             argdim->args[1].rows,
-	             ptrB,
-	             argdim->args[0].rows,
-	             0,
-	             ptrC,
-	             argdim->args[1].rows);
-#else
-{
 	gint c;
 	gint wr = 0;
 	gint bc = 0;
 	gint i;
+	
+	ptrC = cdn_stack_output_ptr (stack);
+	ptrB = ptrC - num2;
+	ptrA = ptrB - num1;
 
 	// Naive implementation
 	for (c = 0; c < argdim->args[0].columns; ++c)
@@ -837,14 +817,16 @@ matrix_multiply (CdnStack           *stack,
 
 		bc += argdim->args[0].rows;
 	}
-}
-#endif
 
 	memmove (ptrA, ptrC, sizeof (gdouble) * numend);
 
 	cdn_stack_set_output_ptr (stack,
 	                          ptrA + numend);
 }
+
+#else //defined(HAS_BLAS) || defined(HAS_EIGEN)
+extern void matrix_multiply(CdnStack *stack, CdnStackArgs const *argdim);
+#endif
 
 static void
 op_multiply (CdnStack           *stack,
