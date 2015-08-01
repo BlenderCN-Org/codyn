@@ -248,7 +248,7 @@ if test "$have_eigen" != "no"; then
 	enable_blas=no
 	AC_DEFINE_UNQUOTED([HAVE_EIGEN], [1], [Have Eigen support])
 fi
-
+AM_CONDITIONAL([USE_EIGEN], [test "$have_eigen" != "no"])	
 dnl
 dnl lapack for OS X, i.e. Accelerate framework
 dnl
@@ -343,6 +343,9 @@ fi
 if test "$have_lapack" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_LAPACK], [1], [Have lapack support])
 fi
+
+AM_CONDITIONAL([USE_LAPACK], [test "$have_lapack" != "no"])	
+
 
 dnl
 dnl check for blas
@@ -443,7 +446,7 @@ fi
 if test "$have_blas" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_BLAS], [1], [Have blas support])
 fi
-
+AM_CONDITIONAL([USE_BLAS], [test "$have_blas" != "no"])	
 
 
 AC_SUBST(CDN_PARSER_LIBS)

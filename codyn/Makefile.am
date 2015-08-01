@@ -62,7 +62,19 @@ COMMON_SOURCES = 		\
 	cdn-statement.c \
 	cdn-event.c \
 	cdn-io-method.c \
-	cdn-cfile-stream.c
+	cdn-cfile-stream.c 
+
+if USE_BLAS
+COMMON_SOURCES += cdn-math-blas.c
+endif
+
+if USE_LAPACK
+COMMON_SOURCES += cdn-math-lapack.c
+endif
+
+if USE_EIGEN
+COMMON_SOURCES += cdn-math-eigen.cpp
+endif
 
 BUILT_SOURCES = \
 	cdn-enum-types.c \
