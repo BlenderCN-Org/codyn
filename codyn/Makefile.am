@@ -62,7 +62,7 @@ COMMON_SOURCES = 		\
 	cdn-statement.c \
 	cdn-event.c \
 	cdn-io-method.c \
-	cdn-cfile-stream.c 
+	cdn-cfile-stream.c
 
 if USE_BLAS
 COMMON_SOURCES += cdn-math-blas.c
@@ -74,6 +74,10 @@ endif
 
 if USE_EIGEN
 COMMON_SOURCES += cdn-math-eigen.cpp
+endif
+
+if USE_NAIVE
+COMMON_SOURCES += cdn-math-linear-algebra.c
 endif
 
 BUILT_SOURCES = \
@@ -89,7 +93,8 @@ NOINST_H_FILES = \
 	cdn-network-xml.h \
 	cdn-stack-private.h \
 	cdn-network-parser-utils.h \
-	cdn-marshal.h
+	cdn-marshal.h \
+	cdn-math-linear-algebra.h
 
 INST_H_FILES = \
 	codyn.h \

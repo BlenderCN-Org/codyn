@@ -248,7 +248,13 @@ if test "$have_eigen" != "no"; then
 	enable_blas=no
 	AC_DEFINE_UNQUOTED([HAVE_EIGEN], [1], [Have Eigen support])
 fi
+
 AM_CONDITIONAL([USE_EIGEN], [test "$have_eigen" != "no"])	
+
+if test "x$enable_eigen" = "xyes" && test "x$have_eigen" = "xno"; then
+	AC_MSG_ERROR(failed to locate eigen library)
+fi
+
 dnl
 dnl lapack for OS X, i.e. Accelerate framework
 dnl
@@ -446,8 +452,14 @@ fi
 if test "$have_blas" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_BLAS], [1], [Have blas support])
 fi
-AM_CONDITIONAL([USE_BLAS], [test "$have_blas" != "no"])	
+AM_CONDITIONAL([USE_BLAS], [test "$have_blas" != "no"])
 
+use_naive=no
+if test "$have_blas" = "no" && test "$have_eigen" = "no"; then
+	use_naive=yes
+fi
+
+AM_CONDITIONAL([USE_NAIVE], [test "$use_naive" = "yes"])
 
 AC_SUBST(CDN_PARSER_LIBS)
 AC_SUBST(CDN_CONTEXT_LIBS)

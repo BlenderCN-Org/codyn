@@ -1,24 +1,10 @@
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "cdn-math-linear-algebra.h"
 
-#ifdef HAVE_LAPACK
 #ifdef PLATFORM_OSX
 #include <Accelerate/Accelerate.h>
-#else
+#else  //PLATFORM_OSX
 #include <clapack.h>
-#endif
-#endif
-
-#ifdef PLATFORM_OSX
-#define LP_int __CLPK_integer
-#define LP_double __CLPK_doublereal
-#else
-#define LP_int gint
-#define LP_double gdouble
-#endif
-
-#include "cdn-math.h"
+#endif //PLATFORM_OSX
 
 #ifndef PLATFORM_OSX
 extern void dgetrf_ (LP_int *,
@@ -78,7 +64,7 @@ extern void dorgqr_ (LP_int *,
                      LP_double *,
                      LP_int *,
                      LP_int *);
-#endif
+#endif //!defined(PLATFORM_OSX)
 
 
 void

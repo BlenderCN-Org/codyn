@@ -32,6 +32,8 @@
 
 #include "cdn-math.h"
 
+#include "cdn-math-linear-algebra.h"
+
 #define foreach_element(op)							\
 gint i;										\
 gint num;									\
@@ -762,63 +764,6 @@ BIN_MATH_MAP_CODE (and, and_impl)
 SIMPLE_MATH_MAP_CODE (negate, negate_impl)
 
 
-
-#if defined(HAS_BLAS) || defined(HAS_EIGEN)
-
-static void
-matrix_multiply (CdnStack           *stack,
-                 CdnStackArgs const *argdim)
-{
-	gdouble *ptrA;
-	gdouble *ptrB;
-	gdouble *ptrC;
-
-	gint num1 = argdim->args[1].rows * argdim->args[1].columns;
-	gint num2 = argdim->args[0].rows * argdim->args[0].columns;
-	gint numend = argdim->args[1].rows * argdim->args[0].columns;
-
-	gint c;
-	gint wr = 0;
-	gint bc = 0;
-	gint i;
-	
-	ptrC = cdn_stack_output_ptr (stack);
-	ptrB = ptrC - num2;
-	ptrA = ptrB - num1;
-
-	// Naive implementation
-	for (c = 0; c < argdim->args[0].columns; ++c)
-	{
-		gint r;
-
-		for (r = 0; r < argdim->args[1].rows; ++r)
-		{
-			gdouble s = 0;
-			gint ar = r;
-
-			// dot product of row <r> in <A> and column <c> in <B>
-			for (i = 0; i < argdim->args[0].rows; ++i)
-			{
-				s += ptrA[ar + i] * ptrB[bc + i];
-				ar += argdim->args[1].rows;
-			}
-
-			ptrC[wr] = s;
-		}
-
-		bc += argdim->args[0].rows;
-	}
-
-	memmove (ptrA, ptrC, sizeof (gdouble) * numend);
-
-	cdn_stack_set_output_ptr (stack,
-	                          ptrA + numend);
-}
-
-#else //defined(HAS_BLAS) || defined(HAS_EIGEN)
-extern void matrix_multiply(CdnStack *stack, CdnStackArgs const *argdim);
-#endif
-
 static void
 op_multiply (CdnStack           *stack,
              CdnStackArgs const *argdim,
@@ -1285,55 +1230,6 @@ op_transpose (CdnStack           *stack,
 		} while (next > start);
 	}
 }
-
-#if defined(HAVE_LAPACK) || defined(HAVE_EIGEN)
-extern void
-op_inverse (CdnStack           *stack,
-            CdnStackArgs const *argdim,
-            gpointer            userdata);
-
-extern void
-op_pseudo_inverse (CdnStack           *stack,
-                   CdnStackArgs const *argdim,
-                   gpointer            userdata);
-
-extern void
-op_linsolve (CdnStack           *stack,
-             CdnStackArgs const *argdim,
-             gpointer            userdata);
-
-extern void
-op_qr (CdnStack           *stack,
-       CdnStackArgs const *argdim,
-       gpointer            userdata);
-
-#ifdef PLATFORM_OSX
-#ifndef HAVE_EIGEN
-#include <Accelerate/Accelerate.h>
-#define LP_int __CLPK_integer
-#define LP_double __CLPK_doublereal
-#else //HAVE_EIGEN
-#define LP_int gint
-#define LP_double gdouble
-#endif
-#else
-#define LP_int gint
-#define LP_double gdouble
-#endif
-
-extern LP_int
-inverse_work_space (CdnDimension const *dim);
-
-extern LP_int
-pseudo_inverse_work_space (CdnDimension const *dim);
-
-extern LP_int
-linsolve_work_space (CdnDimension const *dim);
-
-extern LP_int
-qr_work_space (CdnDimension const *dim);
-
-#endif
 
 static void
 sltdl_impl (gdouble *ptrA,

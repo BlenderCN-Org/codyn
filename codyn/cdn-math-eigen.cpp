@@ -1,14 +1,9 @@
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "cdn-math-linear-algebra.h"
 
-#ifdef HAVE_EIGEN
 #include <Eigen/Eigen>
-#endif
 
 #include <vector>
 
-#include "cdn-math.h"
 
 // Hi-jacking memory model of Eigen is not easy. so we create our own
 // stacks of solver to respect codyn way of a fixed stack size
@@ -141,11 +136,6 @@ typedef SolverStack<Eigen::ColPivHouseholderQR<Eigen::MatrixXd>,2,1> StackColPiv
 typedef SolverStack<Eigen::JacobiSVD<Eigen::MatrixXd>,2,2 > StackJacobiSVD;
 typedef SolverStack<Eigen::HouseholderQR<Eigen::MatrixXd>,2,2 > StackHouseholderQR;
 
-
-#define LP_int gint
-#define LP_double gdouble
-
-
 extern "C" {
 	
 void
@@ -275,23 +265,14 @@ op_pseudo_inverse (CdnStack           *stack,
 }
 
 LP_int
-pseudo_inverse_work_space (CdnStack           *stack,
-                          CdnStackArgs const *argdim,
-                          gpointer            userdata)
+pseudo_inverse_work_space (CdnDimension const *dim)
 {
-
-	LP_int n;
-	LP_int m;
-
-	m = argdim->args[0].rows;
-	n = argdim->args[0].columns;
-
 	//allocate a solver for the problem dimension
 	using namespace Eigen;
-	StackJacobiSVD::Allocate(m,n);
+	StackJacobiSVD::Allocate(dim->rows,dim->columns);
 	// we would need to create a m-sized vector for singular values,
 	// and one m*n matrix for temp value;
-	return std::min(m,n) * (1 + n);
+	return std::min(dim->rows,dim->columns) * (1 + dim->columns);
 }
 
 
