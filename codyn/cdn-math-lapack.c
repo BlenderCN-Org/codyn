@@ -212,7 +212,6 @@ op_pseudo_inverse (CdnStack           *stack,
 	for (i = 0; i < m; ++i)
 	{
 		memcpy (A, b, sizeof (gdouble) * n);
-
 		A += n;
 		b += lb;
 	}

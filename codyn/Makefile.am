@@ -159,7 +159,8 @@ cdn-marshal.c: cdn-marshal.list $(GLIB_GENMARSHAL)
 	$(AM_V_GEN) echo "#include \"cdn-marshal.h\"" > $@ && \
 	$(GLIB_GENMARSHAL) $< --body --prefix=cdn_marshal >> $@
 
-libcodyn_3_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS) $(LAPACK_CFLAGS) $(BLAS_CFLAGS)
+libcodyn_3_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS) $(LAPACK_CFLAGS) $(BLAS_CFLAGS) $(EIGEN_CFLAGS)
+libcodyn_3_0_la_CXXFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS) $(EIGEN_CFLAGS)
 libcodyn_3_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
 
 libcodyn_3_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CODYN_LIBS) $(INTROSPECTION_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) -lm
