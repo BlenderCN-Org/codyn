@@ -4,6 +4,7 @@
 #include <Accelerate/Accelerate.h>
 #else  //PLATFORM_OSX
 #include <cblas.h>
+#include <string.h>
 #endif //PLATFORM_OSX
 
 void

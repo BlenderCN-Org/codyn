@@ -4,6 +4,8 @@
 #include <Accelerate/Accelerate.h>
 #else  //PLATFORM_OSX
 #include <clapack.h>
+#include <string.h>
+#include <math.h>
 #endif //PLATFORM_OSX
 
 #ifndef PLATFORM_OSX
