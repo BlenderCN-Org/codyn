@@ -57,26 +57,34 @@ struct _CdnIoInterface
 {
 	GTypeInterface parent;
 
-	gboolean (*initialize)   (CdnIo               *io,
-	                          GCancellable        *cancellable,
-	                          GError             **error);
+	gboolean (*initialize)        (CdnIo                *io,
+	                               GCancellable         *cancellable,
+	                               GError              **error);
 
-	void (*initialize_async) (CdnIo               *io,
-	                          GCancellable        *cancellable,
-	                          GAsyncReadyCallback  callback,
-	                          gpointer             user_data);
+	void (*initialize_async)      (CdnIo                *io,
+	                               GCancellable         *cancellable,
+	                               GAsyncReadyCallback   callback,
+	                               gpointer              user_data);
 
-	gboolean (*finalize)     (CdnIo               *io,
-	                          GCancellable        *cancellable,
-	                          GError             **error);
+	gboolean (*initialize_finish) (CdnIo                *io,
+	                               GAsyncResult         *result,
+	                               GError              **error);
 
-	void (*finalize_async)   (CdnIo               *io,
-	                          GCancellable        *cancellable,
-	                          GAsyncReadyCallback  callback,
-	                          gpointer             user_data);
+	gboolean (*finalize)          (CdnIo                *io,
+	                               GCancellable         *cancellable,
+	                               GError              **error);
 
-	void (*update)           (CdnIo               *io,
-	                          CdnIntegrator       *integrator);
+	void (*finalize_async)        (CdnIo                *io,
+	                               GCancellable         *cancellable,
+	                               GAsyncReadyCallback   callback,
+	                               gpointer              user_data);
+
+	gboolean (*finalize_finish)   (CdnIo                *io,
+	                               GAsyncResult         *result,
+	                               GError              **error);
+
+	void (*update)                (CdnIo               *io,
+	                               CdnIntegrator       *integrator);
 };
 
 GType    cdn_io_get_type          (void) G_GNUC_CONST;

@@ -73,9 +73,10 @@
 G_DEFINE_INTERFACE (CdnIo, cdn_io, CDN_TYPE_OBJECT)
 
 static void
-initialize_async_thread (GSimpleAsyncResult *res,
-                         GObject            *object,
-                         GCancellable       *cancellable)
+initialize_async_thread (GTask        *task,
+                         gpointer      object,
+                         gpointer      task_data,
+                         GCancellable *cancellable)
 {
 	CdnIoInterface *iface;
 	GError *error = NULL;
@@ -84,25 +85,21 @@ initialize_async_thread (GSimpleAsyncResult *res,
 
 	if (iface->initialize == NULL)
 	{
-		g_set_error_literal (&error,
-		                     G_IO_ERROR,
-		                     G_IO_ERROR_NOT_SUPPORTED,
-		                     "Operation not supported");
-
-		g_simple_async_result_set_from_error (res, error);
-		g_error_free (error);
-		return;
+		g_task_return_new_error (task,
+		                         G_IO_ERROR,
+		                         G_IO_ERROR_NOT_SUPPORTED,
+		                         "Operation not supported");
 	}
-
-	if (!iface->initialize (CDN_IO (object), cancellable, &error))
+	else if (!iface->initialize (CDN_IO (object), cancellable, &error))
 	{
-		g_simple_async_result_set_from_error (res, error);
-		g_error_free (error);
+		g_task_return_error (task, error);
 	}
 	else
 	{
-		g_simple_async_result_set_op_res_gboolean (res, TRUE);
+		g_task_return_boolean (task, TRUE);
 	}
+
+	g_object_unref (task);
 }
 
 static void
@@ -111,25 +108,19 @@ initialize_async_real (CdnIo               *io,
                        GAsyncReadyCallback  callback,
                        gpointer             user_data)
 {
-	GSimpleAsyncResult *res;
+	GTask *task;
 
-	res = g_simple_async_result_new (G_OBJECT (io),
-	                                 callback,
-	                                 user_data,
-	                                 cdn_io_initialize_async);
-
-	g_simple_async_result_run_in_thread (res,
-	                                     initialize_async_thread,
-	                                     G_PRIORITY_DEFAULT,
-	                                     cancellable);
-
-	g_object_unref (res);
+	task = g_task_new (G_OBJECT (io), cancellable, callback, user_data);
+	g_task_set_return_on_cancel (task, TRUE);
+	g_task_set_source_tag (task, cdn_io_initialize_async);
+	g_task_run_in_thread (task, initialize_async_thread);
 }
 
 static void
-finalize_async_thread (GSimpleAsyncResult *res,
-                       GObject            *object,
-                       GCancellable       *cancellable)
+finalize_async_thread (GTask        *task,
+                       gpointer      object,
+                       gpointer      task_data,
+                       GCancellable *cancellable)
 {
 	CdnIoInterface *iface;
 	GError *error = NULL;
@@ -138,25 +129,21 @@ finalize_async_thread (GSimpleAsyncResult *res,
 
 	if (iface->finalize == NULL)
 	{
-		g_set_error_literal (&error,
-		                     G_IO_ERROR,
-		                     G_IO_ERROR_NOT_SUPPORTED,
-		                     "Operation not supported");
-
-		g_simple_async_result_set_from_error (res, error);
-		g_error_free (error);
-		return;
+		g_task_return_new_error (task,
+		                         G_IO_ERROR,
+		                         G_IO_ERROR_NOT_SUPPORTED,
+		                         "Operation not supported");
 	}
-
-	if (!iface->finalize (CDN_IO (object), cancellable, &error))
+	else if (!iface->finalize (CDN_IO (object), cancellable, &error))
 	{
-		g_simple_async_result_set_from_error (res, error);
-		g_error_free (error);
+		g_task_return_error (task, error);
 	}
 	else
 	{
-		g_simple_async_result_set_op_res_gboolean (res, TRUE);
+		g_task_return_boolean (task, TRUE);
 	}
+
+	g_object_unref (task);
 }
 
 static void
@@ -165,19 +152,28 @@ finalize_async_real (CdnIo               *io,
                      GAsyncReadyCallback  callback,
                      gpointer             user_data)
 {
-	GSimpleAsyncResult *res;
+	GTask *task;
 
-	res = g_simple_async_result_new (G_OBJECT (io),
-	                                 callback,
-	                                 user_data,
-	                                 cdn_io_finalize_async);
+	task = g_task_new (G_OBJECT (io), cancellable, callback, user_data);
+	g_task_set_return_on_cancel (task, TRUE);
+	g_task_set_source_tag (task, cdn_io_finalize_async);
+	g_task_run_in_thread (task, finalize_async_thread);
+}
 
-	g_simple_async_result_run_in_thread (res,
-	                                     finalize_async_thread,
-	                                     G_PRIORITY_DEFAULT,
-	                                     cancellable);
+static gboolean
+initialize_finish_real (CdnIo         *io,
+                        GAsyncResult  *result,
+                        GError       **error)
+{
+	return g_task_propagate_boolean (G_TASK (result), error);
+}
 
-	g_object_unref (res);
+static gboolean
+finalize_finish_real (CdnIo         *io,
+                      GAsyncResult  *result,
+                      GError       **error)
+{
+	return g_task_propagate_boolean (G_TASK (result), error);
 }
 
 static void
@@ -186,7 +182,10 @@ cdn_io_default_init (CdnIoInterface *iface)
 	static gboolean initialized = FALSE;
 
 	iface->initialize_async = initialize_async_real;
+	iface->initialize_finish = initialize_finish_real;
+
 	iface->finalize_async = finalize_async_real;
+	iface->finalize_finish = finalize_finish_real;
 
 	if (G_UNLIKELY (!initialized))
 	{
@@ -291,20 +290,14 @@ cdn_io_initialize_finish (CdnIo         *io,
                           GAsyncResult  *result,
                           GError       **error)
 {
+	CdnIoInterface *iface;
+
 	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
-	g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
-	g_return_val_if_fail (g_simple_async_result_is_valid (result,
-	                                                      G_OBJECT (io),
-	                                                      cdn_io_initialize_async),
-	                      FALSE);
+	g_return_val_if_fail (g_task_is_valid (result, io), FALSE);
+	g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) == cdn_io_initialize_async, FALSE);
 
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
-	                                           error))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
+	iface = CDN_IO_GET_INTERFACE (io);
+	return iface->initialize_finish (io, result, error);
 }
 
 /**
@@ -394,20 +387,14 @@ cdn_io_finalize_finish (CdnIo         *io,
                         GAsyncResult  *result,
                         GError       **error)
 {
+	CdnIoInterface *iface;
+
 	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
-	g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
-	g_return_val_if_fail (g_simple_async_result_is_valid (result,
-	                                                      G_OBJECT (io),
-	                                                      cdn_io_finalize_async),
-	                      FALSE);
+	g_return_val_if_fail (g_task_is_valid (result, io), FALSE);
+	g_return_val_if_fail (g_task_get_source_tag (G_TASK (result)) == cdn_io_finalize_async, FALSE);
 
-	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
-	                                           error))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
+	iface = CDN_IO_GET_INTERFACE (io);
+	return iface->finalize_finish (io, result, error);
 }
 
 /**

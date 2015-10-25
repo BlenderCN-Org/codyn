@@ -595,7 +595,11 @@ evaluate_discrete (CdnIntegrator *integrator)
 	}
 
 	actions = cdn_integrator_state_phase_discrete_edge_actions (integrator->priv->state);
-	cdn_integrator_simulation_step_integrate (integrator, actions);
+
+	if (actions)
+	{
+		cdn_integrator_simulation_step_integrate (integrator, actions);
+	}
 }
 
 static void

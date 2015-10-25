@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.6.3)
+AC_INIT(codyn, 3.6.4)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
@@ -16,6 +16,7 @@ CFLAGS="-O0 -g $CFLAGS"
 fi
 
 AC_PROG_CC
+AC_PROG_CXX
 
 AC_ISC_POSIX
 AC_STDC_HEADERS
@@ -103,7 +104,9 @@ dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
 
-checkpkgs="glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0"
+GLIB_REQUIRED_VERSION=2.36
+
+checkpkgs="glib-2.0 >= $GLIB_REQUIRED_VERSION gobject-2.0 gio-2.0 gmodule-2.0"
 
 if test "$platform_osx" != "yes"; then
 	checkpkgs="$checkpkgs libxml-2.0"
@@ -205,6 +208,11 @@ adl_RECURSIVE_EVAL($includedir, EXPANDED_INCLUDEDIR)
 
 AC_SUBST(EXPANDED_BINDIR)
 
+
+dnl
+dnl lienar algebra support selection. Enabling eigen should resort in
+dnl lapack and blas desactivated. eigen is disabled by default
+dnl
 AC_ARG_ENABLE([lapack],
 	AS_HELP_STRING([--disable-lapack],[Enable lapack support (default: enabled)]),
 	[enable_lapack=$enableval],
@@ -212,6 +220,44 @@ AC_ARG_ENABLE([lapack],
 
 have_lapack=no
 
+AC_ARG_ENABLE([blas],
+	AS_HELP_STRING([--disable-blas],[Enable blas support (default: enabled)]),
+	[enable_blas=$enableval],
+	[enable_blas=auto])
+
+have_blas=no
+
+AC_ARG_ENABLE([eigen],
+	AS_HELP_STRING([--enable-eigen],[Enable C++ Eigen support (default: disabled)]),
+	[enable_eigen=$enableval],
+	[enable_eigen=no])
+	
+have_eigen=no
+
+dnl
+dnl check for eigen, disable lapack and blas if found
+dnl 
+if test "x$enable_eigen" != "xno" && test "x$have_eigen" = "xno"; then
+	PKG_CHECK_MODULES(EIGEN, [
+		eigen3 >= 3.2.0
+	] , [have_eigen=yes],[have_eigen=no])
+fi
+
+if test "$have_eigen" != "no"; then
+	enable_lapack=no
+	enable_blas=no
+	AC_DEFINE_UNQUOTED([HAVE_EIGEN], [1], [Have Eigen support])
+fi
+
+AM_CONDITIONAL([USE_EIGEN], [test "$have_eigen" != "no"])	
+
+if test "x$enable_eigen" = "xyes" && test "x$have_eigen" = "xno"; then
+	AC_MSG_ERROR(failed to locate eigen library)
+fi
+
+dnl
+dnl lapack for OS X, i.e. Accelerate framework
+dnl
 if test "x$enable_lapack" != "xno" && test "x$platform_osx" = "xyes"; then
 	AC_MSG_CHECKING([for lapack])
 
@@ -304,13 +350,12 @@ if test "$have_lapack" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_LAPACK], [1], [Have lapack support])
 fi
 
-AC_ARG_ENABLE([blas],
-	AS_HELP_STRING([--disable-blas],[Enable blas support (default: enabled)]),
-	[enable_blas=$enableval],
-	[enable_blas=auto])
+AM_CONDITIONAL([USE_LAPACK], [test "$have_lapack" != "no"])	
 
-have_blas=no
 
+dnl
+dnl check for blas
+dnl
 if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	if test "x$platform_osx" = "xyes"; then
 		AC_MSG_CHECKING([for blas])
@@ -407,6 +452,14 @@ fi
 if test "$have_blas" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_BLAS], [1], [Have blas support])
 fi
+AM_CONDITIONAL([USE_BLAS], [test "$have_blas" != "no"])
+
+use_naive=no
+if test "$have_blas" = "no" && test "$have_eigen" = "no"; then
+	use_naive=yes
+fi
+
+AM_CONDITIONAL([USE_NAIVE], [test "$use_naive" = "yes"])
 
 AC_SUBST(CDN_PARSER_LIBS)
 AC_SUBST(CDN_CONTEXT_LIBS)
@@ -418,6 +471,7 @@ AC_SUBST(LAPACK_CFLAGS)
 AC_SUBST(BLAS_LIBS)
 AC_SUBST(BLAS_CFLAGS)
 
+AC_SUBST(EIGEN_CFLAGS)
 dnl Check for wii
 AC_ARG_ENABLE([wii],
               AS_HELP_STRING([--enable-wii=auto/yes/no],[Enable wii support (default: auto)]),
@@ -571,6 +625,9 @@ Configuration:
 	network support:        $have_networking
 	wii support:            $enable_wii
 	python support:         $enable_python
+
+	eigen:                  $have_eigen
+	  cflags:               $EIGEN_CFLAGS
 
 	blas:                   $have_blas
 	  cflags:               $BLAS_CFLAGS
