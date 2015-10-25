@@ -7,6 +7,9 @@ AM_CPPFLAGS =				\
 	-DTEST_DATA_DIR=\"$(srcdir)\"	\
 	$(CODYN_CFLAGS)
 
+AM_TESTS_ENVIRONMENT = \
+	CODYN_IO_METHODS=$(top_builddir)/io/file/.libs
+
 TEST_PROGS =				\
 	expression			\
 	network				\
