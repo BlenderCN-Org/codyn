@@ -1,3 +1,9 @@
+codyn (3.6.4-1) UNRELEASED; urgency=low
+
+  * New upstream release 
+
+ -- Jesse van den Kieboom <jessevdk@gmail.com>  Sun, 25 Oct 2015 13:21:34 +0100
+
 codyn (3.6.3-3) trusty; urgency=medium
 
   * Updates copyright
