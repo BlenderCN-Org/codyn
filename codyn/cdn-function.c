@@ -357,6 +357,7 @@ cdn_function_evaluate_impl (CdnFunction *function,
 			CdnExpression *e;
 
 			e = cdn_variable_get_expression (v);
+			cdn_expression_reset_cache (e);
 
 			g_slist_foreach ((GSList *)cdn_expression_get_rand_instructions (e),
 			                 (GFunc)cdn_instruction_rand_next,
